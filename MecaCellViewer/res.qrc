@@ -1,0 +1,6 @@
+<!DOCTYPE RCC><RCC version="1.0">
+	<qresource prefix="/">
+		<file alias="/main.qml">qml/main.qml</file>
+		<file>qml/app.js</file>
+	</qresource>
+</RCC>
