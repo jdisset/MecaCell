@@ -2,5 +2,23 @@
 	<qresource prefix="/">
 		<file alias="/main.qml">qml/main.qml</file>
 		<file>qml/app.js</file>
+		<file>shaders/cell.frag</file>
+		<file>shaders/cell.vert</file>
+		<file>shaders/couleur3D.vert</file>
+		<file>shaders/couleur3D.frag</file>
+		<file>shaders/dumb.vert</file>
+		<file>shaders/ssao.frag</file>
+		<file>shaders/line.frag</file>
+		<file>shaders/line.geom</file>
+		<file>shaders/billboard.vert</file>
+		<file>shaders/billboard.frag</file>
+		<file>shaders/flatcolor.frag</file>
+		<file>shaders/skybox.frag</file>
+		<file>shaders/mvp.vert</file>
+		<file>shaders/particle.vert</file>
+		<file>shaders/particle.frag</file>
+
+		<file>textures/cellTexture.jpg</file>
+		<file>textures/cellNormalMap.jpg</file>
 	</qresource>
 </RCC>

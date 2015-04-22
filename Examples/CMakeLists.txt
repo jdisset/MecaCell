@@ -1,2 +1,2 @@
-
-add_executable(lx ${lx_source_files})
+add_executable(noViewExample "noview.cpp")
+target_link_libraries(noViewExample MecaCell)

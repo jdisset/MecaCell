@@ -5,4 +5,4 @@ set(CMAKE_CXX_FLAGS "-O3 -std=c++11 -Wall -Wextra -pedantic")
 
 add_subdirectory(MecaCell)
 add_subdirectory(MecaCellViewer)
-#add_subdirectory(Examples)
+add_subdirectory(Examples)

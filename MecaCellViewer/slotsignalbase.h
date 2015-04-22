@@ -6,6 +6,9 @@
 #include <QQuickItem>
 #include <iostream>
 #include <map>
+#include <QThread>
+#include "viewtools.h"
+
 using namespace std;
 
 enum mouseButton { none = 0, leftButton = 1, middleButton = 4, rightButton = 2 };
@@ -16,21 +19,17 @@ class SignalSlotRenderer : public QObject {
 	Q_OBJECT
  protected:
 	QSize viewportSize;
-	QOpenGLFunctions* GL = nullptr;
 
  public:
 	explicit SignalSlotRenderer() {}
 	virtual void sync(SignalSlotBase*){};
 	virtual void paint(){};
+	virtual void initialize(){};
  public slots:
-	virtual void setViewportSize(const QSize&){};
-	virtual void paintSlot() {
-		if (!GL) {
-			GL = QOpenGLContext::currentContext()->functions();
-			GL->initializeOpenGLFunctions();
-		}
-		paint();
-	};
+	virtual void cleanupSlot() {}
+	virtual void setViewportSize(const QSize& s) { viewportSize = s; };
+	virtual void paintSlot() { paint(); };
+	virtual SignalSlotRenderer* clone() { return new SignalSlotRenderer(); }
 };
 
 /***********************************
@@ -43,19 +42,25 @@ class SignalSlotBase : public QQuickItem {
 	    : mouseMovements(vector<QVector2D>(4, QVector2D(0, 0))), mousePressed(vector<bool>(4, false)) {
 		connect(this, SIGNAL(windowChanged(QQuickWindow*)), this, SLOT(handleWindowChanged(QQuickWindow*)));
 	}
- public slots:
 
+ public slots:
 	/**************************
 	 *      Qt events
 	 *************************/
-	virtual void sync() { 
+	virtual void sync() {
+		if (!initialized) {
+			initialized = true;
+			renderer.reset(renderer->clone());
+			connect(window(), SIGNAL(beforeRendering()), renderer.get(), SLOT(paintSlot()), Qt::DirectConnection);
+			connect(window(), SIGNAL(sceneGraphInvalidated()), renderer.get(), SLOT(cleanupSlot()),
+			        Qt::DirectConnection);
+			renderer->initialize();
+		}
+		renderer->setViewportSize(QSize(width(), height()));
 		renderer->sync(this);
- 	};
+	};
 
-	void init(unique_ptr<SignalSlotRenderer>& r) {
-		renderer = move(r);
-		connect(window(), SIGNAL(beforeRendering()), renderer.get(), SLOT(paintSlot()), Qt::DirectConnection);
-	}
+	void init(unique_ptr<SignalSlotRenderer>& r) { renderer = move(r); }
 
 	void callUpdate() {
 		if (window()) window()->update();
@@ -100,6 +105,7 @@ class SignalSlotBase : public QQuickItem {
 	int mouseWheel = 0;
 	QVector2D mousePosition;
 	unique_ptr<SignalSlotRenderer> renderer = nullptr;
+	bool initialized = false;
 };
 
 #endif

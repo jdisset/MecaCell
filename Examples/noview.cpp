@@ -1,5 +1,5 @@
-#include "mecacell.h"
-#include "basiccell.hpp"
+#include "../MecaCell/mecacell.h"
+#include "../MecaCell/basiccell.hpp"
 #include <iostream>
 #include <random>
 
@@ -29,6 +29,7 @@ int main(int, char**) {
 
 	for (unsigned int i = 0; i < nbSteps; ++i) {
 		world.update();
+		//cout coucou 
 	}
 
 	auto t1 = chrono::system_clock::now();

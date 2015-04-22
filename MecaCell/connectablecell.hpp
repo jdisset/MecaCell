@@ -40,6 +40,7 @@ template <typename Derived> class ConnectableCell : public Movable, public Orien
 	}
 
 	double getRadius() const { return radius; }
+	double getBaseRadius() const {return baseRadius;}
 	double getStiffness() const { return stiffness; }
 	double getColor(unsigned int i) const {
 		if (i < 3) return color[i];
@@ -81,14 +82,15 @@ template <typename Derived> class ConnectableCell : public Movable, public Orien
 		return l;
 	}
 
-	Derived* selfptr() { return static_cast<Derived *>(this); }
-	Derived& self() { return static_cast<Derived &>(*this); }
-	const Derived& selfconst() const { return static_cast<const Derived & >(*this); }
+	void setVolume(double v) { setRadius(cbrt(v / (4.0 * M_PI / 3.0))); }
+	Derived* selfptr() { return static_cast<Derived*>(this); }
+	Derived& self() { return static_cast<Derived&>(*this); }
+	const Derived& selfconst() const { return static_cast<const Derived&>(*this); }
 
 	// Don't forget to implement this method in the derived class
 	double getAdhesionWith(const int tId) const { return selfconst().getAdhesionWith(tId); }
 
-	vector<Connection<Derived>*>& getRWConnections() { return connections;}
+	vector<Connection<Derived>*>& getRWConnections() { return connections; }
 
 	/******************************
 	 * connections
@@ -133,7 +135,7 @@ template <typename Derived> class ConnectableCell : public Movable, public Orien
 						double dr = (dampRatio * radius + c->dampRatio * c->radius) / (radius + c->radius);
 						double maxTeta = mix(0.0, M_PI, minAdh);
 						Connection<Derived>* s = new Connection<Derived>(
-						    pair<Derived*,Derived*>(selfptr(), c), Spring(k, dampingFromRatio(dr, mass + c->mass, k), l),
+						    pair<Derived*, Derived*>(selfptr(), c), Spring(k, dampingFromRatio(dr, mass + c->mass, k), l),
 						    make_pair(Joint(getAngularStiffness(),
 						                    dampingFromRatio(dr, getMomentOfInertia(), angularStiffness), maxTeta),
 						              Joint(getAngularStiffness(),
@@ -176,6 +178,24 @@ template <typename Derived> class ConnectableCell : public Movable, public Orien
 		//}
 	}
 
+	Derived* divide() {
+		return divide(Vec::randomUnit());
+	}
+
+	Derived* divide(const Vec& direction) {
+		setRadius(getBaseRadius());
+		setMass(getBaseMass());
+		updateAllConnections();
+		Derived* newC = new Derived(selfconst(), direction.normalized() * radius * 0.8);
+		return newC;
+	}
+
+	void grow(double qtty) {
+		double rv = getRelativeVolume() + qtty;
+		setVolume(getBaseVolume() * rv);
+		setMass(getBaseMass() * rv);
+	}
+
 	void addConnection(Derived* c, Connection<Derived>* s) {
 		connections.push_back(s);
 		c->connections.push_back(s);
@@ -211,14 +231,13 @@ template <typename Derived> class ConnectableCell : public Movable, public Orien
 	}
 
 	void eraseConnection(Connection<Derived>* s) {
-			connections.erase(remove(connections.begin(), connections.end(), s), connections.end());
+		connections.erase(remove(connections.begin(), connections.end(), s), connections.end());
 	}
 
 	void eraseAndDeleteAllConnections(vector<Connection<Derived>*>& aux) {
 		for (auto cIt = connections.begin(); cIt != connections.end();) {
 			Connection<Derived>* sp = *cIt;
-			auto otherCell =
-			    sp->getNode0() == this ? sp->getNode1() : sp->getNode0();
+			auto otherCell = sp->getNode0() == this ? sp->getNode1() : sp->getNode0();
 			if (otherCell != nullptr) {
 				aux.erase(remove(aux.begin(), aux.end(), sp), aux.end());
 				connectedCells.erase(remove(connectedCells.begin(), connectedCells.end(), otherCell),
