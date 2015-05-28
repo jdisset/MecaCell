@@ -4,14 +4,15 @@
 #include <QOpenGLFunctions>
 #include <QQuickView>
 #include <QQuickItem>
+#include <QVariant>
+#include <QString>
 #include <iostream>
 #include <map>
 #include <QThread>
 #include "viewtools.h"
+#include <set>
 
 using namespace std;
-
-enum mouseButton { none = 0, leftButton = 1, middleButton = 4, rightButton = 2 };
 
 class SignalSlotBase;
 
@@ -19,12 +20,14 @@ class SignalSlotRenderer : public QObject {
 	Q_OBJECT
  protected:
 	QSize viewportSize;
+	QQuickWindow* window = nullptr;
 
  public:
 	explicit SignalSlotRenderer() {}
 	virtual void sync(SignalSlotBase*){};
 	virtual void paint(){};
 	virtual void initialize(){};
+	void setWindow(QQuickWindow* w) { window = w; }
  public slots:
 	virtual void cleanupSlot() {}
 	virtual void setViewportSize(const QSize& s) { viewportSize = s; };
@@ -38,10 +41,41 @@ class SignalSlotRenderer : public QObject {
 class SignalSlotBase : public QQuickItem {
 	Q_OBJECT
  public:
-	SignalSlotBase()
-	    : mouseMovements(vector<QVector2D>(4, QVector2D(0, 0))), mousePressed(vector<bool>(4, false)) {
+	SignalSlotBase() {
 		connect(this, SIGNAL(windowChanged(QQuickWindow*)), this, SLOT(handleWindowChanged(QQuickWindow*)));
+		setAcceptedMouseButtons(Qt::AllButtons);
+		setFlags(ItemClipsChildrenToShape | ItemAcceptsInputMethod | ItemHasContents);
+		guiCtrl["tool"] = "move";
 	}
+
+	Q_PROPERTY(QVariantMap stats READ getStats WRITE setStats NOTIFY statsChanged)
+	Q_PROPERTY(QVariantMap guiCtrlM MEMBER guiCtrl NOTIFY ctrlChanged)
+
+	QVariantMap stats, guiCtrl;
+	set<int> pressedKeys;
+	int mouseWheel = 0;
+	unique_ptr<SignalSlotRenderer> renderer = nullptr;
+	bool initialized = false;
+	QMouseEvent lastMouseEvent =
+	    QMouseEvent(QEvent::None, QPointF(0, 0), Qt::NoButton, Qt::NoButton, Qt::NoModifier);
+	QFlags<Qt::MouseButtons> mouseClickedButtons, mouseDblClickedButtons;
+
+	virtual void mouseMoveEvent(QMouseEvent* event) { lastMouseEvent = *event; }
+	virtual void mousePressEvent(QMouseEvent* event) {
+		lastMouseEvent = *event;
+		mouseClickedButtons |= event->button();
+	}
+
+	virtual void mouseReleaseEvent(QMouseEvent* event) { lastMouseEvent = *event; }
+	virtual void mouseDoubleClickEvent(QMouseEvent* event) { mouseDblClickedButtons |= event->button(); }
+	virtual void wheelEvent(QWheelEvent* event) {}
+
+	virtual void keyPressEvent(QKeyEvent* event) { pressedKeys.insert(event->key()); }
+	virtual void keyReleaseEvent(QKeyEvent* event) { pressedKeys.erase(event->key()); }
+
+signals:
+	void statsChanged();
+	void ctrlChanged();
 
  public slots:
 	/**************************
@@ -56,6 +90,7 @@ class SignalSlotBase : public QQuickItem {
 			        Qt::DirectConnection);
 			renderer->initialize();
 		}
+		renderer->setWindow(window());
 		renderer->setViewportSize(QSize(width(), height()));
 		renderer->sync(this);
 	};
@@ -76,36 +111,12 @@ class SignalSlotBase : public QQuickItem {
 	/**************************
 	 *      basic stats
 	 *************************/
-	qreal getFps() { return fps; }
-	int getNbCells() { return nbCells; }
-	int getNbUpdates() { return nbUpdates; }
-
-	/**************************
-	 *      input events
-	 *************************/
-	void keyDown(Qt::Key k) { pressedKeys[k] = true; }
-	void keyUp(Qt::Key k) { pressedKeys[k] = false; }
-	void mouseMove(int b, int x, int y) { mouseMovements[b] += QVector2D(x, y); }
-	void mouseWheelRotation(int n) { mouseWheel += n; }
-	void pressed(int b, bool v) { mousePressed[b] = v; }
-	void setMousePos(int x, int y) { mousePosition = QVector2D(x, y); }
-	void click(int b, int x, int y) {
-		clicked = (mouseButton)b;
-		mousePosition = QVector2D(x, y);
-	}
-
- protected:
-	int nbCells = 0;
-	int nbUpdates = 0;
-	int fps = 60;
-	int clicked = 0;
-	map<Qt::Key, bool> pressedKeys;
-	vector<QVector2D> mouseMovements;
-	vector<bool> mousePressed;
-	int mouseWheel = 0;
-	QVector2D mousePosition;
-	unique_ptr<SignalSlotRenderer> renderer = nullptr;
-	bool initialized = false;
+	QVariant getGuiCtrl(QString k) { return guiCtrl.count(k) ? guiCtrl[k] : 0; }
+	QVariantMap getGuiCtrl() { return guiCtrl; }
+	QVariantMap getStats() { return stats; }
+	QVariant getStat(const QString& name) { return stats.count(name) ? stats[name] : QVariant(); }
+	void setGuiCtrl(QString k, QVariant v) { guiCtrl[k] = v; }
+	void setStats(QVariantMap s) { stats = s; }
 };
 
 #endif

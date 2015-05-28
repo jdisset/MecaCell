@@ -1,5 +1,7 @@
 #include "tools.h"
+
 namespace MecaCell {
+
 int double2int(double d) {
 	d += 6755399441055744.0;
 	return reinterpret_cast<int&>(d);

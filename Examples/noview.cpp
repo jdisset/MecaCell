@@ -2,6 +2,7 @@
 #include "../MecaCell/basiccell.hpp"
 #include <iostream>
 #include <random>
+#include <chrono>
 
 using namespace MecaCell;
 using namespace std;

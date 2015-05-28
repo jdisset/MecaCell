@@ -4,39 +4,196 @@ import QtGraphicalEffects 1.0
 import QtQuick.Controls 1.3
 
 Item{
-	width  : 1200
-	height : 750
+	width  : 1300
+	height : 850
 	id : main
+	function setCtrl (k,v){
+		renderer.setGuiCtrl(k,v);
+	}
+	function statAvail (k){
+		return renderer.stats[k] ? true : false;
+	}
+	function getStat (k){
+		return renderer.stats[k] ? renderer.stats[k] : 0;
+	}
+	property color mecaYellow : "#A4DED48A"
+	property color lightMecaYellow : "#30DED48A"
+	property color mecaBlue : "#A42DB2D6"
+	property color mecaRed : "#B4E3343A"
+	property color bitDarker :"#40000000"
+	property color background :"#80000000"
+	FontLoader { id: fontawesome; source: "fonts/fontawesome.ttf" }
+	FontLoader { id: oswald; source: "fonts/Oswald-Regular.ttf" }
+	FontLoader { id: opensans; source: "fonts/OpenSans-Light.ttf" }
+
+	Rectangle {
+		focus : true
+		id : leftMenu
+		anchors.left : parent.left
+		anchors.top : parent.top
+		height : parent.height
+		color : background
+		width : 200
+		Image {
+			id:logo
+			anchors.top: parent.top
+			anchors.left:parent.left
+			anchors.leftMargin : 60
+			source: "images/logo.png"
+			fillMode: Image.PreserveAspectFit
+			horizontalAlignment: Image.AlignLeft
+			width:80
+		}
+		Row {
+			id : menuChooser
+			anchors.top : logo.bottom
+			anchors.topMargin : 10
+			height : 50
+			spacing: 38
+			anchors.horizontalCenter : parent.horizontalCenter
+
+			ExclusiveStuff{
+				id : menuGroup
+				objectsInGroup : [displayButton,paramsButton,statsButton]
+			}
+
+			CircleButton{
+				group : menuGroup
+				id : displayButton
+				selecColor : mecaBlue
+				label:"\uf108"
+				anchors.verticalCenter : parent.verticalCenter
+			}
+			CircleButton{
+				id : paramsButton
+				checked : true
+				group : menuGroup
+				selecColor : mecaYellow
+				label:"\uf1de"
+				anchors.verticalCenter : parent.verticalCenter
+			}
+			CircleButton{
+				id : statsButton
+				group : menuGroup
+				selecColor : mecaRed
+				label:"\uf080"
+				anchors.verticalCenter : parent.verticalCenter
+			}
+		}
+
+		Loader {
+			id:loader
+			width : parent.width
+			source : displayButton.checked ? "DisplayMenu.qml" : (paramsButton.checked ? "ParamsMenu.qml" : "StatsMenu.qml")
+			anchors.top : menuChooser.bottom
+			anchors.bottom : player.top
+		}
+		Rectangle {
+			id : player
+			anchors.bottom:mainStats.top
+			anchors.bottomMargin : 15
+			height : 30
+			width : parent.width
+			color : bitDarker 
+			property int fontSize : 19
+			Row {
+				height : parent.height
+				spacing: 38
+				anchors.horizontalCenter : parent.horizontalCenter
+				Text {
+					id : resetButton
+					text:"\uf01e"
+					font.family: fontawesome.name
+					font.pointSize:player.fontSize 
+					anchors.verticalCenter : parent.verticalCenter
+					color : ma_reset.containsMouse ? mecaRed: "white"
+					MouseArea {
+						id : ma_reset
+						acceptedButtons: Qt.LeftButton
+						anchors.fill: parent
+						hoverEnabled : true
+						onClicked: {}
+					}
+				}
+				Text {
+					id : playButton
+					property bool playing : true;
+					text: playing ? "\uf04c" : "\uf04b" 
+					color : ma_play.containsMouse ? mecaYellow: "white"
+					font.family: fontawesome.name
+					font.pointSize:player.fontSize 
+					anchors.verticalCenter : parent.verticalCenter
+					MouseArea {
+						id : ma_play
+						acceptedButtons: Qt.LeftButton
+						anchors.fill: parent
+						hoverEnabled : true
+						onClicked: { parent.playing = !parent.playing }
+					}
+				}
+				Text {
+					id : stepButton
+					text:"\uf051"
+					color : ma_step.containsMouse ? mecaBlue: "white"
+					font.family: fontawesome.name
+					font.pointSize:player.fontSize 
+					anchors.verticalCenter : parent.verticalCenter
+					MouseArea {
+						id : ma_step
+						acceptedButtons: Qt.LeftButton
+						anchors.fill: parent
+						hoverEnabled : true
+						onClicked: {}
+					}
+				}
+			}
+		}
+		Rectangle {
+			id : mainStats
+			height : 35
+			width : parent.width
+			color : "transparent"
+			anchors.bottom : parent.bottom
+			anchors.bottomMargin : 5
+			anchors.leftMargin : 7 
+			Row {
+				height : parent.height
+				width : parent.width - parent.anchors.leftMargin
+				spacing: 10
+				ValueWatcher {
+					label:"FPS"
+					value:getStat("fps").toFixed(0)
+				}
+				HorizontalSpacer {color : Qt.lighter(mainStats.color,1.5)}
+				ValueWatcher {
+					label:"CELLS"
+					value:getStat("nbCells")
+				}
+				HorizontalSpacer {color : Qt.lighter(mainStats.color,1.5)}
+				ValueWatcher {
+					label:"UPDATE"
+					value:getStat("nbUpdates")
+				}
+			}
+		}
+	}
 
 	Renderer {
 		objectName     : "renderer"
 		id             : renderer
+		anchors.left   : leftMenu.right
+		anchors.top   : parent.top
+		anchors.bottom: parent.bottom
+		anchors.right: parent.right
 		anchors.fill   : parent
 		focus          : true
+		z              : -1
 	}
 
-	Text {
-		id             : infos 
-		anchors.bottom : parent.bottom
-		anchors.right: parent.right
-		anchors.bottomMargin: 10;
-		anchors.rightMargin: 10;
-		property real fps : 0;
-		property real u : 0;
-		property real nbc : 0;
-		text:  nbc + " cells | " + u + " updates | " + fps.toFixed(1) + " fps"
-		color: "grey"
-		font.pointSize : 10 
-	}
 	Timer {
 		interval: 1000/60; running: true; repeat: true
 		onTriggered: {
 			glview.callUpdate();
-		}
-	}
-	Timer {
-		interval: 100; running: true; repeat: true
-		onTriggered: {
 		}
 	}
 }

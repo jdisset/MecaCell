@@ -19,6 +19,10 @@ template <typename Cell, typename Integrator> class BasicWorld {
 	Vec g = Vec::zero();
 
  public:
+	typedef Cell cell_type;
+	typedef Integrator integrator_type;
+
+
 	// Raw pointers! Why?
 	// because it is impossible to use unique_ptr here
 	// because shared_ptr would be too slow

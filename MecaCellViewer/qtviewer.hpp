@@ -13,12 +13,10 @@
 
 using namespace std;
 namespace MecaCellViewer {
-template <typename World, typename Cell> class QtViewer {
-	function<void(World&)> init;
-	function<void(World&)> loop;
+template <typename Scenario> class QtViewer {
 
  public:
-	QtViewer(function<void(World&)> i, function<void(World&)> l) : init(i), loop(l) {
+	QtViewer(){
 		// for mac osx
 		QSurfaceFormat f;
 		f.setProfile(QSurfaceFormat::CoreProfile);
@@ -36,8 +34,7 @@ template <typename World, typename Cell> class QtViewer {
 		view.setResizeMode(QQuickView::SizeRootObjectToView);
 		QObject* root = view.rootObject();
 		SignalSlotBase* ssb = root->findChild<SignalSlotBase*>("renderer");
-		unique_ptr<SignalSlotRenderer> r =
-		    unique_ptr<Renderer<World, Cell>>(new Renderer<World, Cell>(init, loop));
+		unique_ptr<SignalSlotRenderer> r = unique_ptr<Renderer<Scenario>>(new Renderer<Scenario>(argc, argv));
 		view.rootContext()->setContextProperty("glview", ssb);
 		ssb->init(r);
 		view.show();

@@ -21,7 +21,7 @@ template <typename Derived> class ConnectableCell : public Movable, public Orien
  protected:
 	int typeId = 0;     // current cell type id. Used for determining adhesion
 	bool dead = false;  // is the cell dead or alive ?
-	vector<double> color = {0.2, 0.7, 0.8};
+	vector<double> color = {0.75, 0.12, 0.07};
 	double radius = DEFAULT_CELL_RADIUS;
 	double baseRadius = DEFAULT_CELL_RADIUS;
 	double stiffness = DEFAULT_CELL_STIFFNESS;
@@ -40,7 +40,7 @@ template <typename Derived> class ConnectableCell : public Movable, public Orien
 	}
 
 	double getRadius() const { return radius; }
-	double getBaseRadius() const {return baseRadius;}
+	double getBaseRadius() const { return baseRadius; }
 	double getStiffness() const { return stiffness; }
 	double getColor(unsigned int i) const {
 		if (i < 3) return color[i];
@@ -58,21 +58,23 @@ template <typename Derived> class ConnectableCell : public Movable, public Orien
 	}
 	double getSqradius() const { return radius * radius; }
 	bool alreadyTested() const { return tested; }
+	int getNbConnections() const { return connections.size(); }
 
 	/******************************
-	 * main setters
+	 * main setters & getters
 	 *****************************/
 
 	void setRadius(double r) { radius = r; }
 	void markAsTested() { tested = true; }
 	void markAsNotTested() { tested = false; }
-	double getBaseVolume() { return (4.0 / 3.0) * M_PI * baseRadius * baseRadius * baseRadius; }
-	double getVolume() { return (4.0 / 3.0) * M_PI * radius * radius * radius; }
-	double getRelativeVolume() { return getVolume() / getBaseVolume(); }
+	double getBaseVolume() const { return (4.0 / 3.0) * M_PI * baseRadius * baseRadius * baseRadius; }
+	double getVolume() const { return (4.0 / 3.0) * M_PI * radius * radius * radius; }
+	double getRelativeVolume() const { return getVolume() / getBaseVolume(); }
+	int getTypeId() const { return typeId; }
 
 	// return the connection length with another cell
 	// according to an adhesion coef (0 <= adh <= 1)
-	double getConnectionLength(const Derived* c, const double adh) {
+	double getConnectionLength(const Derived* c, const double adh) const {
 		double l = radius + c->radius;
 		return getConnectionLength(l, adh);
 	}
@@ -178,9 +180,7 @@ template <typename Derived> class ConnectableCell : public Movable, public Orien
 		//}
 	}
 
-	Derived* divide() {
-		return divide(Vec::randomUnit());
-	}
+	Derived* divide() { return divide(Vec::randomUnit()); }
 
 	Derived* divide(const Vec& direction) {
 		setRadius(getBaseRadius());

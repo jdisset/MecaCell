@@ -10,16 +10,13 @@
 #include <QOpenGLVertexArrayObject>
 #include <QOpenGLTexture>
 
-class Quad {
- protected:
+struct Quad {
 	QOpenGLBuffer vbuf, nbuf;
 	QOpenGLVertexArrayObject vao;
-	std::vector<float> vertices = {-1, -1, 0, 1, -1, 0, -1, 1, 0, 1, 1, 0};
-	std::vector<float> normals = {0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1};
+	const std::vector<float> vertices = {-1, -1, 0, 1, -1, 0, -1, 1, 0, 1, 1, 0};
+	const std::vector<float> normals = {0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1};
 
- public:
 	Quad() {}
-
 	void load(QOpenGLShaderProgram& shader) {
 		shader.bind();
 		vao.create();
@@ -40,9 +37,6 @@ class Quad {
 		vao.release();
 		shader.release();
 	}
-
-	void bindVAO() { vao.bind(); }
-	void releaseVAO() { vao.release(); }
 };
 
 #endif
