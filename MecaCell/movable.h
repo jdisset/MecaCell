@@ -4,7 +4,7 @@
 
 namespace MecaCell {
 class Movable {
- protected:
+protected:
 	Vec position = Vec::zero();
 	Vec prevposition = Vec::zero();
 	Vec velocity = Vec::zero();
@@ -13,7 +13,7 @@ class Movable {
 	double baseMass = 1.0;
 	double totalForce = 0;
 
- public:
+public:
 	/**********************************************
 	 *               CONSTRUCTOR
 	 **********************************************/
@@ -24,25 +24,25 @@ class Movable {
 	 *                GET & SET
 	 **********************************************/
 	Vec getPosition() const { return position; }
-	Vec getPrevPosition() const { return prevposition; }
 	Vec getVelocity() const { return velocity; }
 	Vec getForce() const { return force; }
 	double getMass() const { return mass; }
 	double getBaseMass() const { return baseMass; }
-	void setPosition(const Vec& p) { position = p; }
-	void setPrevPosition(const Vec& p) { prevposition = p; }
-	void setVelocity(const Vec& v) { velocity = v; }
-	void setForce(const Vec& f) { force = f; }
+	void setPosition(const Vec &p) { position = p; }
+	void setVelocity(const Vec &v) { velocity = v; }
+	void setForce(const Vec &f) { force = f; }
 	void setMass(const double m) { mass = m; }
 	void setBaseMass(const double m) { baseMass = m; }
 	/**********************************************
 	 *                 UPDATES
 	 **********************************************/
-	void receiveForce(const double& intensity, const Vec& direction, const bool& compressive) {
+	void receiveForce(const double &intensity, const Vec &direction, const bool &compressive) {
 		force += direction * intensity;
 		totalForce += compressive ? intensity : -intensity;
+		cerr << " force = " << force << endl;
+		cerr << " velocity = " << velocity << endl;
 	}
-	void receiveForce(const Vec& f) { force += f; }
+	void receiveForce(const Vec &f) { force += f; }
 	void resetVelocity() { velocity = Vec::zero(); }
 	void resetForce() {
 		totalForce = 0;

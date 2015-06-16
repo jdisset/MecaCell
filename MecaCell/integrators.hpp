@@ -5,18 +5,31 @@
 // using structs instead of lambda templates (c++14 feature :-/ )
 namespace MecaCell {
 
-// A mix of Verlet for position and Euler for orientation. Pretty fast, accurate enough.
-struct VerletEuler {
-	template <typename C> void operator()(C& c, const double& dt) {
-		// position (Verlet)
-		auto xtemp = c.getPosition();
-		c.setVelocity((c.getPosition() - c.getPrevPosition()) / dt);
-		c.setPosition(c.getPosition() + (c.getPosition() - c.getPrevPosition()) +
-		              (c.getForce() / c.getMass()) * dt * dt);
-		c.setPrevPosition(xtemp);
+// Pretty fast, not extremely accurate.
+struct Verlet {
+	template <typename C> void operator()(C &c, const double &dt) {
 
-		// orientation (Euler)
-		c.setAngularVelocity(c.getAngularVelocity() + (c.getTorque() / c.getMomentOfInertia()) * dt);
+		// position
+		auto oldVel = c.getVelocity();
+		c.setVelocity(c.getVelocity() + c.getForce() * dt / c.getMass());
+		c.setPosition(c.getPosition() + (c.getVelocity() + oldVel) * dt * 0.5);
+
+		// orientation
+		oldVel = c.getAngularVelocity();
+		c.setAngularVelocity(c.getAngularVelocity() + c.getTorque() * dt / c.getMomentOfInertia());
+		c.setOrientationRotation(c.getOrientationRotation() + (c.getAngularVelocity() + oldVel) * dt * 0.5);
+		c.updateCurrentOrientation();
+	}
+};
+struct Euler {
+	template <typename C> void operator()(C &c, const double &dt) {
+
+		// position
+		c.setVelocity(c.getVelocity() + c.getForce() * dt / c.getMass());
+		c.setPosition(c.getPosition() + c.getVelocity() * dt);
+
+		// orientation
+		c.setAngularVelocity(c.getAngularVelocity() + c.getTorque() * dt / c.getMomentOfInertia());
 		c.setOrientationRotation(c.getOrientationRotation() + c.getAngularVelocity() * dt);
 		c.updateCurrentOrientation();
 	}

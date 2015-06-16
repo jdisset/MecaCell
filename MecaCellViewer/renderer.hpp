@@ -18,15 +18,15 @@
 
 template <typename Scenario> class Renderer : public SignalSlotRenderer {
 
- private:
-	typedef typename remove_reference<decltype(((Scenario*)nullptr)->getWorld())>::type World;
+private:
+	typedef typename remove_reference<decltype(((Scenario *)nullptr)->getWorld())>::type World;
 	typedef typename World::cell_type Cell;
 
-	QQuickWindow* wndw;
+	QQuickWindow *wndw;
 
 	// Scenario
 	int argc;
-	char** argv;
+	char **argv;
 	Scenario scenario;
 	int frame = 0;
 
@@ -45,21 +45,25 @@ template <typename Scenario> class Renderer : public SignalSlotRenderer {
 	QPointF mousePosition, mousePrevPosition;
 	QFlags<Qt::MouseButtons> mouseClickedButtons, mouseDblClickedButtons, mousePressedButtons;
 	QMap<QVariant, std::function<void()>> clickMethods;
+	set<int> pressedKeys;
 
 	// Stats
-	chrono::time_point<chrono::high_resolution_clock> t0;
+	chrono::time_point<chrono::high_resolution_clock> t0, tfps;
+	double viewDt;
 	int nbFramesSinceLastTick = 0;
 	QVariantMap stats, guiCtrl;
-	const int fpsRefreshRate = 400000;
-	Cell* selectedCell = nullptr;
+	const int fpsRefreshRate = 400;
+	Cell *selectedCell = nullptr;
 
 	// options
 	double BLUR_COEF = 1.0, MSAA_COEF = 4, FSAA_COEF = 1;
 	double screenCoef = 1.0;
 	int menuSize = 200;
+	bool worldUpdate = true;
+	bool loopStep = true;
 
- public:
-	explicit Renderer(int c, char** v) : SignalSlotRenderer(), argc(c), argv(v) {
+public:
+	explicit Renderer(int c, char **v) : SignalSlotRenderer(), argc(c), argv(v) {
 		clickMethods["select"] = bind(&Renderer<Scenario>::pickCell, this);
 	}
 
@@ -68,7 +72,10 @@ template <typename Scenario> class Renderer : public SignalSlotRenderer {
 	 ***********************************/
 	// main paint method, called every frame
 	virtual void paint() {
-		 scenario.loop();
+		if (loopStep || worldUpdate) {
+			scenario.loop();
+			loopStep = false;
+		}
 
 		FSAA_COEF = screenCoef == 2.0 ? 0.5 : 1.0;
 
@@ -105,18 +112,21 @@ template <typename Scenario> class Renderer : public SignalSlotRenderer {
 
 		// refresh stats
 		auto t1 = chrono::high_resolution_clock::now();
-		auto dur = chrono::duration_cast<chrono::microseconds>(t1 - t0);
+		auto fpsDt = chrono::duration_cast<chrono::milliseconds>(t1 - tfps);
 		nbFramesSinceLastTick++;
-		if (dur.count() > fpsRefreshRate) {
-			stats["fps"] = 1000000.0 * (double)nbFramesSinceLastTick / (double)dur.count();
+		if (fpsDt.count() > fpsRefreshRate) {
+			stats["fps"] = 1000.0 * (double)nbFramesSinceLastTick / (double)fpsDt.count();
 			nbFramesSinceLastTick = 0;
-			t0 = chrono::high_resolution_clock::now();
+			tfps = chrono::high_resolution_clock::now();
 		}
 		stats["nbCells"] = QVariant((int)scenario.getWorld().cells.size());
 		stats["nbUpdates"] = scenario.getWorld().getNbUpdates();
 		if (window) {
 			window->resetOpenGLState();
 		}
+		chrono::duration<double> dv = t1 - t0;
+		viewDt = dv.count();
+		t0 = chrono::high_resolution_clock::now();
 		++frame;
 	}
 
@@ -168,7 +178,7 @@ template <typename Scenario> class Renderer : public SignalSlotRenderer {
 		GL->glEnable(GL_DEPTH_TEST);
 	}
 	// depth texture initialisation
-	void genDepthTexture(QSize s, GLuint& t) {
+	void genDepthTexture(QSize s, GLuint &t) {
 		GL->glGenTextures(1, &t);
 		GL->glBindTexture(GL_TEXTURE_2D, t);
 		GL->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
@@ -184,12 +194,15 @@ template <typename Scenario> class Renderer : public SignalSlotRenderer {
 
 	// useful for creating a new instance from QSGRenderThread
 	// ugly trick... but hey, it works!
-	virtual SignalSlotRenderer* clone() { return new Renderer<Scenario>(argc, argv); }
+	virtual SignalSlotRenderer *clone() { return new Renderer<Scenario>(argc, argv); }
 
 	// called after every frame, thread safe
-	virtual void sync(SignalSlotBase* b) {
+	virtual void sync(SignalSlotBase *b) {
 		// interface comm
 		guiCtrl = b->getGuiCtrl();
+		worldUpdate = b->worldUpdate;
+		loopStep = b->loopStep;
+		b->loopStep = false;
 		// stats
 		if (selectedCell)
 			stats["selectedCell"] = cellToQVMap(selectedCell);
@@ -212,6 +225,7 @@ template <typename Scenario> class Renderer : public SignalSlotRenderer {
 		b->mouseWheel = 0;
 
 		// keyboard
+		pressedKeys = b->pressedKeys;
 	}
 
 	/***********************************
@@ -225,17 +239,51 @@ template <typename Scenario> class Renderer : public SignalSlotRenderer {
 		if (mousePressedButtons.testFlag(Qt::LeftButton)) {
 			if (guiCtrl.value("tool") == "move") {
 				camera.moveAroundTarget(-mouseMovement);
-				QVector2D tiltPan = -0.3 * mouseMovement;
+			}
+		}
+		// cell dragging
+		if (mousePressedButtons.testFlag(Qt::RightButton)) {
+			if (selectedCell) {
+				QVector2D mouseNDC(2.0 * mousePosition.x() / (float)viewportSize.width() - 1.0,
+				                   -((2.0 * (float)mousePosition.y()) / (float)viewportSize.height() - 1.0));
+				QVector4D rayEye =
+				    camera.getProjectionMatrix((float)viewportSize.width() / (float)viewportSize.height())
+				        .inverted() *
+				    QVector4D(mouseNDC, -1.0, 1.0);
+				rayEye = QVector4D(rayEye.x(), rayEye.y(), -1.0, 0.0);
+				QVector4D ray = camera.getViewMatrix().inverted() * rayEye;
+				QVector3D l(ray.x(), ray.y(), ray.z());
+				QVector3D l0 = camera.getPosition();
+				QVector3D p0 = toQV3D(selectedCell->getPosition());
+				QVector3D n = camera.getOrientation();
+				if (QVector3D::dotProduct(l, n) != 0) {
+					float d = (QVector3D::dotProduct((p0 - l0), n)) / QVector3D::dotProduct(l, n);
+					QVector3D projectedPos = l0 + d * l;
+					decltype(selectedCell->getPosition()) newPos(projectedPos.x(), projectedPos.y(), projectedPos.z());
+					selectedCell->setPosition(newPos);
+				}
 			}
 		}
 		// click
 		if (mouseClickedButtons.testFlag(Qt::LeftButton)) {
 			if (clickMethods.count(guiCtrl.value("tool")))
-				clickMethods.value(guiCtrl.value("tool"))();  // we call the corresponding method
+				clickMethods.value(guiCtrl.value("tool"))(); // we call the corresponding method
+		}
+		if (pressedKeys.count(Qt::Key_Up) || pressedKeys.count(Qt::Key_Z)) {
+			camera.forward(viewDt);
+		}
+		if (pressedKeys.count(Qt::Key_Down) || pressedKeys.count(Qt::Key_S)) {
+			camera.backward(viewDt);
+		}
+		if (pressedKeys.count(Qt::Key_Left) || pressedKeys.count(Qt::Key_Q)) {
+			camera.left(viewDt);
+		}
+		if (pressedKeys.count(Qt::Key_Right) || pressedKeys.count(Qt::Key_D)) {
+			camera.right(viewDt);
 		}
 	}
 
-	void setViewportSize(const QSize& s) {
+	void setViewportSize(const QSize &s) {
 		if (window) screenCoef = window->devicePixelRatio();
 		viewportSize = s;
 		GL->glDeleteTextures(1, &depthTex);
@@ -253,7 +301,7 @@ template <typename Scenario> class Renderer : public SignalSlotRenderer {
 		ssaoFBO->release();
 	}
 
-	QVariantMap cellToQVMap(Cell* c) {
+	QVariantMap cellToQVMap(Cell *c) {
 		QVariantMap res;
 		if (c) {
 			res["Type ID"] = c->getTypeId();
@@ -276,9 +324,9 @@ template <typename Scenario> class Renderer : public SignalSlotRenderer {
 		QVector4D ray = camera.getViewMatrix().inverted() * rayEye;
 		QVector3D vray(ray.x(), ray.y(), ray.z());
 		vray.normalize();
-		Cell* res = nullptr;
+		Cell *res = nullptr;
 		double minEyeDist = 1e20;
-		for (auto& c : scenario.getWorld().cells) {
+		for (auto &c : scenario.getWorld().cells) {
 			double sqRad = pow(c->getRadius(), 2);
 			QVector3D EC = toQV3D(c->getPosition()) - camera.getPosition();
 			QVector3D EV = vray * QVector3D::dotProduct(EC, vray);

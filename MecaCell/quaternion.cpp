@@ -13,13 +13,13 @@ void Quaternion::normalize() {
 	v = v / magnitude;
 }
 
-Quaternion::Quaternion(const double& angle, const Vector3D& n) {
+Quaternion::Quaternion(const double &angle, const Vector3D &n) {
 	double halfangle = angle * 0.5;
 	w = cos(halfangle);
 	v = n * sin(halfangle);
 }
 
-Quaternion::Quaternion(const Vector3D& v0, const Vector3D& v1) {
+Quaternion::Quaternion(const Vector3D &v0, const Vector3D &v1) {
 	Vector3D v2 = v0.normalized();
 	Vector3D v3 = v1.normalized();
 	double sc = min(1.0, max(-1.0, v2.dot(v3)));
@@ -31,7 +31,6 @@ Quaternion::Quaternion(const Vector3D& v0, const Vector3D& v1) {
 		normalize();
 	}
 }
-
 
 Rotation<Vector3D> Quaternion::toAxisAngle() {
 	normalize();
@@ -52,12 +51,12 @@ Vector3D Quaternion::getAxis() const {
 	return v / s;
 }
 
-Vector3D Quaternion::operator*(const Vector3D& V) const {
+Vector3D Quaternion::operator*(const Vector3D &V) const {
 	Vector3D vcV = v.cross(V);
 	return V + vcV * (2.0 * w) + v.cross(vcV) * 2.0;
 }
 
-Quaternion Quaternion::operator*(const Quaternion& q2) const {
+Quaternion Quaternion::operator*(const Quaternion &q2) const {
 	return Quaternion(v.x * q2.w + v.y * q2.v.z - v.z * q2.v.y + w * q2.v.x,
 	                  -v.x * q2.v.z + v.y * q2.w + v.z * q2.v.x + w * q2.v.y,
 	                  v.x * q2.v.y - v.y * q2.v.x + v.z * q2.w + w * q2.v.z,

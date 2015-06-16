@@ -13,5 +13,5 @@ find_package(Qt5OpenGL)
 qt5_add_resources(RESOURCES res.qrc)
 
 add_executable(mecacellView ${VIEWSRC} ${RESOURCES})
-qt5_use_modules(mecacellView Quick Core Gui Opengl)
+qt5_use_modules(mecacellView Quick Core Gui OpenGL)
 target_link_libraries(mecacellView MecaCell)

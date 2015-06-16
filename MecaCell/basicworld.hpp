@@ -11,7 +11,7 @@ template <typename Cell, typename Integrator> class BasicWorld {
 
  protected:
 	Integrator updateCellPos;
-	double dt = 1.0 / 40.0;
+	double dt = 1.0 / 45.0;
 	int frame = 0;
 	vector<Cell*> cellsToDestroy;
 	Grid<Cell> grid = Grid<Cell>(8.0 * DEFAULT_CELL_RADIUS);
@@ -38,7 +38,7 @@ template <typename Cell, typename Integrator> class BasicWorld {
 	void update() {
 		if (cells.size() > 0) {
 			resetForces();
-			applyGravity();
+			//applyGravity();
 			computeForces();
 			// for (auto& p : infplanes) {
 			// p.updateCollisions();
@@ -50,7 +50,7 @@ template <typename Cell, typename Integrator> class BasicWorld {
 				for (const auto& c : cells) grid.insert(c);
 				updateConnectionsLengthAndDirection();
 				cellCollisions();
-				deleteImpossibleConnections();
+				//deleteImpossibleConnections();
 			}
 			updateBehavior();
 			destroyCells();
@@ -68,7 +68,7 @@ template <typename Cell, typename Integrator> class BasicWorld {
 
 	void computeForces() {
 		for (auto cIt = connections.begin(); cIt < connections.end(); ++cIt) {
-			(*cIt)->computeForces();
+			(*cIt)->computeForces(dt);
 		}
 		// update walls nodes
 		// for (auto& p : infplanes) {

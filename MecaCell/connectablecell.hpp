@@ -12,29 +12,29 @@
 #include "connection.h"
 
 #define CUBICROOT2 1.25992104989
-#define VOLUMEPI 0.23873241463  // 1/(4/3*pi)
+#define VOLUMEPI 0.23873241463 // 1/(4/3*pi)
 
 using namespace std;
 
 namespace MecaCell {
 template <typename Derived> class ConnectableCell : public Movable, public Orientable {
- protected:
-	int typeId = 0;     // current cell type id. Used for determining adhesion
-	bool dead = false;  // is the cell dead or alive ?
+protected:
+	int typeId = 0;    // current cell type id. Used for determining adhesion
+	bool dead = false; // is the cell dead or alive ?
 	vector<double> color = {0.75, 0.12, 0.07};
 	double radius = DEFAULT_CELL_RADIUS;
 	double baseRadius = DEFAULT_CELL_RADIUS;
 	double stiffness = DEFAULT_CELL_STIFFNESS;
 	double dampRatio = DEFAULT_CELL_DAMP_RATIO;
 	double angularStiffness = DEFAULT_CELL_ANG_STIFFNESS;
-	bool tested = false;  // has already been tested for collision
-	vector<Connection<Derived>*> connections;
-	vector<Derived*> connectedCells;
+	bool tested = false; // has already been tested for collision
+	vector<Connection<Derived> *> connections;
+	vector<Derived *> connectedCells;
 
- public:
+public:
 	ConnectableCell(Vec pos) : Movable(pos) { randomColor(); }
 
-	ConnectableCell(const Derived& c, const Vec& translation)
+	ConnectableCell(const Derived &c, const Vec &translation)
 	    : Movable(c.getPosition() + translation, c.mass), radius(c.radius) {
 		randomColor();
 	}
@@ -46,7 +46,7 @@ template <typename Derived> class ConnectableCell : public Movable, public Orien
 		if (i < 3) return color[i];
 		return 0;
 	}
-	const std::vector<Derived*>& getConnectedCells() const { return connectedCells; }
+	const std::vector<Derived *> &getConnectedCells() const { return connectedCells; }
 	double getPressure() const {
 		double surface = 4.0f * M_PI * radius * radius;
 		return totalForce / surface;
@@ -74,7 +74,7 @@ template <typename Derived> class ConnectableCell : public Movable, public Orien
 
 	// return the connection length with another cell
 	// according to an adhesion coef (0 <= adh <= 1)
-	double getConnectionLength(const Derived* c, const double adh) const {
+	double getConnectionLength(const Derived *c, const double adh) const {
 		double l = radius + c->radius;
 		return getConnectionLength(l, adh);
 	}
@@ -85,19 +85,19 @@ template <typename Derived> class ConnectableCell : public Movable, public Orien
 	}
 
 	void setVolume(double v) { setRadius(cbrt(v / (4.0 * M_PI / 3.0))); }
-	Derived* selfptr() { return static_cast<Derived*>(this); }
-	Derived& self() { return static_cast<Derived&>(*this); }
-	const Derived& selfconst() const { return static_cast<const Derived&>(*this); }
+	Derived *selfptr() { return static_cast<Derived *>(this); }
+	Derived &self() { return static_cast<Derived &>(*this); }
+	const Derived &selfconst() const { return static_cast<const Derived &>(*this); }
 
 	// Don't forget to implement this method in the derived class
 	double getAdhesionWith(const int tId) const { return selfconst().getAdhesionWith(tId); }
 
-	vector<Connection<Derived>*>& getRWConnections() { return connections; }
+	vector<Connection<Derived> *> &getRWConnections() { return connections; }
 
 	/******************************
 	 * connections
 	 *****************************/
-	Connection<Derived>* connection(Derived* c) {
+	Connection<Derived> *connection(Derived *c) {
 		if (c != this) {
 			Vec AB = c->position - position;
 			double sqdist = AB.sqlength();
@@ -136,17 +136,19 @@ template <typename Derived> class ConnectableCell : public Movable, public Orien
 						double k = (stiffness * radius + c->stiffness * c->radius) / (radius + c->radius);
 						double dr = (dampRatio * radius + c->dampRatio * c->radius) / (radius + c->radius);
 						double maxTeta = mix(0.0, M_PI, minAdh);
-						Connection<Derived>* s = new Connection<Derived>(
-						    pair<Derived*, Derived*>(selfptr(), c), Spring(k, dampingFromRatio(dr, mass + c->mass, k), l),
+						Connection<Derived> *s = new Connection<Derived>(
+						    pair<Derived *, Derived *>(selfptr(), c),
+						    Spring(k, dampingFromRatio(dr, mass + c->mass, k), l),
 						    make_pair(Joint(getAngularStiffness(),
-						                    dampingFromRatio(dr, getMomentOfInertia(), angularStiffness), maxTeta),
+						                    dampingFromRatio(dr, getMomentOfInertia() * 2.0, angularStiffness), maxTeta),
 						              Joint(getAngularStiffness(),
-						                    dampingFromRatio(dr, c->getMomentOfInertia(), c->angularStiffness), maxTeta)),
-						    make_pair(
-						        Joint(getAngularStiffness(), dampingFromRatio(dr, getMomentOfInertia(), angularStiffness),
-						              maxTeta),
-						        Joint(getAngularStiffness(),
-						              dampingFromRatio(dr, c->getMomentOfInertia(), c->angularStiffness), maxTeta)));
+						                    dampingFromRatio(dr, c->getMomentOfInertia() * 2.0, c->angularStiffness),
+						                    maxTeta)),
+						    make_pair(Joint(getAngularStiffness(),
+						                    dampingFromRatio(dr, getMomentOfInertia() * 2.0, angularStiffness), maxTeta),
+						              Joint(getAngularStiffness(),
+						                    dampingFromRatio(dr, c->getMomentOfInertia() * 2.0, c->angularStiffness),
+						                    maxTeta)));
 						addConnection(c, s);
 						return s;
 					}
@@ -156,7 +158,7 @@ template <typename Derived> class ConnectableCell : public Movable, public Orien
 		return NULL;
 	}
 
-	double getMomentOfInertia() const { return 0.4 * mass * radius * radius; }
+	double getMomentOfInertia() const { return 4.0 * mass * radius * radius; }
 	double getAngularStiffness() const { return angularStiffness; }
 
 	void updateAllConnections() {
@@ -180,13 +182,13 @@ template <typename Derived> class ConnectableCell : public Movable, public Orien
 		//}
 	}
 
-	Derived* divide() { return divide(Vec::randomUnit()); }
+	Derived *divide() { return divide(Vec::randomUnit()); }
 
-	Derived* divide(const Vec& direction) {
+	Derived *divide(const Vec &direction) {
 		setRadius(getBaseRadius());
 		setMass(getBaseMass());
 		updateAllConnections();
-		Derived* newC = new Derived(selfconst(), direction.normalized() * radius * 0.8);
+		Derived *newC = new Derived(selfconst(), direction.normalized() * radius * 0.8);
 		return newC;
 	}
 
@@ -196,23 +198,23 @@ template <typename Derived> class ConnectableCell : public Movable, public Orien
 		setMass(getBaseMass() * rv);
 	}
 
-	void addConnection(Derived* c, Connection<Derived>* s) {
+	void addConnection(Derived *c, Connection<Derived> *s) {
 		connections.push_back(s);
 		c->connections.push_back(s);
 		connectedCells.push_back(c);
 		c->connectedCells.push_back(selfptr());
 	}
 
-	void eraseCell(Derived* cell) {
+	void eraseCell(Derived *cell) {
 		unsigned int prevC = connectedCells.size();
 		connectedCells.erase(remove(connectedCells.begin(), connectedCells.end(), cell), connectedCells.end());
 		assert(connectedCells.size() == prevC - 1 || prevC == 0);
 	}
 
-	void deleteConnection(Derived* c) {
-		Connection<Derived>* s = nullptr;
+	void deleteConnection(Derived *c) {
+		Connection<Derived> *s = nullptr;
 		for (unsigned int i = 0; i < connections.size(); i++) {
-			Connection<Derived>* co = connections[i];
+			Connection<Derived> *co = connections[i];
 			if ((co->getNode1() == this && co->getNode0() == c) ||
 			    (co->getNode1() == c && co->getNode0() == this)) {
 				s = co;
@@ -222,7 +224,7 @@ template <typename Derived> class ConnectableCell : public Movable, public Orien
 		deleteConnection(c, s);
 	}
 
-	void deleteConnection(Derived* c, Connection<Derived>* s) {
+	void deleteConnection(Derived *c, Connection<Derived> *s) {
 		assert(c != nullptr);
 		eraseCell(c);
 		c->eraseCell(selfptr());
@@ -230,13 +232,13 @@ template <typename Derived> class ConnectableCell : public Movable, public Orien
 		c->eraseConnection(s);
 	}
 
-	void eraseConnection(Connection<Derived>* s) {
+	void eraseConnection(Connection<Derived> *s) {
 		connections.erase(remove(connections.begin(), connections.end(), s), connections.end());
 	}
 
-	void eraseAndDeleteAllConnections(vector<Connection<Derived>*>& aux) {
+	void eraseAndDeleteAllConnections(vector<Connection<Derived> *> &aux) {
 		for (auto cIt = connections.begin(); cIt != connections.end();) {
-			Connection<Derived>* sp = *cIt;
+			Connection<Derived> *sp = *cIt;
 			auto otherCell = sp->getNode0() == this ? sp->getNode1() : sp->getNode0();
 			if (otherCell != nullptr) {
 				aux.erase(remove(aux.begin(), aux.end(), sp), aux.end());
@@ -258,7 +260,7 @@ template <typename Derived> class ConnectableCell : public Movable, public Orien
 	 * division and control
 	 *****************************/
 
-	Derived* updateBehavior(double dt) { return self().updateBehavior(dt); }
+	Derived *updateBehavior(double dt) { return self().updateBehavior(dt); }
 
 	void die() { dead = true; }
 	bool isDead() { return dead; }

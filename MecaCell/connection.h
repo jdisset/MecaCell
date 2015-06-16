@@ -2,7 +2,7 @@
 #define CONNECTION_H
 #include "tools.h"
 
-#define MAX_TS_INCL 0.1  // max angle before we need to reproject our torsion joint rotation
+#define MAX_TS_INCL 0.1 // max angle before we need to reproject our torsion joint rotation
 
 namespace MecaCell {
 ////////////////////////////////////////////////////////////////////
@@ -10,19 +10,20 @@ namespace MecaCell {
 ////////////////////////////////////////////////////////////////////
 // This is just a classic "linear" spring
 struct Spring {
-	double k = 1.0;               // stiffness
-	double c = 1.0;               // damp coef
-	double l = 1.0;               // rest length
-	double length = 1.0;          // current length
-	double minLengthRatio = 0.4;  // max compression
-	Vec direction;                // current direction from node 0 to node 1
+	double k = 1.0;      // stiffness
+	double c = 1.0;      // damp coef
+	double l = 1.0;      // rest length
+	double length = 1.0; // current length
+	double prevLength = 1.0;
+	double minLengthRatio = 0.4; // max compression
+	Vec direction;               // current direction from node 0 to node 1
 
-	Spring(const double& K, const double& C, const double& L) : k(K), c(C), l(L), length(L){};
+	Spring(const double &K, const double &C, const double &L) : k(K), c(C), l(L), length(L){};
 
-	void updateLengthDirection(const Vec& p0, const Vec& p1) {
+	void updateLengthDirection(const Vec &p0, const Vec &p1) {
 		direction = p1 - p0;
 		length = direction.length();
-		direction = direction / length;
+		direction /= length;
 	}
 };
 
@@ -31,17 +32,18 @@ struct Spring {
 ////////////////////////////////////////////////////////////////////
 // flexible joint. Can be used for flexure (torque + force) or torsion (torque only)
 struct Joint {
-	double k = 1.0;         // angular stiffness
-	double c = 1.0;         // damp
-	double maxTeta = M_PI;  // maximum angle
-	Rotation<Vec> r;        // rotation from cell to joint
-	Rotation<Vec> delta;    // current rotation
-	Vec direction;          // current direction
-	Vec target;             // targeted direction
+	double k = 1.0;        // angular stiffness
+	double c = 1.0;        // damp
+	double maxTeta = M_PI; // maximum angle
+	Rotation<Vec> r;       // rotation from cell to joint
+	Rotation<Vec> delta;   // current rotation
+	Rotation<Vec> prevDelta;
+	Vec direction; // current direction
+	Vec target;    // targeted direction
 
-	Joint(const double& K, const double& C, const double& MTETA) : k(K), c(C), maxTeta(MTETA) {}
+	Joint(const double &K, const double &C, const double &MTETA) : k(K), c(C), maxTeta(MTETA) {}
 
-	void updateDirection(const Vec& v, const Rotation<Vec>& rot) { direction = v.rotated(r.rotated(rot)); }
+	void updateDirection(const Vec &v, const Rotation<Vec> &rot) { direction = v.rotated(r.rotated(rot)); }
 	void updateDelta() { delta = Vec::getRotation(direction, target); }
 };
 
@@ -64,18 +66,18 @@ struct Joint {
 // - void receiveForce(double intensity, Vec direction, bool compressive)
 // - void receiveAngularAcceleration(Vec acc)
 template <typename N0, typename N1 = N0> class Connection {
- private:
-	bool scEnabled = true, fjEnabled = true, tjEnabled = true;
-	pair<N0*, N1*> connected;   // the two connected nodes
+private:
+	bool scEnabled = true, fjEnabled = true, tjEnabled = false;
+	pair<N0 *, N1 *> connected; // the two connected nodes
 	Spring sc;                  // basic spring
 	pair<Joint, Joint> fj, tj;  // flexure and torsion joints (1 per node)
 
- public:
+public:
 	/**********************************************
 	 *               CONSTRUCTOR
 	 **********************************************/
-	Connection(const pair<N0*, N1*>& n, const Spring& SC, const pair<Joint, Joint>& FJ,
-	           const pair<Joint, Joint>& TJ)
+	Connection(const pair<N0 *, N1 *> &n, const Spring &SC, const pair<Joint, Joint> &FJ,
+	           const pair<Joint, Joint> &TJ)
 	    : connected{n}, sc(SC), fj(FJ), tj(TJ) {
 		sc.updateLengthDirection(connected.first->getPosition(), connected.second->getPosition());
 		Vec ortho = sc.direction.ortho();
@@ -100,8 +102,8 @@ template <typename N0, typename N1 = N0> class Connection {
 	/**********************************************
 	 *                GET & SET
 	 **********************************************/
-	N0* getNode0() { return connected.first; }
-	N1* getNode1() { return connected.second; }
+	N0 *getNode0() { return connected.first; }
+	N1 *getNode1() { return connected.second; }
 	float getLength() { return sc.length; }
 	Vec getDirection() { return sc.direction; }
 
@@ -111,11 +113,11 @@ template <typename N0, typename N1 = N0> class Connection {
 	void updateLengthDirection() {
 		sc.updateLengthDirection(connected.first->getPosition(), connected.second->getPosition());
 	}
-	void computeForces() {
+	void computeForces(double dt) {
 		// BASIC SPRING
 		if (scEnabled) {
 			sc.updateLengthDirection(connected.first->getPosition(), connected.second->getPosition());
-			double x = sc.length - sc.l;  // actual compression / elongation
+			double x = sc.length - sc.l; // actual compression / elongation
 			double minlength = sc.minLengthRatio * sc.l;
 			if (sc.length < minlength) {
 				double d = minlength - sc.length;
@@ -130,12 +132,11 @@ template <typename N0, typename N1 = N0> class Connection {
 				sc.length = minlength;
 			}
 			bool compression = x < 0;
-			double f = -((sc.k * x) -
-			             sc.c * (connected.first->getVelocity().dot(sc.direction) -
-			                     connected.second->getVelocity().dot(sc.direction))) /
-			           2.0f;
+			double v = sc.length - sc.prevLength;
+			double f = (-sc.k * x - sc.c * v / dt) / 2.0;
 			connected.first->receiveForce(f, -sc.direction, compression);
 			connected.second->receiveForce(f, sc.direction, compression);
+			sc.prevLength = sc.length;
 		}
 		// update directions of both flex and tosion springs
 		if (fjEnabled) {
@@ -150,59 +151,62 @@ template <typename N0, typename N1 = N0> class Connection {
 			tj.second.updateDirection(connected.second->getOrientation().Y,
 			                          connected.second->getOrientationRotation());
 		}
-		for (unsigned int n = 0; n < 2; ++n) {
-			Joint& tjNode = n == 0 ? tj.first : tj.second;
-			Joint& tjOther = n == 0 ? tj.second : tj.first;
-			Joint& fjNode = n == 0 ? fj.first : fj.second;
-			auto node = n == 0 ? connected.first : connected.second;
-			auto other = n == 0 ? connected.second : connected.first;
-			const double sign = n == 0 ? 1 : -1;
+		if (tjEnabled || fjEnabled) {
+			for (unsigned int n = 0; n < 2; ++n) {
+				Joint &tjNode = n == 0 ? tj.first : tj.second;
+				Joint &tjOther = n == 0 ? tj.second : tj.first;
+				Joint &fjNode = n == 0 ? fj.first : fj.second;
+				auto node = n == 0 ? connected.first : connected.second;
+				auto other = n == 0 ? connected.second : connected.first;
+				const double sign = n == 0 ? 1 : -1;
 
-			if (tjEnabled) {
-				// updating torsion joint (needs to stay perp to sc.direction)
-				double scalar = tjNode.direction.dot(sc.direction);
-				// if the angle between our torsion spring and sc.direction is too far from 90°,
-				// we reproject & recompute it
-				if (abs(scalar) > MAX_TS_INCL) {
-					tjNode.r = node->getOrientationRotation().inverted() +
-					           Vec::getRotation(Basis<Vec>(Vec(1, 0, 0), Vec(0, 1, 0)),
-					                            Basis<Vec>(sc.direction, tjNode.direction));
-				} else {
-					tjNode.direction = tjNode.direction.normalized() - scalar * sc.direction;
+				if (fjEnabled) {
+					fjNode.target = sc.direction * sign;
+					fjNode.updateDelta();
+					if (fjNode.delta.teta > fjNode.maxTeta) { // if we passed flex break angle
+						float dif = fjNode.delta.teta - fjNode.maxTeta;
+						fjNode.r = fjNode.r + Rotation<Vec>(fjNode.delta.n, dif);
+						fjNode.direction = fjNode.direction.rotated(Rotation<Vec>(fjNode.delta.n, dif));
+						fjNode.r = node->getOrientationRotation().inverted() +
+						           Vec::getRotation(Basis<Vec>(), Basis<Vec>(fjNode.direction, fjNode.direction.ortho()));
+					}
+					// flex torque and force
+					fjNode.delta.n.normalize();
+					double torque = fjNode.k * fjNode.delta.teta +
+					                fjNode.c * (fjNode.delta.teta - fjNode.prevDelta.teta); // -kx - cv
+					Vec vFlex = fjNode.delta.n * torque;                                    // torque
+					Vec ortho = sc.direction.ortho(fjNode.delta.n).normalized();            // force direction
+					Vec force = sign * ortho * torque;
+
+					node->receiveForce(-force);
+					other->receiveForce(force);
+
+					node->receiveTorque(vFlex);
+					fjNode.prevDelta = fjNode.delta;
 				}
-				// updating targets
-				tjNode.target = tjOther.direction;  // we want torsion springs to stay aligned with each other
-				tjNode.updateDelta();
-			}
-			fjNode.target = sc.direction * sign;
-			fjNode.updateDelta();
-			if (fjNode.delta.teta > fjNode.maxTeta) {  // if we passed flex break angle
-				float dif = fjNode.delta.teta - fjNode.maxTeta;
-				fjNode.r = fjNode.r + Rotation<Vec>(fjNode.delta.n, dif);
-				fjNode.direction = fjNode.direction.rotated(Rotation<Vec>(fjNode.delta.n, dif));
-				fjNode.r = node->getOrientationRotation().inverted() +
-				           Vec::getRotation(Basis<Vec>(), Basis<Vec>(fjNode.direction, fjNode.direction.ortho()));
-			}
-			// flex torque and force
-			fjNode.delta.n.normalize();
-			double torque = fjNode.k * fjNode.delta.teta;
-			Vec vFlex = fjNode.delta.n * torque;
-			Vec ortho = sc.direction.ortho(fjNode.delta.n).normalized();
-			Vec force = (sign * ortho * torque -
-			             (fjNode.c * sc.length * (other->getVelocity() - node->getVelocity()).dot(ortho) * ortho)) /
-			            sc.length;
-
-			node->receiveForce(-force);
-			other->receiveForce(force);
-
-			node->receiveTorque(vFlex);
-			if (tjEnabled) {
-				// torsion torque
-				tjNode.delta.n.normalize();
-				torque =
-				    tjNode.k * tjNode.delta.teta;  // - tjNode.c * node->getAngularVelocity().dot(tjNode.delta.teta.n)
-				Vec vTorsion = torque * tjNode.delta.n;
-				node->receiveTorque(vTorsion);
+				if (tjEnabled) {
+					// updating torsion joint (needs to stay perp to sc.direction)
+					double scalar = tjNode.direction.dot(sc.direction);
+					// if the angle between our torsion spring and sc.direction is too far from 90°,
+					// we reproject & recompute it
+					if (abs(scalar) > MAX_TS_INCL) {
+						tjNode.r = node->getOrientationRotation().inverted() +
+						           Vec::getRotation(Basis<Vec>(Vec(1, 0, 0), Vec(0, 1, 0)),
+						                            Basis<Vec>(sc.direction, tjNode.direction));
+					} else {
+						tjNode.direction = tjNode.direction.normalized() - scalar * sc.direction;
+					}
+					// updating targets
+					tjNode.target = tjOther.direction; // we want torsion springs to stay aligned with each other
+					tjNode.updateDelta();
+					// torsion torque
+					tjNode.delta.n.normalize();
+					double torque =
+					    tjNode.k *
+					    tjNode.delta.teta; // - tjNode.c * node->getAngularVelocity().dot(tjNode.delta.teta.n)
+					Vec vTorsion = torque * tjNode.delta.n;
+					node->receiveTorque(vTorsion);
+				}
 			}
 		}
 	}

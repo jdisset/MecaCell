@@ -12,7 +12,7 @@
 
 using namespace MecaCell;
 using namespace MecaCellViewer;
-
+using World = BasicWorld<BasicCell, Euler>;
 /*************************
  *      BASIC SCENARIO
  ************************/
@@ -21,17 +21,18 @@ using namespace MecaCellViewer;
 //  - an init() method
 //  - a loop() method
 class BasicScenario {
-	BasicWorld<BasicCell, VerletEuler> world;
+	World world;
 	const int N = 50;
 
- public:
+public:
 	// Init will be called before the first paint call & after each reset
 	// Non mecacell-specific command line arguments are forwarded to this method.
 	// In this example we just create a few cells
-	void init(int, char**) {
+	void init(int, char **) {
 		std::default_random_engine globalRand(0);
 		std::uniform_real_distribution<double> dist(0, 300);
-		for (int i = 0; i < N; ++i) world.addCell(new BasicCell(Vec::randomUnit() * dist(globalRand)));
+		for (int i = 0; i < N; ++i)
+			world.addCell(new BasicCell(Vec::randomUnit() * dist(globalRand)));
 	}
 
 	// loop() is called before drawing a frame.
@@ -39,13 +40,13 @@ class BasicScenario {
 	// In this example we just call the world's update method
 	void loop() { world.update(); }
 
-	const BasicWorld<BasicCell, VerletEuler>& getWorld() { return world; }
+	const World &getWorld() { return world; }
 };
 
 /*************************
  *        MAIN
  ************************/
-int main(int argc, char** argv) {
+int main(int argc, char **argv) {
 	// Viewer instanciation (with our scenario as a template argument)
 	QtViewer<BasicScenario> viewer;
 	// & execution (requires the command line argument to be forwarded)
