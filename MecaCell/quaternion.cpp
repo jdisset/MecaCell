@@ -52,8 +52,8 @@ Vector3D Quaternion::getAxis() const {
 }
 
 Vector3D Quaternion::operator*(const Vector3D &V) const {
-	Vector3D vcV = v.cross(V);
-	return V + vcV * (2.0 * w) + v.cross(vcV) * 2.0;
+	Vector3D vcV = 2.0 * v.cross(V);
+	return V + w * vcV + v.cross(vcV);
 }
 
 Quaternion Quaternion::operator*(const Quaternion &q2) const {

@@ -15,7 +15,7 @@ struct Spring {
 	double l = 1.0;      // rest length
 	double length = 1.0; // current length
 	double prevLength = 1.0;
-	double minLengthRatio = 0.4; // max compression
+	double minLengthRatio = 0.3; // max compression
 	Vec direction;               // current direction from node 0 to node 1
 
 	Spring(const double &K, const double &C, const double &L) : k(K), c(C), l(L), length(L){};
@@ -67,7 +67,7 @@ struct Joint {
 // - void receiveAngularAcceleration(Vec acc)
 template <typename N0, typename N1 = N0> class Connection {
 private:
-	bool scEnabled = true, fjEnabled = true, tjEnabled = false;
+	bool scEnabled = true, fjEnabled = true, tjEnabled = true;
 	pair<N0 *, N1 *> connected; // the two connected nodes
 	Spring sc;                  // basic spring
 	pair<Joint, Joint> fj, tj;  // flexure and torsion joints (1 per node)
@@ -80,6 +80,7 @@ public:
 	           const pair<Joint, Joint> &TJ)
 	    : connected{n}, sc(SC), fj(FJ), tj(TJ) {
 		sc.updateLengthDirection(connected.first->getPosition(), connected.second->getPosition());
+		sc.prevLength = sc.length;
 		Vec ortho = sc.direction.ortho();
 		// rotations for joints (cell base to connection) =
 		// cellBasis -> worldBasis + worldBasis -> connectionBasis
@@ -106,6 +107,9 @@ public:
 	N1 *getNode1() { return connected.second; }
 	float getLength() { return sc.length; }
 	Vec getDirection() { return sc.direction; }
+	template <typename R, typename T> R *getOtherNode(T *n) {
+		return n == connected.first ? connected.second : connected.first;
+	}
 
 	/**********************************************
 	 *              UPDATES

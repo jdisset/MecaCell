@@ -39,11 +39,11 @@ public:
 	void receiveForce(const double &intensity, const Vec &direction, const bool &compressive) {
 		force += direction * intensity;
 		totalForce += compressive ? intensity : -intensity;
-		cerr << " force = " << force << endl;
-		cerr << " velocity = " << velocity << endl;
 	}
 	void receiveForce(const Vec &f) { force += f; }
-	void resetVelocity() { velocity = Vec::zero(); }
+	void resetVelocity() {
+		velocity = Vec::zero();
+	}
 	void resetForce() {
 		totalForce = 0;
 		force = Vec::zero();

@@ -19,6 +19,7 @@ using namespace std;
 namespace MecaCell {
 template <typename Derived> class ConnectableCell : public Movable, public Orientable {
 protected:
+	using ConnectionType = Connection<Derived>;
 	int typeId = 0;    // current cell type id. Used for determining adhesion
 	bool dead = false; // is the cell dead or alive ?
 	vector<double> color = {0.75, 0.12, 0.07};
@@ -28,7 +29,7 @@ protected:
 	double dampRatio = DEFAULT_CELL_DAMP_RATIO;
 	double angularStiffness = DEFAULT_CELL_ANG_STIFFNESS;
 	bool tested = false; // has already been tested for collision
-	vector<Connection<Derived> *> connections;
+	vector<ConnectionType *> connections;
 	vector<Derived *> connectedCells;
 
 public:
@@ -97,46 +98,42 @@ public:
 	/******************************
 	 * connections
 	 *****************************/
-	Connection<Derived> *connection(Derived *c) {
+	void connection(Derived *c, vector<ConnectionType *> &worldConnexions) {
 		if (c != this) {
 			Vec AB = c->position - position;
 			double sqdist = AB.sqlength();
 			double sql = radius + c->radius;
 			sql *= sql;
+			// interpenetration
 			if (sqdist <= sql) {
-				// if those cells aren't already connected
 				if (find(connectedCells.begin(), connectedCells.end(), c) == connectedCells.end()) {
+					// if those cells aren't already connected
 					// first we check if this connection would not go through an already connected cell
 					bool ok = true;
-					Vec ABn = AB.normalized();
-					for (auto c1It = connections.begin(); c1It != connections.end(); ++c1It) {
-						auto c1 = *c1It;
-						Vec c1Vec;
-						double r1;
-						double c1L = c1->getLength();
-						if (c1->getNode0() == this) {
-							c1Vec = c1->getDirection() * c1L;
-							r1 = c1->getNode1()->getRadius();
-						} else {
-							c1Vec = -c1->getDirection() * c1L;
-							r1 = c1->getNode0()->getRadius();
-						}
-						double scal = c1Vec.dot(ABn);
-						c1L *= c1L;
-						if (scal > 0 && c1L < sqdist && c1L - scal * scal < r1 * r1) {
-							ok = false;
-							break;
+					for (auto &con : connections) {
+						// Derived *otherCell = con->template getOtherNode<Derived, Derived>(selfptr());
+						Derived *otherCell = con->getNode0() == selfptr() ? con->getNode1() : con->getNode0();
+						Vec AO = otherCell->getPosition() - position;
+						double AOdotAB = AO.dot(AB);
+						if (AOdotAB > 0) {
+							// Other cell's projection onto AB
+							Vec AP = AB * AOdotAB / sqdist;
+							if (AP.dot(AB) < sqdist) {
+								// the other cell's projection is closer than our candidate
+								if ((AP - AO).sqlength() < pow(otherCell->getRadius(), 2)) {
+									ok = false;
+									break;
+								}
+							}
 						}
 					}
 					if (ok) {
-						double adh0 = getAdhesionWith(c->typeId);
-						double adh1 = c->getAdhesionWith(typeId);
-						double minAdh = (adh0 + adh1) * 0.5;
+						double minAdh = (getAdhesionWith(c->typeId) + c->getAdhesionWith(typeId)) * 0.5;
 						double l = getConnectionLength(c, minAdh);
 						double k = (stiffness * radius + c->stiffness * c->radius) / (radius + c->radius);
 						double dr = (dampRatio * radius + c->dampRatio * c->radius) / (radius + c->radius);
 						double maxTeta = mix(0.0, M_PI, minAdh);
-						Connection<Derived> *s = new Connection<Derived>(
+						ConnectionType *s = new Connection<Derived>(
 						    pair<Derived *, Derived *>(selfptr(), c),
 						    Spring(k, dampingFromRatio(dr, mass + c->mass, k), l),
 						    make_pair(Joint(getAngularStiffness(),
@@ -150,12 +147,11 @@ public:
 						                    dampingFromRatio(dr, c->getMomentOfInertia() * 2.0, c->angularStiffness),
 						                    maxTeta)));
 						addConnection(c, s);
-						return s;
+						worldConnexions.push_back(s);
 					}
 				}
 			}
 		}
-		return NULL;
 	}
 
 	double getMomentOfInertia() const { return 4.0 * mass * radius * radius; }
@@ -205,13 +201,15 @@ public:
 		c->connectedCells.push_back(selfptr());
 	}
 
+	// erase cell from the connectedCells container
 	void eraseCell(Derived *cell) {
 		unsigned int prevC = connectedCells.size();
 		connectedCells.erase(remove(connectedCells.begin(), connectedCells.end(), cell), connectedCells.end());
 		assert(connectedCells.size() == prevC - 1 || prevC == 0);
 	}
 
-	void deleteConnection(Derived *c) {
+	// erase connection with a cell (calls deleteConnection(c,s))
+	void removeConnection(Derived *c) {
 		Connection<Derived> *s = nullptr;
 		for (unsigned int i = 0; i < connections.size(); i++) {
 			Connection<Derived> *co = connections[i];
@@ -221,17 +219,20 @@ public:
 				break;
 			}
 		}
-		deleteConnection(c, s);
+		if (s) removeConnection(c, s);
 	}
 
-	void deleteConnection(Derived *c, Connection<Derived> *s) {
-		assert(c != nullptr);
+	// erase connection S with cell C from the connections and connectedCells containers
+	// destructors are not called
+	void removeConnection(Derived *c, Connection<Derived> *s) {
+		assert(c);
 		eraseCell(c);
 		c->eraseCell(selfptr());
 		eraseConnection(s);
 		c->eraseConnection(s);
 	}
 
+	// erase connection s f the connections container
 	void eraseConnection(Connection<Derived> *s) {
 		connections.erase(remove(connections.begin(), connections.end(), s), connections.end());
 	}
@@ -269,13 +270,13 @@ public:
 		double r0 = 0.001 * (rand() % 1000);
 		double r1 = 0.001 * (rand() % 1000);
 		if (r0 < 0.5) {
-			color[1] = 0.1 * r1;
-			color[2] = 0.65 + (0.2 * r0);
-			color[0] = 0.8 + (0.2 * r1);
+			color[0] = 0.6 + (0.3 * r1);
+			color[1] = 0.3 * r1;
+			color[2] = 0.05 + (0.2 * r0);
 		} else {
-			color[0] = 0.1 * r1;
-			color[1] = 0.65 + (0.2 * r0);
-			color[2] = 0.8 + (0.2 * r1);
+			color[0] = 0.05 * r1;
+			color[1] = 0.6 + (0.1 * r1);
+			color[2] = 0.7 + (0.2 * r0);
 		}
 	}
 };

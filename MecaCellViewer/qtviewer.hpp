@@ -15,16 +15,21 @@ using namespace std;
 namespace MecaCellViewer {
 template <typename Scenario> class QtViewer {
 
- public:
-	QtViewer(){
-		// for mac osx
+public:
+	QtViewer() {
+// for mac osx
+#if __APPLE__
+#include "TargetConditionals.h"
+#if TARGET_OS_MAC
 		QSurfaceFormat f;
 		f.setProfile(QSurfaceFormat::CoreProfile);
-		f.setVersion(4, 1);
+		 f.setVersion(3, 3);
 		QSurfaceFormat::setDefaultFormat(f);
+#endif
+#endif
 	};
 
-	int exec(int argc, char** argv) {
+	int exec(int argc, char **argv) {
 		QGuiApplication app(argc, argv);
 		app.setQuitOnLastWindowClosed(true);
 		// init qml app
@@ -32,8 +37,8 @@ template <typename Scenario> class QtViewer {
 		QQuickView view;
 		view.setSource(QUrl("qrc:/main.qml"));
 		view.setResizeMode(QQuickView::SizeRootObjectToView);
-		QObject* root = view.rootObject();
-		SignalSlotBase* ssb = root->findChild<SignalSlotBase*>("renderer");
+		QObject *root = view.rootObject();
+		SignalSlotBase *ssb = root->findChild<SignalSlotBase *>("renderer");
 		unique_ptr<SignalSlotRenderer> r = unique_ptr<Renderer<Scenario>>(new Renderer<Scenario>(argc, argv));
 		view.rootContext()->setContextProperty("glview", ssb);
 		ssb->init(r);

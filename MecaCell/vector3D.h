@@ -52,6 +52,7 @@ public:
 	static Rotation<Vector3D> getRotation(const Vector3D &, const Vector3D &, const Vector3D &,
 	                                      const Vector3D &);
 	static Rotation<Vector3D> getRotation(const Basis<Vector3D> &, const Basis<Vector3D> &);
+	static Vector3D getProjection(const Vector3D& origin, const Vector3D& A, const Vector3D& B);
 
 	double getX() const;
 	double getY() const;

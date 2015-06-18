@@ -22,7 +22,7 @@ using World = BasicWorld<BasicCell, Euler>;
 //  - a loop() method
 class BasicScenario {
 	World world;
-	const int N = 50;
+	const int N = 100;
 
 public:
 	// Init will be called before the first paint call & after each reset
@@ -30,9 +30,19 @@ public:
 	// In this example we just create a few cells
 	void init(int, char **) {
 		std::default_random_engine globalRand(0);
-		std::uniform_real_distribution<double> dist(0, 300);
-		for (int i = 0; i < N; ++i)
-			world.addCell(new BasicCell(Vec::randomUnit() * dist(globalRand)));
+		std::uniform_real_distribution<double> dist(0, 1000);
+		std::uniform_real_distribution<double> dist2(0, 100);
+		double ecart = 40.0;
+		// BasicCell *c0 = new BasicCell(Vec(0, 0, 0));
+		////c0->setVelocity(Vec(0,50,0));
+		// world.addCell(c0);
+		// world.addCell(new BasicCell(Vec(-60, 0, 0)));
+		// world.addCell(new BasicCell(Vec(60, 0, 0)));
+		for (int i = 0; i < N; ++i) {
+			BasicCell *c = new BasicCell(Vec::randomUnit() * dist(globalRand));
+			c->setVelocity(Vec::randomUnit() * dist2(globalRand));
+			world.addCell(c);
+		}
 	}
 
 	// loop() is called before drawing a frame.

@@ -9,27 +9,27 @@ using namespace std;
 namespace MecaCell {
 template <typename Cell, typename Integrator> class BasicWorld {
 
- protected:
+protected:
 	Integrator updateCellPos;
 	double dt = 1.0 / 45.0;
 	int frame = 0;
-	vector<Cell*> cellsToDestroy;
-	Grid<Cell> grid = Grid<Cell>(8.0 * DEFAULT_CELL_RADIUS);
+	vector<Cell *> cellsToDestroy;
+	Grid<Cell> grid = Grid<Cell>(5.0 * DEFAULT_CELL_RADIUS);
 	bool cellCellCollisions = true;
 	Vec g = Vec::zero();
 
- public:
-	typedef Cell cell_type;
-	typedef Integrator integrator_type;
-
+public:
+	using cell_type = Cell;
+	using integrator_type = Integrator;
+	using connect_type = Connection<Cell>;
 
 	// Raw pointers! Why?
 	// because it is impossible to use unique_ptr here
 	// because shared_ptr would be too slow
 	// because we would need to use a slower type of container if not using pointers
 	// because it is not a difficult case of memory management
-	vector<Connection<Cell>*> connections;
-	vector<Cell*> cells;
+	vector<Connection<Cell> *> connections;
+	vector<Cell *> cells;
 	// list<InfPlane<V>> infplanes;  // "walls"
 
 	/**********************************************
@@ -38,7 +38,7 @@ template <typename Cell, typename Integrator> class BasicWorld {
 	void update() {
 		if (cells.size() > 0) {
 			resetForces();
-			//applyGravity();
+			// applyGravity();
 			computeForces();
 			// for (auto& p : infplanes) {
 			// p.updateCollisions();
@@ -47,10 +47,11 @@ template <typename Cell, typename Integrator> class BasicWorld {
 			updatePositionsAndOrientations();
 			if (cellCellCollisions) {
 				grid.clear();
-				for (const auto& c : cells) grid.insert(c);
+				for (const auto &c : cells)
+					grid.insert(c);
 				updateConnectionsLengthAndDirection();
 				cellCollisions();
-				//deleteImpossibleConnections();
+				deleteImpossibleConnections();
 			}
 			updateBehavior();
 			destroyCells();
@@ -82,19 +83,20 @@ template <typename Cell, typename Integrator> class BasicWorld {
 		}
 	}
 	void applyGravity() {
-		for (auto cIt = cells.begin(); cIt < cells.end(); ++cIt) (*cIt)->receiveForce(g * (*cIt)->getMass());
+		for (auto cIt = cells.begin(); cIt < cells.end(); ++cIt)
+			(*cIt)->receiveForce(g * (*cIt)->getMass());
 	}
 
 	void updateConnectionsLengthAndDirection() {
-		for (auto& c : connections) {
+		for (auto &c : connections) {
 			c->updateLengthDirection();
 		}
 	}
 
 	void updatePositionsAndOrientations() {
 		for (auto cIt = cells.begin(); cIt < cells.end(); ++cIt) {
-			Cell* c = *cIt;
-			updateCellPos(*c,dt);
+			Cell *c = *cIt;
+			updateCellPos(*c, dt);
 			c->markAsNotTested();
 		}
 	}
@@ -103,15 +105,12 @@ template <typename Cell, typename Integrator> class BasicWorld {
 	 *         COLLISIONS         *
 	 ******************************/
 	void cellCollisions() {
-		for (auto& c : cells) {
-			vector<Cell*> toTest = grid.retrieve(c);
-			Connection<Cell>* s = nullptr;
-			for (const auto& c2 : toTest) {
+		for (auto &c : cells) {
+			vector<Cell *> toTest = grid.retrieve(c);
+			Connection<Cell> *s = nullptr;
+			for (const auto &c2 : toTest) {
 				if (!c2->alreadyTested()) {
-					s = c->connection(c2);
-					if (s != nullptr) {
-						connections.push_back(s);
-					}
+					c->connection(c2, connections);
 				}
 			}
 			c->markAsTested();
@@ -119,32 +118,32 @@ template <typename Cell, typename Integrator> class BasicWorld {
 	}
 
 	void deleteImpossibleConnections() {
-		connections.erase(remove_if(connections.begin(), connections.end(), [&](Connection<Cell>* c) {
+		// erase and delete connections longer than their max length
+		connections.erase(remove_if(connections.begin(), connections.end(), [&](Connection<Cell> *c) {
 			                  double maxL = c->getNode0()->getRadius() + c->getNode1()->getRadius();
 			                  if (c->getLength() > maxL) {
-				                  c->getNode0()->deleteConnection(c->getNode1(), c);
+				                  c->getNode0()->removeConnection(c->getNode1(), c);
 				                  delete c;
 				                  return true;
 			                  }
 			                  return false;
-			                }),
-		                  connections.end());
-		for (auto& c : cells) {
+			                }), connections.end());
+		for (auto &c : cells) {
 			deleteOverlapingConnections(c);
 		}
 	}
 
 	// deleteOverlapingConnections
 	// deletes all connections going through cells
-	void deleteOverlapingConnections(Cell* cell) {
-		vector<Connection<Cell>*>& vec = cell->getRWConnections();
+	void deleteOverlapingConnections(Cell *cell) {
+		vector<Connection<Cell> *> &vec = cell->getRWConnections();
 		for (auto c0It = vec.begin(); c0It < vec.end();) {
-			bool deleted = false;  // tells if c0 was deleted inside the inner loop (so we know
-			                       // if we have to increment c0It)
-			Connection<Cell>* c0 = *c0It;
-			if (c0->getNode1() != nullptr) {  // if this is not a wall connection
+			bool deleted = false; // tells if c0 was deleted inside the inner loop (so we know
+			                      // if we have to increment c0It)
+			Connection<Cell> *c0 = *c0It;
+			if (c0->getNode1() != nullptr) { // if this is not a wall connection
 				Vec c0dir;
-				Cell* other0 = nullptr;
+				Cell *other0 = nullptr;
 				double r0;
 				if (c0->getNode0() == cell) {
 					c0dir = c0->getDirection();
@@ -158,10 +157,10 @@ template <typename Cell, typename Integrator> class BasicWorld {
 				Vec c0v = c0dir * c0->getLength();
 				double c0SqLength = pow(c0->getLength(), 2);
 				for (auto c1It = c0It + 1; c1It < vec.end();) {
-					Connection<Cell>* c1 = *c1It;
+					Connection<Cell> *c1 = *c1It;
 					if (c1->getNode1() != nullptr) {
 						Vec c1dir;
-						Cell* other1 = nullptr;
+						Cell *other1 = nullptr;
 						double r1;
 						if (c1->getNode0() == cell) {
 							c1dir = c1->getDirection();
@@ -192,7 +191,7 @@ template <typename Cell, typename Integrator> class BasicWorld {
 							connections.erase(remove(connections.begin(), connections.end(), c0), connections.end());
 							deleted = true;
 							delete c0;
-							break;  // we need to exit the inner loop, c0 doesn't exist anymore.
+							break; // we need to exit the inner loop, c0 doesn't exist anymore.
 						} else {
 							++c1It;
 						}
@@ -213,15 +212,17 @@ template <typename Cell, typename Integrator> class BasicWorld {
 
 	~BasicWorld() {
 		destroyCells();
-		while (!cells.empty()) delete cells.back(), cells.pop_back();
-		while (!connections.empty()) delete connections.back(), connections.pop_back();
+		while (!cells.empty())
+			delete cells.back(), cells.pop_back();
+		while (!connections.empty())
+			delete connections.back(), connections.pop_back();
 	}
 
 	void disableCellCellCollisions() { cellCellCollisions = false; }
 
 	int getNbUpdates() const { return frame; }
 
-	void addCell(Cell* c) {
+	void addCell(Cell *c) {
 		if (c != NULL) cells.push_back(c);
 	}
 

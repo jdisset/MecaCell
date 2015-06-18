@@ -2,6 +2,7 @@
 #define RENDERER_HPP
 #include "slotsignalbase.h"
 #include "cellGroup.hpp"
+#include "connectionsgroup.hpp"
 #include "camera.hpp"
 #include "skybox.hpp"
 #include "renderquad.hpp"
@@ -9,7 +10,7 @@
 #include <type_traits>
 #include <QThread>
 #include <cmath>
-#include <QOpengLContext>
+#include <QOpenGLContext>
 #include <QOpenGLFramebufferObject>
 #include <QVariant>
 #include <QString>
@@ -19,8 +20,9 @@
 template <typename Scenario> class Renderer : public SignalSlotRenderer {
 
 private:
-	typedef typename remove_reference<decltype(((Scenario *)nullptr)->getWorld())>::type World;
-	typedef typename World::cell_type Cell;
+	using World = typename remove_reference<decltype(((Scenario *)nullptr)->getWorld())>::type;
+	using Cell = typename World::cell_type;
+	using ConnectType = typename World::connect_type;
 
 	QQuickWindow *wndw;
 
@@ -33,6 +35,7 @@ private:
 	// Visual elements
 	Camera camera;
 	CellGroup<Cell> cells;
+	ConnectionsGroup<ConnectType> connections;
 	Skybox skybox;
 	unique_ptr<QOpenGLFramebufferObject> ssaoFBO, msaaFBO, finalFBO, fsaaFBO;
 	QOpenGLFramebufferObjectFormat ssaoFormat, msaaFormat, finalFormat;
@@ -92,13 +95,24 @@ public:
 		// background
 		skybox.draw(view, projection);
 
-		cells.draw(scenario.getWorld().cells, view, projection, selectedCell);
+		QStringList gc;
+		if (guiCtrl.count("visibleElements")) {
+			gc = qvariant_cast<QStringList>(guiCtrl.value("visibleElements"));
+		}
+		if (gc.contains("cells")) {
+			cells.draw(scenario.getWorld().cells, view, projection, camera.getViewVector(), camera.getPosition(),  selectedCell);
+		}
 		msaaFBO->release();
 		QOpenGLFramebufferObject::blitFramebuffer(ssaoFBO.get(), msaaFBO.get(),
 		                                          GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		finalFBO->bind();
 		clear();
 		ssaoTarget.draw(ssaoFBO->texture(), depthTex, camera.getNearPlane(), camera.getFarPlane());
+
+		// no ssao from here
+		if (gc.contains("connections")) {
+			connections.draw(scenario.getWorld().connections, view, projection);
+		}
 		finalFBO->release();
 
 		finalFBO->bind();
@@ -141,6 +155,7 @@ public:
 
 		// elements
 		cells.load();
+		connections.load();
 		skybox.load();
 		ssaoTarget.load(":/shaders/dumb.vert", ":/shaders/ssao.frag");
 		blurTarget.load(":/shaders/dumb.vert", ":/shaders/blur.frag", viewportSize * screenCoef);
@@ -261,6 +276,7 @@ public:
 					QVector3D projectedPos = l0 + d * l;
 					decltype(selectedCell->getPosition()) newPos(projectedPos.x(), projectedPos.y(), projectedPos.z());
 					selectedCell->setPosition(newPos);
+					selectedCell->resetVelocity();
 				}
 			}
 		}
@@ -268,6 +284,9 @@ public:
 		if (mouseClickedButtons.testFlag(Qt::LeftButton)) {
 			if (clickMethods.count(guiCtrl.value("tool")))
 				clickMethods.value(guiCtrl.value("tool"))(); // we call the corresponding method
+		}
+		if (mouseClickedButtons.testFlag(Qt::MiddleButton)) {
+			pickCell();
 		}
 		if (pressedKeys.count(Qt::Key_Up) || pressedKeys.count(Qt::Key_Z)) {
 			camera.forward(viewDt);

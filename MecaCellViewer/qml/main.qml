@@ -4,11 +4,49 @@ import QtGraphicalEffects 1.0
 import QtQuick.Controls 1.3
 
 Item {
+	property
+	var guictrl: renderer.getGuiCtrl();
 	width: 1300
 	height: 850
 	id: main
+	Component.onCompleted: {
+		guictrl["visibleElements"] = new Array();
+		guictrl["visibleElements"].push("cells");
+		renderer.setGuiCtrl(guictrl);
+	}
+
 	function setCtrl(k, v) {
-		renderer.setGuiCtrl(k, v);
+		guictrl[k] = v;
+		renderer.setGuiCtrl(guictrl);
+	}
+
+	function removeOptionInCtrl(k, v) {
+		if (guictrl[k] != undefined) {
+			for (var i = 0; i < guictrl[k].length; ++i) {
+				if (guictrl[k][i] == v) {
+					guictrl[k].splice(i, 1);
+					break;
+				}
+			}
+		}
+		renderer.setGuiCtrl(guictrl);
+	}
+
+	function pushUniqueOptionInCtrl(k, v) {
+		var exists = false;
+		if (guictrl[k] != undefined) {
+			for (var i = 0; i < guictrl[k].length; ++i) {
+				if (guictrl[k][i] == v) {
+					exists = true;
+				}
+			}
+		} else {
+			guictrl[k] = new Array();
+		}
+		if (!exists) {
+			guictrl[k].push(v);
+			renderer.setGuiCtrl(guictrl);
+		}
 	}
 
 	function statAvail(k) {
@@ -22,6 +60,7 @@ Item {
 	property color mecaYellow: "#A4DED48A"
 	property color lightMecaYellow: "#30DED48A"
 	property color mecaBlue: "#A42DB2D6"
+	property color lightMecaBlue: "#302DB2D6"
 	property color mecaRed: "#B4E3343A"
 	property color bitDarker: "#40000000"
 	property color background: "#80000000"
@@ -90,11 +129,20 @@ Item {
 		}
 
 		Loader {
-			id: loader
+			id: paramsLoader
 			width: parent.width
-			source: displayButton.checked ? "DisplayMenu.qml" : (paramsButton.checked ? "ParamsMenu.qml" : "StatsMenu.qml")
+			source: "ParamsMenu.qml"
 			anchors.top: menuChooser.bottom
 			anchors.bottom: player.top
+			visible: paramsButton.checked
+		}
+		Loader {
+			id: displayLoader
+			width: parent.width
+			source: "DisplayMenu.qml"
+			anchors.top: menuChooser.bottom
+			anchors.bottom: player.top
+			visible: displayButton.checked
 		}
 		Rectangle {
 			id: player

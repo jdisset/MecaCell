@@ -8,12 +8,13 @@ using namespace MecaCell;
 using namespace std;
 
 int main(int, char **) {
-	unsigned int nbCells = 100;
-	unsigned int nbSteps = 100;
+	unsigned int nbCells = 2000;
+	unsigned int nbSteps = 500;
 	double clusterRadius = 1000;
 
 	uniform_real_distribution<double> doubleDist(0.0, 1.0);
-	default_random_engine randEngine(time(NULL));
+	// default_random_engine randEngine(time(NULL));
+	default_random_engine randEngine(0);
 
 	cout << " -- Creating world ";
 	BasicWorld<BasicCell, Verlet> world;

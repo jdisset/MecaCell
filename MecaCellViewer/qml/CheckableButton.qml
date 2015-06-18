@@ -2,29 +2,27 @@ import QtQuick 2.0
 import QtQuick.Controls 1.3
 
 Rectangle {
-	property string label;
 	property string legend;
 	property bool checked: false
 	property
 	var group: null
-	property bool shadow: false;
-	property color selecColor: mecaYellow;
-	property color notselecColor: "#60FFFFFF";
-	signal check(bool chk)
+	property color selecColor: "#FFFFFFFF";
+	property color notselecColor: "#FFFFFFFF";
+	property color notselecIconColor: "#40000000";
+	signal toggled()
 	height: 25
 	width: 70
-	color: checked && shadow ? "#88000000" : "transparent"
+	color: "transparent"
 	id: me
 	Rectangle {
 		anchors.top: parent.top
 		height: parent.height
-		color: checked ? selecColor : "transparent"
-		border.color: !checked ? notselecColor : "transparent"
+		color: "transparent"
 		width: height
 		id: lbl
 		Text {
-			text: label
-			color: checked || mouseArea.containsMouse ? "white" : notselecColor
+			text: checked ? "\uf14a" : "\uf0c8"
+			color: checked ? selecColor : notselecIconColor
 			font.family: fontawesome.name
 			font.pointSize: 15
 			anchors.verticalCenter: parent.verticalCenter
@@ -33,9 +31,9 @@ Rectangle {
 	}
 	Text {
 		text: legend
-		color: checked || mouseArea.containsMouse ? "white" : notselecColor
+		color: selecColor
 		font.family: opensans.name
-		font.pointSize: 9
+		font.pointSize: 13
 		anchors.verticalCenter: parent.verticalCenter
 		anchors.left: lbl.right
 		anchors.leftMargin: 3
@@ -47,10 +45,10 @@ Rectangle {
 		hoverEnabled: true
 		onClicked: {
 			if (group) group.toggled(me)
-			else checked = !checked
+			else {
+				checked = !checked
+				me.toggled()
+			}
 		}
-	}
-	onCheck: {
-		//checked = chk
 	}
 }

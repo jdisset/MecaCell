@@ -27,6 +27,6 @@
 *.out
 *.app
 
-build*
+build/*
 .*
-back*
+back/*

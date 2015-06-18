@@ -49,7 +49,7 @@ public:
 	}
 
 	Q_PROPERTY(QVariantMap stats READ getStats WRITE setStats NOTIFY statsChanged)
-	Q_PROPERTY(QVariantMap guiCtrlM MEMBER guiCtrl NOTIFY ctrlChanged)
+	Q_PROPERTY(QVariantMap guiCtrl READ getGuiCtrl WRITE setGuiCtrl NOTIFY GuiCtrlChanged)
 
 	QVariantMap stats, guiCtrl;
 	bool worldUpdate = true;
@@ -77,7 +77,7 @@ public:
 
 signals:
 	void statsChanged();
-	void ctrlChanged();
+	void GuiCtrlChanged();
 
 public slots:
 	/**************************
@@ -119,7 +119,7 @@ public slots:
 	QVariantMap getGuiCtrl() { return guiCtrl; }
 	QVariantMap getStats() { return stats; }
 	QVariant getStat(const QString &name) { return stats.count(name) ? stats[name] : QVariant(); }
-	void setGuiCtrl(QString k, QVariant v) { guiCtrl[k] = v; }
+	void setGuiCtrl(QVariantMap c) { guiCtrl = c; }
 	void setStats(QVariantMap s) { stats = s; }
 };
 

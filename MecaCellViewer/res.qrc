@@ -8,6 +8,7 @@
 		<file alias="/DisplayMenu.qml">qml/DisplayMenu.qml</file>
 		<file alias="/ParamsMenu.qml">qml/ParamsMenu.qml</file>
 		<file alias="/StatsMenu.qml">qml/StatsMenu.qml</file>
+		<file alias="/CheckableButton.qml">qml/CheckableButton.qml</file>
 		<file alias="/ExclusiveStuff.qml">qml/ExclusiveStuff.qml</file>
 		<file alias="/LegendButton.qml">qml/LegendButton.qml</file>
 		<file alias="/Title.qml">qml/Title.qml</file>
@@ -21,6 +22,7 @@
 		<file>shaders/dumb.frag</file>
 		<file>shaders/ssao.frag</file>
 		<file>shaders/line.frag</file>
+		<file>shaders/viewprojection.vert</file>
 		<file>shaders/line.geom</file>
 		<file>shaders/billboard.vert</file>
 		<file>shaders/billboard.frag</file>

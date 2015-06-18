@@ -12,6 +12,7 @@ using namespace std;
 namespace MecaCell {
 
 double Vector3D::dot(const Vector3D &v) const { return x * v.x + y * v.y + z * v.z; }
+
 Vector3D Vector3D::cross(const Vector3D &v) const {
 	return Vector3D((y * v.z - z * v.y), (z * v.x - x * v.z), (x * v.y - y * v.x));
 }
@@ -26,12 +27,15 @@ void Vector3D::random() {
 	z = sin(teta);
 	normalize();
 }
+
 Vector3D Vector3D::randomUnit() {
 	Vector3D v;
 	v.random();
 	return v;
 }
+
 Vector3D Vector3D::zero() { return Vector3D(0, 0, 0); }
+
 bool Vector3D::isZero() const { return (x == 0 && y == 0 && z == 0); }
 
 void Vector3D::operator/=(const double &d) {
@@ -39,6 +43,7 @@ void Vector3D::operator/=(const double &d) {
 	y /= d;
 	z /= d;
 }
+
 void Vector3D::operator*=(const double &d) {
 	x *= d;
 	y *= d;
@@ -50,6 +55,7 @@ void Vector3D::operator+=(const Vector3D &v) {
 	y += v.y;
 	z += v.z;
 }
+
 Vector3D Vector3D::operator+(const Vector3D &v) const { return Vector3D(x + v.x, y + v.y, z + v.z); }
 Vector3D Vector3D::operator-(const Vector3D &v) const { return Vector3D(x - v.x, y - v.y, z - v.z); }
 Vector3D Vector3D::operator-(const double &v) const { return Vector3D(x - v, y - v, z - v); }
@@ -57,6 +63,7 @@ Vector3D Vector3D::operator+(const double &v) const { return Vector3D(x + v, y +
 Vector3D Vector3D::operator/(const double &s) const { return Vector3D(x / s, y / s, z / s); }
 Vector3D Vector3D::operator/(const Vector3D &v) const { return Vector3D(x / v.x, y / v.y, z / v.z); }
 Vector3D Vector3D::operator-() const { return Vector3D(-x, -y, -z); }
+
 bool Vector3D::operator>=(const double &v) const { return (x >= v && y >= v && z >= v); }
 bool Vector3D::operator<=(const double &v) const { return (x <= v && y <= v && z <= v); }
 bool Vector3D::operator>(const double &v) const { return (x > v && y > v && z > v); }
@@ -70,6 +77,7 @@ double Vector3D::getY() const { return y; }
 double Vector3D::getZ() const { return z; }
 
 void Vector3D::normalize() { *this = *this / length(); }
+
 Vector3D Vector3D::normalized() const {
 	double l = length();
 	return Vector3D(x / l, y / l, z / l);
@@ -81,12 +89,14 @@ std::string Vector3D::toString() {
 	s << "(" << x << " , " << y << ", " << z << ")";
 	return s.str();
 }
+
 int Vector3D::getHash(int a, int b) {
 	unsigned int A = (unsigned int)(a >= 0 ? 2 * a : -2 * a - 1);
 	unsigned int B = (unsigned int)(b >= 0 ? 2 * b : -2 * b - 1);
 	int C = ((A >= B ? A * A + A + B : A + B * B) / 2);
 	return (a < 0 && b < 0) || (a >= 0 && b >= 0) ? C : -C - 1;
 }
+
 std::size_t Vector3D::getHash() const { return getHash(x, getHash(y, z)); }
 
 void Vector3D::iterateTo(Vector3D const &v, const std::function<void(const Vector3D &)> &fun, int inc) {
@@ -136,14 +146,19 @@ Vector3D Vector3D::ortho(Vector3D v) const {
 }
 
 Vector3D Vector3D::rotated(const double &angle, const Vector3D &vec) const {
-	Quaternion q(angle, vec);
-	return q * *this;
+	double halfangle = angle * 0.5;
+	Vector3D v = vec * sin(halfangle);
+	Vector3D vcV = 2.0 * v.cross(*this);
+	return *this + cos(halfangle) * vcV + v.cross(vcV);
 }
 
 Vector3D Vector3D::rotated(const Rotation<Vector3D> &r) const {
-	Quaternion q(r.teta, r.n);
-	return q * *this;
+	double halfangle = r.teta * 0.5;
+	Vector3D v = r.n * sin(halfangle);
+	Vector3D vcV = 2.0 * v.cross(*this);
+	return *this + cos(halfangle) * vcV + v.cross(vcV);
 }
+// return Quaternion(r.teta, r.n) * *this; }
 
 Rotation<Vector3D> Vector3D::rotateRotation(const Rotation<Vector3D> &start,
                                             const Rotation<Vector3D> &offset) {
@@ -163,6 +178,12 @@ void Vector3D::addAsAngularVelocity(const Vector3D &v, Rotation<Vector3D> &r) {
 		n0 = v / dTeta;
 	}
 	r = addRotations(r, Rotation<Vector3D>(n0, dTeta));
+}
+
+Vector3D getProjection(const Vector3D &origin, const Vector3D &B, const Vector3D &P) {
+	// returns the projected P point onto the origin -> B vector
+	Vector3D a = B - origin;
+	return origin + a * (a.dot(P - origin) / a.sqlength());
 }
 
 Rotation<Vector3D> Vector3D::getRotation(const Vector3D &v0, const Vector3D &v1) {
@@ -185,8 +206,7 @@ Rotation<Vector3D> Vector3D::getRotation(const Vector3D &X0, const Vector3D &Y0,
 	Quaternion q0(X0.normalized(), X1.normalized());
 	Vector3D Ytmp = q0 * Y0;
 	Ytmp.normalize();
-	Quaternion q1(Ytmp, Y1.normalized());
-	Quaternion qres = q1 * q0;
+	Quaternion qres = Quaternion(Ytmp, Y1.normalized()) * q0;
 	qres.normalize();
 	return qres.toAxisAngle();
 }
