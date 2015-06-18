@@ -1,7 +1,7 @@
 #ifndef RENDERER_HPP
 #define RENDERER_HPP
 #include "slotsignalbase.h"
-#include "cellGroup.hpp"
+#include "cellgroup.hpp"
 #include "connectionsgroup.hpp"
 #include "camera.hpp"
 #include "skybox.hpp"
