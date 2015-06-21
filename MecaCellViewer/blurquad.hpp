@@ -11,20 +11,20 @@ class BlurQuad {
 	Quad quad;
 	RenderQuad render;
 
- public:
+public:
 	BlurQuad(){};
 
-	void load(const QString& vs, const QString& fs, const QSize& s) {
+	void load(const QString &vs, const QString &fs, const QSize &s) {
 		fboA = unique_ptr<QOpenGLFramebufferObject>(new QOpenGLFramebufferObject(s, format));
 		fboB = unique_ptr<QOpenGLFramebufferObject>(new QOpenGLFramebufferObject(s, format));
 		render.load(":/shaders/dumb.vert", ":/shaders/dumb.frag");
-		shader.addShaderFromSourceFile(QOpenGLShader::Vertex, vs);
-		shader.addShaderFromSourceFile(QOpenGLShader::Fragment, fs);
+		shader.addShaderFromSourceCode(QOpenGLShader::Vertex, shaderWithHeader(vs));
+		shader.addShaderFromSourceCode(QOpenGLShader::Fragment, shaderWithHeader(fs));
 		shader.link();
 		quad.load(shader);
 	}
 
-	void draw(GLuint tex, int amount, const QSize& s, const QRect& r) {
+	void draw(GLuint tex, int amount, const QSize &s, const QRect &r) {
 		if (fboA->size() != s || fboB->size() != s) {
 			fboA = unique_ptr<QOpenGLFramebufferObject>(new QOpenGLFramebufferObject(s, format));
 			fboB = unique_ptr<QOpenGLFramebufferObject>(new QOpenGLFramebufferObject(s, format));

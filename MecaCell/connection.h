@@ -15,7 +15,7 @@ struct Spring {
 	double l = 1.0;      // rest length
 	double length = 1.0; // current length
 	double prevLength = 1.0;
-	double minLengthRatio = 0.3; // max compression
+	double minLengthRatio = 0.5; // max compression
 	Vec direction;               // current direction from node 0 to node 1
 
 	Spring(const double &K, const double &C, const double &L) : k(K), c(C), l(L), length(L){};

@@ -68,13 +68,11 @@ public:
 	 ******************************/
 
 	void computeForces() {
-		for (auto cIt = connections.begin(); cIt < connections.end(); ++cIt) {
-			(*cIt)->computeForces(dt);
+		for (auto &con : connections)
+			con->computeForces(dt);
+		for (auto &c : cells) {
+			c->receiveForce(-c->getVelocity() * 0.5);
 		}
-		// update walls nodes
-		// for (auto& p : infplanes) {
-		// p.computeForces();
-		//}
 	}
 	void resetForces() {
 		for (auto cIt = cells.begin(); cIt < cells.end(); ++cIt) {
@@ -175,7 +173,7 @@ public:
 						double c1SqLength = pow(c1->getLength(), 2);
 						double scal01 = c0v.dot(c1dir);
 						double scal10 = c1v.dot(c0dir);
-						if (scal01 > 0 && c0SqLength < c1SqLength && (c0SqLength - scal01 * scal01) < r0 * r0 * 0.8) {
+						if (scal01 > 0 && c0SqLength < c1SqLength && (c0SqLength - scal01 * scal01) < r0 * r0 * 0.6) {
 							c1It = vec.erase(c1It);
 							other1->eraseConnection(c1);
 							cell->eraseCell(other1);
@@ -183,7 +181,7 @@ public:
 							connections.erase(remove(connections.begin(), connections.end(), c1), connections.end());
 							delete c1;
 						} else if (scal10 > 0 && c1SqLength < c0SqLength &&
-						           (c1SqLength - scal10 * scal10) < r1 * r1 * 0.8) {
+						           (c1SqLength - scal10 * scal10) < r1 * r1 * 0.6) {
 							c0It = vec.erase(c0It);
 							other0->eraseConnection(c0);
 							cell->eraseCell(other0);

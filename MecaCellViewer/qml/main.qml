@@ -80,6 +80,7 @@ Item {
 		anchors.top: parent.top
 		height: parent.height
 		color: background
+		//color:"transparent" 
 		width: 200
 		Image {
 			id: logo

@@ -1,4 +1,4 @@
-#version 330 core
+
 
 in layout(location=0)vec3 vertex;
 uniform vec3 color;

@@ -1,4 +1,4 @@
-#version 330 core
+
 uniform sampler2D nmap;
 uniform vec3 color;
 uniform mat4 normalMatrix;
@@ -56,9 +56,10 @@ void main(){
 
 	vec3 final = mixV3(reducedColor,(vec3(0.2)+reducedColor)*normalColor.r,0.1);
 
-	final = superpose(final,whiteHalo,0.06);
-	final = superpose(final,whiteHalo*vec4(normalColor,1.0),0.3);
+	final = superpose(final,whiteHalo,0.08);
+	final = superpose(final,whiteHalo*vec4(normalColor,1.0),0.32);
 
-	FragColor =  vec4(final,0.82 + diffuseCoef*diffuseCoef) ;
-	/*FragColor =  vec4(final,1.0) ;*/
+	/*FragColor =  vec4(final,0.0 + diffuseCoef*diffuseCoef) ;*/
+	FragColor =  vec4(final,1.0) ;
+	/*FragColor = vec4(vec3(gl_FragCoord.z),1.0);*/
 }

@@ -22,6 +22,7 @@ template <typename Scenario> class Renderer : public SignalSlotRenderer {
 private:
 	using World = typename remove_reference<decltype(((Scenario *)nullptr)->getWorld())>::type;
 	using Cell = typename World::cell_type;
+	using Vec = decltype(((Cell *)nullptr)->getPosition());
 	using ConnectType = typename World::connect_type;
 
 	QQuickWindow *wndw;
@@ -59,7 +60,7 @@ private:
 	Cell *selectedCell = nullptr;
 
 	// options
-	double BLUR_COEF = 1.0, MSAA_COEF = 4, FSAA_COEF = 1;
+	double BLUR_COEF = 1.0, MSAA_COEF = 4, FSAA_COEF = 20.0;
 	double screenCoef = 1.0;
 	int menuSize = 200;
 	bool worldUpdate = true;
@@ -80,7 +81,7 @@ public:
 			loopStep = false;
 		}
 
-		FSAA_COEF = screenCoef == 2.0 ? 0.5 : 1.0;
+		FSAA_COEF = screenCoef == 2.0 ? 0.7 : 1.0;
 
 		processEvents();
 		msaaFBO->bind();
@@ -93,20 +94,20 @@ public:
 		    camera.getProjectionMatrix((float)viewportSize.width() / (float)viewportSize.height()));
 
 		// background
-		skybox.draw(view, projection);
+		skybox.draw(view, projection, camera);
 
 		QStringList gc;
 		if (guiCtrl.count("visibleElements")) {
 			gc = qvariant_cast<QStringList>(guiCtrl.value("visibleElements"));
 		}
 		if (gc.contains("cells")) {
-			cells.draw(scenario.getWorld().cells, view, projection, camera.getViewVector(), camera.getPosition(),  selectedCell);
+			cells.draw(scenario.getWorld().cells, view, projection, camera.getViewVector(), camera.getPosition(),
+			           selectedCell);
 		}
 		msaaFBO->release();
 		QOpenGLFramebufferObject::blitFramebuffer(ssaoFBO.get(), msaaFBO.get(),
 		                                          GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		finalFBO->bind();
-		clear();
 		ssaoTarget.draw(ssaoFBO->texture(), depthTex, camera.getNearPlane(), camera.getFarPlane());
 
 		// no ssao from here
@@ -300,7 +301,16 @@ public:
 		if (pressedKeys.count(Qt::Key_Right) || pressedKeys.count(Qt::Key_D)) {
 			camera.right(viewDt);
 		}
+		if (pressedKeys.count(Qt::Key_Space)) {
+			Cell *c = new Cell(QV3D2Vec(camera.getPosition()) - QV3D2Vec(camera.getUpVector() * 50.0));
+			c->setVelocity(QV3D2Vec(camera.getViewVector() * 3000.0));
+			scenario.getWorld().addCell(c);
+		}
+		if (selectedCell && pressedKeys.count(Qt::Key_M)) {
+			selectedCell->startDivision();
+		}
 	}
+	Vec QV3D2Vec(const QVector3D &v) { return Vec(v.x(), v.y(), v.z()); }
 
 	void setViewportSize(const QSize &s) {
 		if (window) screenCoef = window->devicePixelRatio();

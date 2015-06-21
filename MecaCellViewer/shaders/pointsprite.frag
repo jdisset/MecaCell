@@ -1,6 +1,6 @@
 // Version du GLSL
 
-#version 330 core
+
 
 
 // Entrée

@@ -7,11 +7,11 @@ class RenderQuad {
 	QOpenGLShaderProgram shader;
 	Quad quad;
 
- public:
+public:
 	RenderQuad(){};
-	void load(const QString& vs, const QString& fs) {
-		shader.addShaderFromSourceFile(QOpenGLShader::Vertex, vs);
-		shader.addShaderFromSourceFile(QOpenGLShader::Fragment, fs);
+	void load(const QString &vs, const QString &fs) {
+		shader.addShaderFromSourceCode(QOpenGLShader::Vertex, shaderWithHeader(vs));
+		shader.addShaderFromSourceCode(QOpenGLShader::Fragment, shaderWithHeader(fs));
 		shader.link();
 		quad.load(shader);
 	}

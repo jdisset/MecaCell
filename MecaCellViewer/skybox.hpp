@@ -2,18 +2,17 @@
 #define SKYBOX_HPP
 #include "viewtools.h"
 #include "primitives/sphere.hpp"
-
-#define SKY_SIZE 20000000.0
+#include "camera.hpp"
 
 class Skybox {
 	QOpenGLShaderProgram shader;
 	unique_ptr<QOpenGLTexture> texture = nullptr;
 	IcoSphere sky;
 
- public:
+public:
 	void load() {
-		shader.addShaderFromSourceFile(QOpenGLShader::Vertex, ":/shaders/skybox.vert");
-		shader.addShaderFromSourceFile(QOpenGLShader::Fragment, ":/shaders/skybox.frag");
+		shader.addShaderFromSourceCode(QOpenGLShader::Vertex, shaderWithHeader(":/shaders/skybox.vert"));
+		shader.addShaderFromSourceCode(QOpenGLShader::Fragment, shaderWithHeader(":/shaders/skybox.frag"));
 		shader.link();
 		texture = unique_ptr<QOpenGLTexture>(new QOpenGLTexture(QImage(":/textures/background.jpg").mirrored()));
 		texture->setMinificationFilter(QOpenGLTexture::LinearMipMapLinear);
@@ -21,9 +20,11 @@ class Skybox {
 		sky.load(shader);
 	}
 
-	void draw(const QMatrix4x4& view, const QMatrix4x4& projection) {
+	void draw(const QMatrix4x4 &view, const QMatrix4x4 &projection, const Camera &camera) {
 		QMatrix4x4 model;
-		model.scale(QVector3D(SKY_SIZE, SKY_SIZE, SKY_SIZE));
+		model.translate(camera.getPosition());
+		float r = camera.getFarPlane() - camera.getNearPlane() - 1;
+		model.scale(QVector3D(r, r, r));
 		shader.bind();
 		sky.vao.bind();
 		texture->bind(0);

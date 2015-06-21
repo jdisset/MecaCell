@@ -50,7 +50,7 @@ public:
 	// In this example we just call the world's update method
 	void loop() { world.update(); }
 
-	const World &getWorld() { return world; }
+	World &getWorld() { return world; }
 };
 
 /*************************

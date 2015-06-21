@@ -1,4 +1,4 @@
-#version 330 core
+
 
 in vec3 squareVertices;
 out vec2 UV;

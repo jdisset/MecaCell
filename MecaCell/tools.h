@@ -20,5 +20,6 @@ double dampingFromRatio(const double r, const double m, const double k);
 template <typename T> constexpr T mix(const T& a, const T& b, const double& c) {
 	return a * (1.0 - c) + c * b;
 }
+Vec hsvToRgb(double h, double s, double v);
 }
 #endif

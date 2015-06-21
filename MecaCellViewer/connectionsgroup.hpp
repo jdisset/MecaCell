@@ -10,9 +10,9 @@ template <typename C> class ConnectionsGroup {
 public:
 	ConnectionsGroup() {}
 	void load() {
-		shader.addShaderFromSourceFile(QOpenGLShader::Vertex, ":/shaders/viewprojection.vert");
-		shader.addShaderFromSourceFile(QOpenGLShader::Geometry, ":/shaders/line.geom");
-		shader.addShaderFromSourceFile(QOpenGLShader::Fragment, ":/shaders/line.frag");
+		shader.addShaderFromSourceCode(QOpenGLShader::Vertex, shaderWithHeader(":/shaders/viewprojection.vert"));
+		shader.addShaderFromSourceCode(QOpenGLShader::Geometry, shaderWithHeader(":/shaders/line.geom"));
+		shader.addShaderFromSourceCode(QOpenGLShader::Fragment, shaderWithHeader(":/shaders/line.frag"));
 		shader.link();
 		lines.load(shader);
 	}

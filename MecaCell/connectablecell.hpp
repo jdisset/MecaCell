@@ -267,17 +267,48 @@ public:
 	bool isDead() { return dead; }
 
 	void randomColor() {
-		double r0 = 0.001 * (rand() % 1000);
-		double r1 = 0.001 * (rand() % 1000);
-		if (r0 < 0.5) {
-			color[0] = 0.6 + (0.3 * r1);
-			color[1] = 0.3 * r1;
-			color[2] = 0.05 + (0.2 * r0);
-		} else {
-			color[0] = 0.05 * r1;
-			color[1] = 0.6 + (0.1 * r1);
-			color[2] = 0.7 + (0.2 * r0);
+		double r0 = 0.0001 * (rand() % 10000);
+		double r1 = 0.0001 * (rand() % 10000);
+		 //Vec col = hsvToRgb(r0 * 360.0, 0.5 + 0.5 * r1, 0.91);
+		 //color[0] = col.x;
+		 //color[1] = col.y;
+		 //color[2] = col.z;
+		// color[0] = 0.65 + (0.2 * r1);
+		// color[1] = 0.0 + (0.1 * r0); // + (0.1 * r0);
+		// color[2] = 0.0 + 0.1 * r1;
+		if (false) {
+			if (r0 < 1.0 / 3.0) {
+				/// green
+				color[0] = 0.1 + (0.4 * r1);
+				color[1] = 0.78 + (0.2 * r0); // + (0.1 * r0);
+				color[2] = 0.06 + 0.6 * r0;
+			} else if (r0 < 2.0 / 3.0) {
+				// yellow
+				color[0] = 0.9 + (0.1 * r1);
+				color[1] = 0.73; // + (0.1 * r0);
+				color[2] = 0.36 + 0.2 * r0;
+			} else {
+				// blue
+				color[0] = 0.05 * r1;
+				color[1] = 0.6 + (0.1 * r1);
+				color[2] = 0.7 + (0.2 * r0);
+			}
 		}
+		//color[0] = 0.05 * r1;
+		//color[1] = 0.6 + (0.1 * r1);
+		//color[2] = 0.7 + (0.2 * r0);
+		 color[0] = 0.6 + (0.3 * r1);
+		 color[1] = 0.3 * r1;
+		 color[2] = 0.05 + (0.2 * r0);
+		 //if (r0 < 0.5) {
+		 //color[0] = 0.6 + (0.3 * r1);
+		 //color[1] = 0.3 * r1;
+		 //color[2] = 0.05 + (0.2 * r0);
+		//} else {
+		 //color[0] = 0.05 * r1;
+		 //color[1] = 0.6 + (0.1 * r1);
+		 //color[2] = 0.7 + (0.2 * r0);
+		//}
 	}
 };
 }

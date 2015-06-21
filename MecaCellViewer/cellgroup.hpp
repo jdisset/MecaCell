@@ -12,8 +12,8 @@ public:
 	CellGroup() {}
 
 	void load() {
-		shader.addShaderFromSourceFile(QOpenGLShader::Vertex, ":/shaders/cell.vert");
-		shader.addShaderFromSourceFile(QOpenGLShader::Fragment, ":/shaders/cell.frag");
+		shader.addShaderFromSourceCode(QOpenGLShader::Vertex, shaderWithHeader(":/shaders/cell.vert"));
+		shader.addShaderFromSourceCode(QOpenGLShader::Fragment, shaderWithHeader(":/shaders/cell.frag"));
 		shader.link();
 		normalMap =
 		    unique_ptr<QOpenGLTexture>(new QOpenGLTexture(QImage(":/textures/cellNormalMap.jpg").mirrored()));

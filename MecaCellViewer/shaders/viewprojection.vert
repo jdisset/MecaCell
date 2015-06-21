@@ -1,4 +1,4 @@
-#version 330 core
+
 uniform mat4 viewProjection;
 
 in vec3 position;

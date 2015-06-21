@@ -19,8 +19,8 @@ public:
 	ProjectionType projectionType = Perspective;
 	Mode mode = fps;
 	float fieldOfView = 35;
-	float nearPlane = 20;
-	float farPlane = 50000000;
+	float nearPlane = 40;
+	float farPlane = 30000;
 	QSizeF viewSize = QSizeF(2.0f, 2.0f);
 	QSizeF minViewSize = QSizeF(0.01f, 0.01f);
 	QVector3D position = QVector3D(0, 200, 500);
@@ -29,7 +29,7 @@ public:
 	QVector3D viewVector = target - position;
 	bool adjustForAspectRatio = true;
 	float sensitivity = 0.2;
-	float speed = 450;
+	float speed = 1000;
 
 	Camera() {}
 
@@ -125,7 +125,6 @@ public:
 	*********************************/
 	void translate(QVector3D v) {
 		position += translation(v);
-		// target += translation(v);
 		viewVector = target - position;
 	}
 
@@ -187,17 +186,19 @@ public:
 		}
 	}
 	void backward(float dt) {
-		if (mode == fps)
+		if (mode == fps) {
 			position += -viewVector.normalized() * speed * dt;
-		else if (mode == centered) {
+			target = position + viewVector;
+		} else if (mode == centered) {
 			float amount = 0.1 * (position - target).length();
 			translate(-viewVector.normalized() * dt * amount);
 		}
 	}
 	void forward(float dt) {
-		if (mode == fps)
+		if (mode == fps) {
 			position += viewVector.normalized() * speed * dt;
-		else if (mode == centered) {
+			target = position + viewVector;
+		} else if (mode == centered) {
 			float amount = 0.1 * (position - target).length();
 			translate(viewVector.normalized() * dt * amount);
 		}

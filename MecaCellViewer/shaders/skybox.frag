@@ -1,4 +1,4 @@
-#version 330 core
+
 #define PI 3.14159265359
 
 in vec2 UV;

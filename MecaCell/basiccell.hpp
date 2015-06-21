@@ -4,14 +4,25 @@
 
 namespace MecaCell {
 class BasicCell : public ConnectableCell<BasicCell> {
- public:
+	bool isDividing = false;
+
+public:
 	using ConnectableCell<BasicCell>::ConnectableCell;
 
 	double getAdhesionWith(const int) const {
-		return 0.8;  // whatever
+		return 0.8; // whatever
 	}
 
-	BasicCell* updateBehavior(double) { return nullptr; }
+	BasicCell *updateBehavior(double) {
+		if (isDividing) {
+			// grow..
+			isDividing = false;
+			return divide();
+		}
+		return nullptr;
+	}
+
+	void startDivision() { isDividing = true; }
 };
 }
 

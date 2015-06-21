@@ -23,7 +23,7 @@ public:
 #if TARGET_OS_MAC
 		QSurfaceFormat f;
 		f.setProfile(QSurfaceFormat::CoreProfile);
-		 f.setVersion(3, 3);
+		f.setVersion(3, 3);
 		QSurfaceFormat::setDefaultFormat(f);
 #endif
 #endif
