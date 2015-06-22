@@ -30,3 +30,5 @@
 build/*
 .*
 back/*
+*.xcf
+*.todo

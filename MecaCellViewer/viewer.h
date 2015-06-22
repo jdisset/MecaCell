@@ -12,11 +12,11 @@
 #include <QThread>
 
 using namespace std;
-namespace MecaCellViewer {
-template <typename Scenario> class QtViewer {
+namespace MecacellViewer {
+template <typename Scenario> class Viewer {
 
 public:
-	QtViewer() {
+	Viewer() {
 // for mac osx
 #if __APPLE__
 #include "TargetConditionals.h"

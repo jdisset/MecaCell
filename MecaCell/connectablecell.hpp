@@ -91,7 +91,7 @@ public:
 	const Derived &selfconst() const { return static_cast<const Derived &>(*this); }
 
 	// Don't forget to implement this method in the derived class
-	double getAdhesionWith(const int tId) const { return selfconst().getAdhesionWith(tId); }
+	double getAdhesionWith(const Derived *d) { return self().getAdhesionWith(d); }
 
 	vector<Connection<Derived> *> &getRWConnections() { return connections; }
 
@@ -128,7 +128,7 @@ public:
 						}
 					}
 					if (ok) {
-						double minAdh = (getAdhesionWith(c->typeId) + c->getAdhesionWith(typeId)) * 0.5;
+						double minAdh = (getAdhesionWith(c) + c->getAdhesionWith(selfptr())) * 0.5;
 						double l = getConnectionLength(c, minAdh);
 						double k = (stiffness * radius + c->stiffness * c->radius) / (radius + c->radius);
 						double dr = (dampRatio * radius + c->dampRatio * c->radius) / (radius + c->radius);
@@ -269,10 +269,10 @@ public:
 	void randomColor() {
 		double r0 = 0.0001 * (rand() % 10000);
 		double r1 = 0.0001 * (rand() % 10000);
-		 //Vec col = hsvToRgb(r0 * 360.0, 0.5 + 0.5 * r1, 0.91);
-		 //color[0] = col.x;
-		 //color[1] = col.y;
-		 //color[2] = col.z;
+		// Vec col = hsvToRgb(r0 * 360.0, 0.5 + 0.5 * r1, 0.91);
+		// color[0] = col.x;
+		// color[1] = col.y;
+		// color[2] = col.z;
 		// color[0] = 0.65 + (0.2 * r1);
 		// color[1] = 0.0 + (0.1 * r0); // + (0.1 * r0);
 		// color[2] = 0.0 + 0.1 * r1;
@@ -294,20 +294,20 @@ public:
 				color[2] = 0.7 + (0.2 * r0);
 			}
 		}
-		//color[0] = 0.05 * r1;
-		//color[1] = 0.6 + (0.1 * r1);
-		//color[2] = 0.7 + (0.2 * r0);
-		 color[0] = 0.6 + (0.3 * r1);
-		 color[1] = 0.3 * r1;
-		 color[2] = 0.05 + (0.2 * r0);
-		 //if (r0 < 0.5) {
-		 //color[0] = 0.6 + (0.3 * r1);
-		 //color[1] = 0.3 * r1;
-		 //color[2] = 0.05 + (0.2 * r0);
+		// color[0] = 0.05 * r1;
+		// color[1] = 0.6 + (0.1 * r1);
+		// color[2] = 0.7 + (0.2 * r0);
+		color[0] = 0.6 + (0.3 * r1);
+		color[1] = 0.3 * r1;
+		color[2] = 0.05 + (0.2 * r0);
+		// if (r0 < 0.5) {
+		// color[0] = 0.6 + (0.3 * r1);
+		// color[1] = 0.3 * r1;
+		// color[2] = 0.05 + (0.2 * r0);
 		//} else {
-		 //color[0] = 0.05 * r1;
-		 //color[1] = 0.6 + (0.1 * r1);
-		 //color[2] = 0.7 + (0.2 * r0);
+		// color[0] = 0.05 * r1;
+		// color[1] = 0.6 + (0.1 * r1);
+		// color[2] = 0.7 + (0.2 * r0);
 		//}
 	}
 };

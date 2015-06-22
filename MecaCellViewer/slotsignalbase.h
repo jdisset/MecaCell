@@ -14,6 +14,7 @@
 
 using namespace std;
 
+namespace MecacellViewer {
 class SignalSlotBase;
 
 class SignalSlotRenderer : public QObject {
@@ -122,5 +123,5 @@ public slots:
 	void setGuiCtrl(QVariantMap c) { guiCtrl = c; }
 	void setStats(QVariantMap s) { stats = s; }
 };
-
+}
 #endif
