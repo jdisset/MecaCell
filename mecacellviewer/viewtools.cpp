@@ -14,3 +14,4 @@ QString shaderWithHeader(QString filename) {
 	QString res = QString("#version ") + version + QString(" core\n") + in.readAll();
 	return res;
 }
+void initResources() { Q_INIT_RESOURCE(resourcesLibMecacellViewer); }

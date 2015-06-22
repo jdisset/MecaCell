@@ -1,5 +1,6 @@
 #ifndef QTVIEWER_H
 #define QTVIEWER_H
+#include "viewtools.h"
 #include "renderer.hpp"
 #include <QtQuick/QQuickView>
 #include <QQmlContext>
@@ -17,6 +18,7 @@ template <typename Scenario> class Viewer {
 
 public:
 	Viewer() {
+		initResources();
 // for mac osx
 #if __APPLE__
 #include "TargetConditionals.h"

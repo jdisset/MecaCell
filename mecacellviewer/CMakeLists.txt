@@ -9,6 +9,7 @@ file(GLOB PRIMHEADERS
 file(GLOB VIEWSRC 
 	"*.cpp"
 	)
+
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 find_package(Qt5Core)
@@ -23,3 +24,4 @@ qt5_use_modules(mecacellviewer Quick Core Gui OpenGL)
 install (TARGETS mecacellviewer DESTINATION lib)
 install (FILES ${VIEWHEADERS} DESTINATION include/mecacell/viewer)
 install (FILES ${PRIMHEADERS} DESTINATION include/mecacell/viewer/primitives)
+message(${RESOURCES})
