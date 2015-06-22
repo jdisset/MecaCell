@@ -1,0 +1,13 @@
+Elements Interface :
+selection/deplacement cellule
+action sur cellule selectionnée : 
+apop, division, custom (checker actions dispos ? enregistrer avec une macro style "INTERACTION(fonction)")
+stats de la cellule selectionnée : radius, volume, mass, age, autre (genre état de spec, étape du cycle)? (systeme d'enregistrement des infos avec macro ?)
+
+bouger camera (mode fps & centré)
+controles scenario : pause / reset w changement params
+Infos simulation courrante : nbCells, fps, nbUpdate, proportion temps d'affichage / temps calcul / idle
+
+options d'affichage : 
+select multiple (vecteurs force / vitesse / connexions)
+colorisation (forces, age, typeId, custom (energie, cyclestep, ambroisie)
