@@ -66,6 +66,7 @@ private:
 	int menuSize = 200;
 	bool worldUpdate = true;
 	bool loopStep = true;
+	bool cut = false;
 
 public:
 	explicit Renderer(int c, char **v) : SignalSlotRenderer(), argc(c), argv(v) {
@@ -82,6 +83,7 @@ public:
 			loopStep = false;
 		}
 
+		cells.cut = cut;
 		FSAA_COEF = screenCoef == 2.0 ? 0.7 : 1.0;
 
 		processEvents();
@@ -102,6 +104,7 @@ public:
 			gc = qvariant_cast<QStringList>(guiCtrl.value("visibleElements"));
 		}
 		if (gc.contains("cells")) {
+			cells.drawMode = plain;
 			cells.draw(scenario.getWorld().cells, view, projection, camera.getViewVector(), camera.getPosition(),
 			           selectedCell);
 		}
@@ -112,6 +115,11 @@ public:
 		ssaoTarget.draw(ssaoFBO->texture(), depthTex, camera.getNearPlane(), camera.getFarPlane());
 
 		// no ssao from here
+		if (gc.contains("centers")) {
+			cells.drawMode = centers;
+			cells.draw(scenario.getWorld().cells, view, projection, camera.getViewVector(), camera.getPosition(),
+			           selectedCell);
+		}
 		if (gc.contains("connections")) {
 			connections.draw(scenario.getWorld().connections, view, projection);
 		}
@@ -302,6 +310,9 @@ public:
 		if (pressedKeys.count(Qt::Key_Right) || pressedKeys.count(Qt::Key_D)) {
 			camera.right(viewDt);
 		}
+		if (pressedKeys.count(Qt::Key_C)){ 
+			cut = !cut;
+		}
 		if (pressedKeys.count(Qt::Key_Space)) {
 			Cell *c = new Cell(QV3D2Vec(camera.getPosition()) - QV3D2Vec(camera.getUpVector() * 50.0));
 			c->setVelocity(QV3D2Vec(camera.getViewVector() * 3000.0));
@@ -343,6 +354,7 @@ public:
 		}
 		return res;
 	}
+	void addCuttingPlane() {}
 	void pickCell() {
 		QVector2D mouseNDC(2.0 * mousePosition.x() / (float)viewportSize.width() - 1.0,
 		                   -((2.0 * (float)mousePosition.y()) / (float)viewportSize.height() - 1.0));

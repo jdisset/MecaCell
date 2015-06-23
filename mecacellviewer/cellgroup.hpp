@@ -3,17 +3,21 @@
 #include "viewtools.h"
 #include "primitives/sphere.hpp"
 
+enum cellMode { plain, centers };
 template <typename C> class CellGroup {
 	QOpenGLShaderProgram shader;
 	unique_ptr<QOpenGLTexture> normalMap = nullptr;
 	IcoSphere sphere;
 
 public:
+	bool cut = false;
+	cellMode drawMode;
 	CellGroup() {}
 
 	void load() {
 		shader.addShaderFromSourceCode(QOpenGLShader::Vertex, shaderWithHeader(":/shaders/cell.vert"));
 		shader.addShaderFromSourceCode(QOpenGLShader::Fragment, shaderWithHeader(":/shaders/cell.frag"));
+		shader.link();
 		shader.link();
 		normalMap =
 		    unique_ptr<QOpenGLTexture>(new QOpenGLTexture(QImage(":/textures/cellNormalMap.jpg").mirrored()));
@@ -44,20 +48,26 @@ public:
 				QMatrix4x4 model;
 				double radius = c->getRadius();
 				QVector3D center = toQV3D(c->getPosition());
-				model.translate(center);
-				model.scale(QVector3D(radius, radius, radius));
-				QVector3D color(c->getColor(0), c->getColor(1), c->getColor(2));
-				if (c == selected) color = QVector3D(1.0, 1.0, 1.0);
-				QMatrix4x4 nmatrix = (model).inverted().transposed();
-				shader.setUniformValue(shader.uniformLocation("model"), model);
-				shader.setUniformValue(shader.uniformLocation("normalMatrix"), nmatrix);
-				shader.setUniformValue(shader.uniformLocation("color"), color);
-				GL->glDrawElements(GL_TRIANGLES, sphere.indices.size(), GL_UNSIGNED_INT, 0);
+				if ((cut && QVector3D::dotProduct(center, QVector3D(1, 0, 0)) > 0) || !cut) {
+					model.translate(center);
+					if (drawMode == plain) {
+						model.scale(QVector3D(radius, radius, radius));
+					} else {
+						model.scale(QVector3D(2.0, 2.0, 2.0));
+					}
+					QVector3D color(c->getColor(0), c->getColor(1), c->getColor(2));
+					if (c == selected) color = QVector3D(1.0, 1.0, 1.0);
+					QMatrix4x4 nmatrix = (model).inverted().transposed();
+					shader.setUniformValue(shader.uniformLocation("model"), model);
+					shader.setUniformValue(shader.uniformLocation("normalMatrix"), nmatrix);
+					shader.setUniformValue(shader.uniformLocation("color"), color);
+					GL->glDrawElements(GL_TRIANGLES, sphere.indices.size(), GL_UNSIGNED_INT, 0);
+				}
 			}
 			sphere.vao.release();
 			shader.release();
 		}
-		}
-	};
+	}
+};
 
 #endif
