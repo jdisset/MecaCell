@@ -1,6 +1,7 @@
 #ifndef CONNECTABLECELL_HPP
 #define CONNECTABLECELL_HPP
 #include <vector>
+#include <array>
 #include <sstream>
 #include <cmath>
 #include <cstdlib>
@@ -20,9 +21,8 @@ namespace MecaCell {
 template <typename Derived> class ConnectableCell : public Movable, public Orientable {
 protected:
 	using ConnectionType = Connection<Derived>;
-	int typeId = 0;    // current cell type id. Used for determining adhesion
 	bool dead = false; // is the cell dead or alive ?
-	vector<double> color = {0.75, 0.12, 0.07};
+	array<double, 3> color = {{0.75, 0.12, 0.07}};
 	double radius = DEFAULT_CELL_RADIUS;
 	double baseRadius = DEFAULT_CELL_RADIUS;
 	double stiffness = DEFAULT_CELL_STIFFNESS;
@@ -36,9 +36,15 @@ public:
 	ConnectableCell(Vec pos) : Movable(pos) { randomColor(); }
 
 	ConnectableCell(const Derived &c, const Vec &translation)
-	    : Movable(c.getPosition() + translation, c.mass), radius(c.radius) {
-		randomColor();
-	}
+	    : Movable(c.getPosition() + translation, c.mass),
+	      dead(false),
+	      color(c.color),
+	      radius(c.radius),
+	      baseRadius(c.baseRadius),
+	      stiffness(c.stiffness),
+	      dampRatio(c.dampRatio),
+	      angularStiffness(c.angularStiffness),
+	      tested(false) {}
 
 	double getRadius() const { return radius; }
 	double getBaseRadius() const { return baseRadius; }
@@ -71,7 +77,6 @@ public:
 	double getBaseVolume() const { return (4.0 / 3.0) * M_PI * baseRadius * baseRadius * baseRadius; }
 	double getVolume() const { return (4.0 / 3.0) * M_PI * radius * radius * radius; }
 	double getRelativeVolume() const { return getVolume() / getBaseVolume(); }
-	int getTypeId() const { return typeId; }
 
 	// return the connection length with another cell
 	// according to an adhesion coef (0 <= adh <= 1)
@@ -108,10 +113,9 @@ public:
 			if (sqdist <= sql) {
 				if (find(connectedCells.begin(), connectedCells.end(), c) == connectedCells.end()) {
 					// if those cells aren't already connected
-					// first we check if this connection would not go through an already connected cell
+					// we check if this connection would not go through an already connected cell
 					bool ok = true;
 					for (auto &con : connections) {
-						// Derived *otherCell = con->template getOtherNode<Derived, Derived>(selfptr());
 						Derived *otherCell = con->getNode0() == selfptr() ? con->getNode1() : con->getNode0();
 						Vec AO = otherCell->getPosition() - position;
 						double AOdotAB = AO.dot(AB);
@@ -132,7 +136,7 @@ public:
 						double l = getConnectionLength(c, minAdh);
 						double k = (stiffness * radius + c->stiffness * c->radius) / (radius + c->radius);
 						double dr = (dampRatio * radius + c->dampRatio * c->radius) / (radius + c->radius);
-						double maxTeta = mix(0.0, M_PI, minAdh);
+						double maxTeta = mix(0.0, M_PI / 2.0, minAdh);
 						ConnectionType *s = new Connection<Derived>(
 						    pair<Derived *, Derived *>(selfptr(), c),
 						    Spring(k, dampingFromRatio(dr, mass + c->mass, k), l),
@@ -157,25 +161,15 @@ public:
 	double getMomentOfInertia() const { return 4.0 * mass * radius * radius; }
 	double getAngularStiffness() const { return angularStiffness; }
 
+	// recomputes all connections sizes according to the the current size of the cell
+	// TODO : also change the stiffness / strength of a connection according to the adhesion area
+	//  (maybe directly from World?)
 	void updateAllConnections() {
-		// for (unsigned int i = 0; i < connections.size(); i++) {
-		// Connection<Derived>* co = connections[i];
-		// int otherId = co->getNode(0)->getParent() == this ? 1 : 0;
-		// Cell* otherCell = co->getNode(otherId)->getParent();
-		// double adh1 = 0;
-		// double adh0 = 0;
-		// double otherRadius = 0;
-		// if (otherCell != nullptr) {
-		// adh1 = otherCell->getCurrentState().getAdhesionWith(getCurrentState().getId());
-		// otherRadius = otherCell->getRadius();
-		// adh0 = getCurrentState().getAdhesionWith(otherCell->getCurrentState().getId());
-		//} else {
-		// adh1 = getCurrentState().getWallAdhesion();
-		// adh0 = adh1;
-		//}
-		// double minAdh = adh0 < adh1 ? adh0 : adh1;
-		// co->ls.l = getConnectionLength(getRadius() + otherRadius, minAdh);
-		//}
+		for (auto &con : connections) {
+			Derived *otherCell = con->getNode0() == selfptr() ? con->getNode1() : con->getNode0();
+			double adhCoef = (getAdhesionWith(otherCell) + otherCell->getAdhesionWith(selfptr())) * 0.5;
+			con->setBaseLength(getConnectionLength(otherCell, adhCoef));
+		}
 	}
 
 	Derived *divide() { return divide(Vec::randomUnit()); }
@@ -192,6 +186,7 @@ public:
 		double rv = getRelativeVolume() + qtty;
 		setVolume(getBaseVolume() * rv);
 		setMass(getBaseMass() * rv);
+		updateAllConnections();
 	}
 
 	void addConnection(Derived *c, Connection<Derived> *s) {
@@ -269,13 +264,6 @@ public:
 	void randomColor() {
 		double r0 = 0.0001 * (rand() % 10000);
 		double r1 = 0.0001 * (rand() % 10000);
-		// Vec col = hsvToRgb(r0 * 360.0, 0.5 + 0.5 * r1, 0.91);
-		// color[0] = col.x;
-		// color[1] = col.y;
-		// color[2] = col.z;
-		// color[0] = 0.65 + (0.2 * r1);
-		// color[1] = 0.0 + (0.1 * r0); // + (0.1 * r0);
-		// color[2] = 0.0 + 0.1 * r1;
 		if (false) {
 			if (r0 < 1.0 / 3.0) {
 				/// green
@@ -294,21 +282,9 @@ public:
 				color[2] = 0.7 + (0.2 * r0);
 			}
 		}
-		// color[0] = 0.05 * r1;
-		// color[1] = 0.6 + (0.1 * r1);
-		// color[2] = 0.7 + (0.2 * r0);
 		color[0] = 0.6 + (0.3 * r1);
 		color[1] = 0.3 * r1;
 		color[2] = 0.05 + (0.2 * r0);
-		// if (r0 < 0.5) {
-		// color[0] = 0.6 + (0.3 * r1);
-		// color[1] = 0.3 * r1;
-		// color[2] = 0.05 + (0.2 * r0);
-		//} else {
-		// color[0] = 0.05 * r1;
-		// color[1] = 0.6 + (0.1 * r1);
-		// color[2] = 0.7 + (0.2 * r0);
-		//}
 	}
 };
 }

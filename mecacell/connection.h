@@ -106,6 +106,7 @@ public:
 	N0 *getNode0() { return connected.first; }
 	N1 *getNode1() { return connected.second; }
 	float getLength() { return sc.length; }
+	void setBaseLength(const double d) { sc.l = d; }
 	Vec getDirection() { return sc.direction; }
 	template <typename R, typename T> R *getOtherNode(T *n) {
 		return n == connected.first ? connected.second : connected.first;
