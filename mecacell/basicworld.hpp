@@ -17,6 +17,7 @@ protected:
 	Grid<Cell> grid = Grid<Cell>(5.0 * DEFAULT_CELL_RADIUS);
 	bool cellCellCollisions = true;
 	Vec g = Vec::zero();
+	double viscosityCoef = 0.001;
 
 public:
 	using cell_type = Cell;
@@ -25,12 +26,18 @@ public:
 
 	// Raw pointers! Why?
 	// because it is impossible to use unique_ptr here
-	// because shared_ptr would be too slow
-	// because we would need to use a slower type of container if not using pointers
+	// because shared_ptr would slow down the app
 	// because it is not a difficult case of memory management
 	vector<Connection<Cell> *> connections;
 	vector<Cell *> cells;
-	// list<InfPlane<V>> infplanes;  // "walls"
+
+	/**********************************************
+	 *                 GET & SET                  *
+	 *********************************************/
+	Vec getG() const { return g; }
+	void setG(const Vec &v) { g = v; }
+	double getViscosityCoef() const { return viscosityCoef; }
+	void setViscosityCoef(const double d) { viscosityCoef = d; }
 
 	/**********************************************
 	 *             MAIN UPDATE ROUTINE            *
@@ -38,12 +45,7 @@ public:
 	void update() {
 		if (cells.size() > 0) {
 			resetForces();
-			// applyGravity();
 			computeForces();
-			// for (auto& p : infplanes) {
-			// p.updateCollisions();
-			// p.collisions(cells);
-			//}
 			updatePositionsAndOrientations();
 			if (cellCellCollisions) {
 				grid.clear();
@@ -68,10 +70,15 @@ public:
 	 ******************************/
 
 	void computeForces() {
+		// connections
 		for (auto &con : connections)
 			con->computeForces(dt);
+
 		for (auto &c : cells) {
-			c->receiveForce(-c->getVelocity() * 0.5);
+			// friction
+			c->receiveForce(-6.0 * M_PI * viscosityCoef * c->getRadius() * c->getVelocity());
+			// gravity
+			c->receiveForce(g);
 		}
 	}
 	void resetForces() {
@@ -230,10 +237,6 @@ public:
 				auto c = *i;
 				c->eraseAndDeleteAllConnections(connections);
 				i = cells.erase(i);
-				// deleting wall connections as well
-				// for (auto& p : infplanes) {
-				// p.deleteConnectionsToCell(c);
-				//}
 				delete c;
 			} else {
 				++i;
