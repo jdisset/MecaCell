@@ -307,8 +307,8 @@ public:
 			c->setVelocity(QV3D2Vec(camera.getViewVector() * 3000.0));
 			scenario.getWorld().addCell(c);
 		}
-		//if (selectedCell && pressedKeys.count(Qt::Key_M)) {
-			//selectedCell->startDivision();
+		// if (selectedCell && pressedKeys.count(Qt::Key_M)) {
+		// selectedCell->startDivision();
 		//}
 	}
 	Vec QV3D2Vec(const QVector3D &v) { return Vec(v.x(), v.y(), v.z()); }
@@ -334,7 +334,6 @@ public:
 	QVariantMap cellToQVMap(Cell *c) {
 		QVariantMap res;
 		if (c) {
-			res["Type ID"] = c->getTypeId();
 			res["Radius"] = c->getRadius();
 			res["Stiffness"] = c->getStiffness();
 			res["Volume"] = c->getVolume();
