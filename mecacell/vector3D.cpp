@@ -4,9 +4,11 @@
 #include <functional>
 #include <iostream>
 #include <sstream>
+#include <random>
 #include <cstdlib>
 #include "rotation.h"
 #include "quaternion.h"
+#include "tools.h"
 
 using namespace std;
 namespace MecaCell {
@@ -18,13 +20,10 @@ Vector3D Vector3D::cross(const Vector3D &v) const {
 }
 
 void Vector3D::random() {
-	double teta = rand() % 1000;
-	teta *= 0.002 * M_PI;
-	double phi = rand() % 1000;
-	phi *= 0.002 * M_PI;
-	x = cos(teta) * cos(phi);
-	y = cos(phi) * sin(teta);
-	z = sin(teta);
+	std::normal_distribution<double> nDist(0.0, 1.0);
+	x = nDist(globalRand);
+	y = nDist(globalRand);
+	z = nDist(globalRand);
 	normalize();
 }
 
