@@ -4,6 +4,7 @@
 #include <QDebug>
 #include <QOpenGLContext>
 #include "viewtools.h"
+bool culling = false;
 QOpenGLFunctions *GL = nullptr;
 QString shaderWithHeader(QString filename) {
 	int majorV = QOpenGLContext::currentContext()->format().majorVersion();

@@ -3,6 +3,9 @@
 #include "vector3D.h"
 #include "assert.h"
 #include <random>
+#include <string>
+#include <vector>
+#include <iostream>
 
 namespace MecaCell {
 typedef Vector3D Vec;
@@ -23,5 +26,6 @@ template <typename T> constexpr T mix(const T &a, const T &b, const double &c) {
 }
 Vec hsvToRgb(double h, double s, double v);
 extern std::default_random_engine globalRand;
+std::vector<std::string> splitStr(const std::string &s, char delim);
 }
 #endif

@@ -1,9 +1,10 @@
-#ifndef WORLD_H
-#define WORLD_H
+#ifndef MECACELL_WORLD_H
+#define MECACELL_WORLD_H
 #include <vector>
 #include <algorithm>
 #include "connection.h"
 #include "grid.hpp"
+#include "model.hpp"
 
 using namespace std;
 namespace MecaCell {
@@ -23,6 +24,7 @@ public:
 	using cell_type = Cell;
 	using integrator_type = Integrator;
 	using connect_type = Connection<Cell>;
+	using model_type = Model;
 
 	// Raw pointers! Why?
 	// because it is impossible to use unique_ptr here
@@ -30,6 +32,7 @@ public:
 	// because it is not a difficult case of memory management
 	vector<Connection<Cell> *> connections;
 	vector<Cell *> cells;
+	unordered_map<string, Model> models;
 
 	/**********************************************
 	 *                 GET & SET                  *
@@ -106,6 +109,13 @@ public:
 		}
 	}
 
+	/******************************
+	 *           MODELS           *
+	 ******************************/
+	void addModel(const string &name, const string &path, const Vec &position) {
+		models.emplace(name, path);
+		// models[models.size() - 1].translate(position);
+	}
 	/******************************
 	 *         COLLISIONS         *
 	 ******************************/

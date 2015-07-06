@@ -56,6 +56,7 @@ public:
 	bool worldUpdate = true;
 	bool loopStep = false;
 	set<int> pressedKeys;
+	set<int> inputKeys;
 	int mouseWheel = 0;
 	unique_ptr<SignalSlotRenderer> renderer = nullptr;
 	bool initialized = false;
@@ -73,7 +74,10 @@ public:
 	virtual void mouseDoubleClickEvent(QMouseEvent *event) { mouseDblClickedButtons |= event->button(); }
 	virtual void wheelEvent(QWheelEvent *) {}
 
-	virtual void keyPressEvent(QKeyEvent *event) { pressedKeys.insert(event->key()); }
+	virtual void keyPressEvent(QKeyEvent *event) {
+		pressedKeys.insert(event->key());
+		inputKeys.insert(event->key());
+	}
 	virtual void keyReleaseEvent(QKeyEvent *event) { pressedKeys.erase(event->key()); }
 
 signals:

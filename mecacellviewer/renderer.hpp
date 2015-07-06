@@ -4,6 +4,7 @@
 #include "cellgroup.hpp"
 #include "connectionsgroup.hpp"
 #include "camera.hpp"
+#include "model.hpp"
 #include "skybox.hpp"
 #include "renderquad.hpp"
 #include "blurquad.hpp"
@@ -25,6 +26,7 @@ private:
 	using Cell = typename World::cell_type;
 	using Vec = decltype(((Cell *)nullptr)->getPosition());
 	using ConnectType = typename World::connect_type;
+	using ModelType = typename World::model_type;
 
 	QQuickWindow *wndw;
 
@@ -44,6 +46,7 @@ private:
 	GLuint depthTex;
 	RenderQuad ssaoTarget;
 	BlurQuad blurTarget;
+	unordered_map<std::string, ModelViewer<ModelType>> modelViewers;
 
 	// Events
 	int mouseWheel = 0;
@@ -51,6 +54,7 @@ private:
 	QFlags<Qt::MouseButtons> mouseClickedButtons, mouseDblClickedButtons, mousePressedButtons;
 	QMap<QVariant, std::function<void()>> clickMethods;
 	set<int> pressedKeys;
+	set<int> inputKeys; // same as pressedKeys but true only once per press
 
 	// Stats
 	chrono::time_point<chrono::high_resolution_clock> t0, tfps;
@@ -108,6 +112,19 @@ public:
 			cells.draw(scenario.getWorld().cells, view, projection, camera.getViewVector(), camera.getPosition(),
 			           selectedCell);
 		}
+
+		for (auto &m : scenario.getWorld().models) {
+			if (!modelViewers.count(m.first)) {
+				modelViewers[m.first];
+				modelViewers[m.first].load(m.second);
+			}
+		}
+		for (auto &m : modelViewers) {
+			if (scenario.getWorld().models.count(m.first)) {
+				m.second.draw(view, projection, scenario.getWorld().models.at(m.first));
+			}
+		}
+
 		msaaFBO->release();
 		QOpenGLFramebufferObject::blitFramebuffer(ssaoFBO.get(), msaaFBO.get(),
 		                                          GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -159,6 +176,7 @@ public:
 	 ***********************************/
 	// called once just after the openGL context is created
 	virtual void initialize() {
+		scenario.init(argc, argv);
 		// gl functions
 		GL = QOpenGLContext::currentContext()->functions();
 		GL->initializeOpenGLFunctions();
@@ -190,7 +208,6 @@ public:
 		ssaoFBO->release();
 
 		// scenario
-		scenario.init(argc, argv);
 	}
 
 	/***********************************
@@ -210,7 +227,7 @@ public:
 		GL->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 		GL->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 		GL->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-		GL->glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, s.width(), s.height(), 0, GL_DEPTH_COMPONENT,
+		GL->glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT32, s.width(), s.height(), 0, GL_DEPTH_COMPONENT,
 		                 GL_UNSIGNED_INT, NULL);
 	}
 
@@ -310,7 +327,7 @@ public:
 		if (pressedKeys.count(Qt::Key_Right) || pressedKeys.count(Qt::Key_D)) {
 			camera.right(viewDt);
 		}
-		if (pressedKeys.count(Qt::Key_C)){ 
+		if (inputKeys.count(Qt::Key_C)) {
 			cut = !cut;
 		}
 		if (pressedKeys.count(Qt::Key_Space)) {

@@ -1,4 +1,5 @@
 #include "tools.h"
+#include <sstream>
 
 namespace MecaCell {
 
@@ -66,6 +67,16 @@ double dampingFromRatio(const double r, const double m, const double k) {
 	return r * 2.0 * sqrt(m * k); // for angular springs m is the moment of inertia
 }
 std::default_random_engine globalRand(std::random_device{}());
+
+std::vector<std::string> splitStr(const std::string &s, char delim) {
+	std::vector<std::string> res;
+	std::stringstream ss(s);
+	std::string st;
+	while (std::getline(ss, st, delim)) {
+		res.push_back(st);
+	}
+	return res;
+}
 
 double DEFAULT_CELL_DAMP_RATIO = 1.0;
 double DEFAULT_CELL_MASS = 1.0;

@@ -15,7 +15,7 @@
 
 using namespace std;
 class IcoSphere {
- public:
+public:
 	int iterations;
 	QOpenGLVertexArrayObject vao;
 	QOpenGLBuffer vbuf, nbuf, tanbuf, tbuf, bitanbuf, ibuf;
@@ -29,7 +29,6 @@ class IcoSphere {
 	vector<float> texCoords;
 
 	map<long long int, unsigned int> middlePointCache;
-	QVector3D specularColor;
 
 	void createTangents() {
 		for (size_t i = 0; i < vertices.size(); i += 3) {
@@ -78,10 +77,7 @@ class IcoSphere {
 
 	int getPolyCount() { return 12 * iterations * 4; }
 
-	IcoSphere(int i = 3)
-	    : iterations(i),
-	      ibuf(QOpenGLBuffer(QOpenGLBuffer::IndexBuffer)),
-	      specularColor(QVector3D(1.0, 0.7, 0.4)) {
+	IcoSphere(int i = 3) : iterations(i), ibuf(QOpenGLBuffer(QOpenGLBuffer::IndexBuffer)) {
 		middlePointCache.clear();
 
 		// init with an icosahedron
@@ -194,7 +190,6 @@ class IcoSphere {
 			}
 		}
 
-
 		// UV mapping
 		for (unsigned int j = 0; j < vertices.size(); j += 3) {
 			QVector3D d(vertices[j], vertices[j + 1], vertices[j + 2]);
@@ -232,16 +227,16 @@ class IcoSphere {
 			QVector2D v0 = getTexCoord(id0) - getTexCoord(id1);
 			QVector2D v1 = getTexCoord(id0) - getTexCoord(id2);
 			QVector2D v2 = getTexCoord(id1) - getTexCoord(id2);
-			if (v0.x() > threshold || v1.x() > threshold) {  // il faut changer 0
+			if (v0.x() > threshold || v1.x() > threshold) { // il faut changer 0
 				if (!corrected.count(id0)) {
 					corrected.insert(id0);
 					// on ajoute un nouveau sommet
 					// on linke 1 et 2 correctement à ce nouveau sommet
 				}
 			}
-			if (v0.x() < -threshold || v2.x() > threshold) {  // il faut changer 1
+			if (v0.x() < -threshold || v2.x() > threshold) { // il faut changer 1
 			}
-			if (v1.x() < -threshold || v2.x() < -threshold) {  // il faut changer 2
+			if (v1.x() < -threshold || v2.x() < -threshold) { // il faut changer 2
 			}
 		}
 	}

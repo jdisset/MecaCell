@@ -1,16 +1,21 @@
-
 uniform mat4 view;
 uniform mat4 model;
 uniform mat4 projection;
+uniform mat4 normalMatrix;
 
-in vec3 vertex;
+in vec3 position;
+in vec3 normal;
+in vec2 texCoord;
+
 out vec2 UV;
-out vec3 Scale;
+out vec3 surfacePosition;
+out vec3 normalInterp;
 
 void main(){
-	gl_Position = projection * view * model * vec4(vertex, 1);
-	Scale.x = length(model[0]);
-	Scale.y = length(model[1]);
-	Scale.z = length(model[2]);
-	UV = (vertex.xy+vec2(1.0,1.0))*0.5;
+	UV = texCoord;
+	mat4 mv = view*model;
+	vec4 vertPos4 = mv * vec4(position, 1.0);
+	gl_Position = projection * vertPos4;
+	surfacePosition = vec3(vertPos4) / vertPos4.w;
+	normalInterp = vec3(normalMatrix * vec4(normal,0.0));
 }
