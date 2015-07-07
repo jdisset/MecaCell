@@ -112,10 +112,7 @@ public:
 	/******************************
 	 *           MODELS           *
 	 ******************************/
-	void addModel(const string &name, const string &path, const Vec &position) {
-		models.emplace(name, path);
-		// models[models.size() - 1].translate(position);
-	}
+	void addModel(const string &name, const string &path) { models.emplace(name, path); }
 	/******************************
 	 *         COLLISIONS         *
 	 ******************************/

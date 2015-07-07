@@ -17,7 +17,7 @@ template <typename Model> struct ModelViewer {
 	void load(const Model &m) {
 
 		// extracting vertices, normals and uv (if available)
-		for (auto &v : m.obj.vertices) {
+		for (auto &v : m.vertices) {
 			vertices.push_back(v.x);
 			vertices.push_back(v.y);
 			vertices.push_back(v.z);
@@ -27,7 +27,6 @@ template <typename Model> struct ModelViewer {
 
 			assert(f.count("v") && f.count("n"));
 			for (auto &vid : f.at("v").indices) {
-				cerr << "vid = " << vid << endl;
 				assert(vid < m.obj.vertices.size());
 				indices.push_back(vid);
 			}
@@ -35,9 +34,9 @@ template <typename Model> struct ModelViewer {
 			for (int id = 0; id < 3; ++id) {
 				size_t vid = f.at("v").indices[id];
 				size_t nid = f.at("n").indices[id];
-				normals[vid * 3 + 0] = m.obj.normals[nid].x;
-				normals[vid * 3 + 1] = m.obj.normals[nid].y;
-				normals[vid * 3 + 2] = m.obj.normals[nid].z;
+				normals[vid * 3 + 0] = m.normals[nid].x;
+				normals[vid * 3 + 1] = m.normals[nid].y;
+				normals[vid * 3 + 2] = m.normals[nid].z;
 			}
 		}
 
@@ -84,8 +83,6 @@ template <typename Model> struct ModelViewer {
 		shader.bind();
 		vao.bind();
 		QMatrix4x4 model;
-		model.translate(0, -2500, 0);
-		model.scale(5000.0, 5000.0, 5000.0);
 		shader.setUniformValue(shader.uniformLocation("projection"), projection);
 		shader.setUniformValue(shader.uniformLocation("view"), view);
 		shader.setUniformValue(shader.uniformLocation("model"), model);
