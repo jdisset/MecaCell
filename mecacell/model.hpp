@@ -21,7 +21,6 @@ public:
 	}
 	void translate(const Vec &t) {
 		transformation.translate(t);
-		cerr << "transformation = " << transformation << endl;
 		updateFromTransformation();
 	}
 	void rotate(const Rotation<Vec> &r) {

@@ -8,8 +8,6 @@ void Matrix4x4::scale(const Vec &s) {
 }
 void Matrix4x4::translate(const Vec &v) {
 	Matrix4x4 t({{{{1, 0, 0, v.x}}, {{0, 1, 0, v.y}}, {{0, 0, 1, v.z}}, {{0, 0, 0, 1}}}});
-	cerr << " t = " << t << endl;
-	cerr << " this = " << *this << endl;
 	*this = t * (*this);
 }
 
