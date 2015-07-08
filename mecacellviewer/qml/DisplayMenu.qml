@@ -59,6 +59,24 @@ Item {
 						else removeOptionInCtrl("visibleElements", "centers");
 					}
 				}
+				CheckableButton {
+					checked: false
+					id: viewCellGrid
+					legend: "Cells grid"
+					onToggled: {
+						if (checked) pushUniqueOptionInCtrl("visibleElements", "cellGrid");
+						else removeOptionInCtrl("visibleElements", "cellGrid");
+					}
+				}
+				CheckableButton {
+					checked: false
+					id: viewModelGrid
+					legend: "Models grid"
+					onToggled: {
+						if (checked) pushUniqueOptionInCtrl("visibleElements", "modelGrid");
+						else removeOptionInCtrl("visibleElements", "modelGrid");
+					}
+				}
 			}
 		}
 	}

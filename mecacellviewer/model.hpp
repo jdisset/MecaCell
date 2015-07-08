@@ -86,6 +86,8 @@ template <typename Model> struct ModelViewer {
 		shader.setUniformValue(shader.uniformLocation("projection"), projection);
 		shader.setUniformValue(shader.uniformLocation("view"), view);
 		shader.setUniformValue(shader.uniformLocation("model"), model);
+		QVector4D color(0.9, 0.9, 0.9, 1.0);
+		shader.setUniformValue(shader.uniformLocation("color"), color);
 		QMatrix4x4 nmatrix = model.inverted().transposed();
 		shader.setUniformValue(shader.uniformLocation("normalMatrix"), nmatrix);
 		GL->glDisable(GL_CULL_FACE);

@@ -23,6 +23,7 @@
 		<file>shaders/ssao.frag</file>
 		<file>shaders/line.frag</file>
 		<file>shaders/model.frag</file>
+		<file>shaders/flat.frag</file>
 		<file>shaders/viewprojection.vert</file>
 		<file>shaders/line.geom</file>
 		<file>shaders/billboard.vert</file>

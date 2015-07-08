@@ -19,10 +19,11 @@ template <typename Scenario> class Viewer {
 public:
 	Viewer() {
 		initResources();
-// for mac osx
 #if __APPLE__
 #include "TargetConditionals.h"
 #if TARGET_OS_MAC
+		// compatibility profile is not available on mac os...
+		// we have to use a core profile
 		QSurfaceFormat f;
 		f.setProfile(QSurfaceFormat::CoreProfile);
 		f.setVersion(3, 3);
@@ -34,7 +35,6 @@ public:
 	int exec(int argc, char **argv) {
 		QGuiApplication app(argc, argv);
 		app.setQuitOnLastWindowClosed(true);
-		// init qml app
 		qmlRegisterType<SignalSlotBase>("SceneGraphRendering", 1, 0, "Renderer");
 		QQuickView view;
 		view.setSource(QUrl("qrc:/main.qml"));

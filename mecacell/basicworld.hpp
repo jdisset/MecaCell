@@ -4,7 +4,7 @@
 #include <algorithm>
 #include "connection.h"
 #include "grid.hpp"
-#include "model.hpp"
+#include "model.h"
 
 using namespace std;
 namespace MecaCell {
@@ -16,6 +16,7 @@ protected:
 	int frame = 0;
 	vector<Cell *> cellsToDestroy;
 	Grid<Cell> grid = Grid<Cell>(5.0 * DEFAULT_CELL_RADIUS);
+	Grid<ModelFace> modelGrid = Grid<ModelFace>(5.0 * DEFAULT_CELL_RADIUS);
 	bool cellCellCollisions = true;
 	Vec g = Vec::zero();
 	double viscosityCoef = 0.001;
@@ -39,6 +40,8 @@ public:
 	 *********************************************/
 	Vec getG() const { return g; }
 	void setG(const Vec &v) { g = v; }
+	const Grid<Cell>& getCellGrid(){return grid;}
+	const Grid<ModelFace>& getModelGrid(){return modelGrid;}
 	double getViscosityCoef() const { return viscosityCoef; }
 	void setViscosityCoef(const double d) { viscosityCoef = d; }
 
@@ -84,12 +87,14 @@ public:
 			c->receiveForce(g);
 		}
 	}
+
 	void resetForces() {
 		for (auto cIt = cells.begin(); cIt < cells.end(); ++cIt) {
 			(*cIt)->resetForce();
 			(*cIt)->resetTorque();
 		}
 	}
+
 	void applyGravity() {
 		for (auto cIt = cells.begin(); cIt < cells.end(); ++cIt)
 			(*cIt)->receiveForce(g * (*cIt)->getMass());

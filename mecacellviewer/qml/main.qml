@@ -80,7 +80,7 @@ Item {
 		anchors.top: parent.top
 		height: parent.height
 		color: background
-		//color:"transparent" 
+			//color:"transparent" 
 		width: 200
 		Image {
 			id: logo
@@ -257,11 +257,4 @@ Item {
 		z: -1
 	}
 
-	Timer {
-		id: updtDisplayTimer
-		interval: 1000 / 60;running: true;repeat: true
-		onTriggered: {
-			glview.callUpdate();
-		}
-	}
 }

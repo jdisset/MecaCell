@@ -21,7 +21,7 @@ Rectangle {
 		width: height
 		id: lbl
 		Text {
-			text: checked ? "\uf14a" : "\uf0c8"
+			text: checked ? "\uf05d" : "\uf111"
 			color: checked ? selecColor : notselecIconColor
 			font.family: fontawesome.name
 			font.pointSize: 15

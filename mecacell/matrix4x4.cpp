@@ -1,4 +1,4 @@
-#include "matrix4x4.hpp"
+#include "matrix4x4.h"
 #include <iomanip>
 
 namespace MecaCell {

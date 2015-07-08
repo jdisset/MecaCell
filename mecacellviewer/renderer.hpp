@@ -8,6 +8,7 @@
 #include "skybox.hpp"
 #include "renderquad.hpp"
 #include "blurquad.hpp"
+#include "gridviewer.hpp"
 #include <type_traits>
 #include <QThread>
 #include <cmath>
@@ -28,8 +29,6 @@ private:
 	using ConnectType = typename World::connect_type;
 	using ModelType = typename World::model_type;
 
-	QQuickWindow *wndw;
-
 	// Scenario
 	int argc;
 	char **argv;
@@ -46,6 +45,7 @@ private:
 	GLuint depthTex;
 	RenderQuad ssaoTarget;
 	BlurQuad blurTarget;
+	GridViewer gridViewer;
 	unordered_map<std::string, ModelViewer<ModelType>> modelViewers;
 
 	// Events
@@ -112,6 +112,14 @@ public:
 			cells.draw(scenario.getWorld().cells, view, projection, camera.getViewVector(), camera.getPosition(),
 			           selectedCell);
 		}
+		if (gc.contains("cellGrid")) {
+			gridViewer.draw(scenario.getWorld().getCellGrid(), view, projection,
+			                              QVector4D(0.99, 0.9, 0.4, 1.0));
+		}
+		if (gc.contains("modelGrid")) {
+			gridViewer.draw(scenario.getWorld().getModelGrid(), view, projection,
+			                               QVector4D(0.9, 0.9, 0.9, 1.0));
+		}
 
 		for (auto &m : scenario.getWorld().models) {
 			if (!modelViewers.count(m.first)) {
@@ -169,6 +177,7 @@ public:
 		viewDt = dv.count();
 		t0 = chrono::high_resolution_clock::now();
 		++frame;
+		if (window) window->update();
 	}
 
 	/***********************************
@@ -187,6 +196,7 @@ public:
 		skybox.load();
 		ssaoTarget.load(":/shaders/dumb.vert", ":/shaders/ssao.frag");
 		blurTarget.load(":/shaders/dumb.vert", ":/shaders/blur.frag", viewportSize * screenCoef);
+		gridViewer.load(":/shaders/mvp.vert", ":/shaders/flat.frag");
 
 		// fbos
 		ssaoFormat.setAttachment(QOpenGLFramebufferObject::Depth);
@@ -397,99 +407,6 @@ public:
 		}
 		selectedCell = res;
 	}
-	/***********************************
-	 *              EVENTS              *
-	 ***********************************/
-	// void processEvents() {
-	// switch (clicked) {
-	// case middleButton:
-	// selectedCell = pickCell();
-	// if (selectedCell != nullptr && DIM == 2) {
-	//// camera.translate(toQV3D(selectedCell->getCenter()->getPosition()*SCALE)-camera.getTarget());
-	//}
-	// break;
-	// default:
-	// break;
-	//}
-	//// wheel
-	// if (DIM == 2)
-	// camera.move(0, 0, -mouseWheel * 0.00007 * camera.getPosition().z());
-	// else
-	// camera.move(0, 0, mouseWheel * 0.01 * (camera.getPosition() - camera.getTarget()).length());
-	// mouseWheel = 0;
-	//// mouse pressed
-	// if (mousePressed[rightButton]) {
-	// dragSelectedCell();
-	//}
-	//// pressed Key
-	// if (pressedKey != Qt::Key_unknown) {
-	// if (pressedKey == Qt::Key_D && selectedCell != nullptr) {
-	// selectedCell->setCycleStep(division);
-	//}
-	// if (pressedKey == Qt::Key_C && DIM == 3 && selectedCell != nullptr) {
-	// camera.setTarget(toQV3D(selectedCell->getCenter()->getPosition() * SCALE));
-	//// selectedCell->setCycleStep(division);
-	//}
-	// if (pressedKey == Qt::Key_X || pressedKey == Qt::Key_Space) {
-	// float coef = pressedKey == Qt::Key_X ? 0.0 : 500.0;
-	// QVector3D p = camera.getPosition();
-	// p += camera.getViewVector().normalized() * 40;
-	// VDIM pv(p.x(), p.y(), p.z());
-	// Cell<VDIM>* ncell = new Cell<VDIM>(pv / SCALE, dnas[0]);
-	// QVector3D speed = camera.getViewVector().normalized() * coef / SCALE;
-	// ncell->getCenter()->setSpeed(VDIM(speed.x(), speed.y(), speed.z()));
-	// world.addCell(ncell);
-	//}
-	// if (pressedKey == Qt::Key_P) {
-	// pause = !pause;
-	//}
-	// if (pressedKey == Qt::Key_N) {
-	// nextStep = true;
-	//}
-	// if (pressedKey == Qt::Key_R) {
-	// for (unsigned int i = 0; i < world.m_cells.size(); i++) {
-	// world.m_cells[i]->getCenter()->resetSpeed();
-	// world.m_cells[i]->getCenter()->setAngularVelocity(0);
-	// world.m_cells[i]->getCenter()->resetAngularAcceleration();
-	//}
-	//}
-	// pressedKey = Qt::Key_unknown;
-	//}
-	//// movement
-	// if (mouseMovements[leftButton] != QVector2D(0, 0)) {
-	// QVector2D m = mouseMovements[leftButton];
-	// if (DIM == 3)
-	// camera.moveAroundTarget(-m.x(), m.y());
-	// else {
-	// float h = camera.getPosition().z();
-	// float coef = 0.001 * h;
-	// camera.translate(QVector3D(coef * m.x(), coef * m.y(), 0));
-	//}
-	// mouseMovements[leftButton] = QVector2D(0, 0);
-	//}
-	//}
-
-	////void dragSelectedCell() {
-	////if (selectedCell != nullptr) {
-	////QVector2D mouseNDC(2.0 * mouse.x() / (float)viewportSize.width() - 1.0,
-	////-((2.0 * (float)mouse.y()) / (float)viewportSize.height() - 1.0));
-	// QVector4D rayEye =
-	// camera.getProjectionMatrix((float)viewportSize.width() / (float)viewportSize.height()).inverted() *
-	// QVector4D(mouseNDC, -1.0, 1.0);
-	// rayEye = QVector4D(rayEye.x(), rayEye.y(), -1.0, 0.0);
-	// QVector4D ray = camera.getViewMatrix().inverted() * rayEye;
-	// QVector3D l(ray.x(), ray.y(), ray.z());
-	// QVector3D l0 = camera.getPosition();
-	// QVector3D p0 = toQV3D(selectedCell->getCenter()->getPosition() * SCALE);
-	// QVector3D n = camera.getOrientation();
-	// if (QVector3D::dotProduct(l, n) != 0) {
-	// float d = (QVector3D::dotProduct((p0 - l0), n)) / QVector3D::dotProduct(l, n);
-	// QVector3D projectedPos = l0 + d * l;
-	// projectedPos /= SCALE;
-	// selectedCell->getCenter()->setPosition(VDIM(projectedPos.x(), projectedPos.y(), projectedPos.z()));
-	//}
-	//}
-	//}
 };
 }
 #endif

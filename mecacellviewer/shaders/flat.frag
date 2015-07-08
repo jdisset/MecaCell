@@ -13,7 +13,7 @@ struct DirectionalLight {
 };
 
 const int nbLights = 3;
-const float shininess = 8.0;
+const float shininess = 28.0;
 const float screenGamma = 2.2;
 
 
@@ -32,7 +32,9 @@ void main(){
 	lights[2].color = vec3(0.56,0.65,1.0);
 	lights[2].intensity = 0.42;
 
-	vec3 normal = normalize(normalInterp);
+	vec3 X = dFdx(surfacePosition);
+	vec3 Y = dFdy(surfacePosition);
+	vec3 normal=normalize(cross(X,Y));
 
 
 	vec4 colorLinear;
@@ -56,7 +58,9 @@ void main(){
 
 
 		vec4 specColor = vec4(1.0);
+		specColor.a = modelDiffuseColor.a;
 		colorLinear += modelAmbientColor + lambertian * modelDiffuseColor * vec4(lights[i].color,1.0) * lights[i].intensity +	specular * specColor * lights[i].intensity;
 	}
 	fragColor = vec4(pow(colorLinear.rgb, vec3(1.0/screenGamma)),colorLinear.a);
 }
+
