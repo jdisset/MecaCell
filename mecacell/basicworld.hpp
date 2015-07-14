@@ -1,7 +1,9 @@
 #ifndef MECACELL_WORLD_H
 #define MECACELL_WORLD_H
+#include <deque>
 #include <vector>
 #include <algorithm>
+#include <map>
 #include "connection.h"
 #include "grid.hpp"
 #include "model.h"
@@ -12,27 +14,45 @@ template <typename Cell, typename Integrator> class BasicWorld {
 
 protected:
 	Integrator updateCellPos;
+
 	double dt = 1.0 / 45.0;
+
+	// current update ID
 	int frame = 0;
+
+	// list of cells having commited apoptosis
 	vector<Cell *> cellsToDestroy;
-	Grid<Cell> grid = Grid<Cell>(5.0 * DEFAULT_CELL_RADIUS);
-	Grid<ModelFace> modelGrid = Grid<ModelFace>(150);
+
+	// hashmap containing cells
+	Grid<Cell *> grid = Grid<Cell *>(5.0 * DEFAULT_CELL_RADIUS);
+
+	// model grid containting pair<model_ptr, face_id>
+	Grid<pair<Model *, size_t>> modelGrid = Grid<pair<Model *, size_t>>(150);
+
+	// enabled collisions
 	bool cellCellCollisions = true;
+	bool cellModelCollisions = true;
+
+	// physics parameters
 	Vec g = Vec::zero();
 	double viscosityCoef = 0.001;
 
 public:
 	using cell_type = Cell;
 	using integrator_type = Integrator;
-	using connect_type = Connection<Cell>;
+	using connect_type = Connection<Cell *>;
 	using model_type = Model;
 
 	// Raw pointers! Why?
 	// because it is impossible to use unique_ptr here
 	// because shared_ptr would slow down the app
 	// because it is not a difficult case of memory management
-	vector<Connection<Cell> *> connections;
+	deque<connect_type *> connections;
 	vector<Cell *> cells;
+	unordered_map<string, map<pair<Cell *, size_t>, Connection<ModelConnectionPoint, Cell>>>
+	    cellModelConnections;
+	// cellModelConnections :
+	// modelName -> [ {Cell_ptr, faceId} -> connection ]
 	unordered_map<string, Model> models;
 
 	/**********************************************
@@ -40,8 +60,8 @@ public:
 	 *********************************************/
 	Vec getG() const { return g; }
 	void setG(const Vec &v) { g = v; }
-	const Grid<Cell> &getCellGrid() { return grid; }
-	const Grid<ModelFace> &getModelGrid() { return modelGrid; }
+	const Grid<Cell *> &getCellGrid() { return grid; }
+	const Grid<pair<Model *, size_t>> &getModelGrid() { return modelGrid; }
 	double getViscosityCoef() const { return viscosityCoef; }
 	void setViscosityCoef(const double d) { viscosityCoef = d; }
 
@@ -49,23 +69,14 @@ public:
 	 *             MAIN UPDATE ROUTINE            *
 	 *********************************************/
 	void update() {
-		bool modelChange = false;
-		for (auto &m : models) {
-			if (m.second.changedSinceLastCheck()) {
-				modelChange = true;
-			}
-		}
-		if (modelChange) {
-			modelGrid.clear();
-			for (auto &m : models) {
-				insertInGrid(m.second);
-			}
-		}
 
 		if (cells.size() > 0) {
 			resetForces();
 			computeForces();
 			updatePositionsAndOrientations();
+			if (cellModelCollisions) {
+				performCellModelCollisions();
+			}
 			if (cellCellCollisions) {
 				grid.clear();
 				for (const auto &c : cells)
@@ -130,21 +141,59 @@ public:
 	/******************************
 	 *           MODELS           *
 	 ******************************/
-	void addModel(const string &name, const string &path) { models.emplace(name, path); }
+	void addModel(const string &name, const string &path) {
+		models.emplace(name, path);
+		models.at(name).name = name;
+	}
 
 	void insertInGrid(Model &m) {
-		for (auto &f : m.faces) {
-			modelGrid.insert(&f, m.vertices[f.t.indices[0]], m.vertices[f.t.indices[1]],
-			                 m.vertices[f.t.indices[2]]);
+		for (size_t i = 0; i < m.faces.size(); ++i) {
+			auto &f = m.faces[i];
+			modelGrid.insert({&m, i}, m.vertices[f.indices[0]], m.vertices[f.indices[1]], m.vertices[f.indices[2]]);
 		}
 	}
 	/******************************
 	 *         COLLISIONS         *
 	 ******************************/
+	void performCellModelCollisions() {
+		bool modelChange = false;
+		for (auto &m : models) {
+			if (m.second.changedSinceLastCheck()) {
+				modelChange = true;
+			}
+		}
+		if (modelChange) {
+			modelGrid.clear();
+			for (auto &m : models) {
+				insertInGrid(m.second);
+			}
+		}
+		for (auto &c : cells) {
+			vector<pair<Model *, size_t>> toTest = modelGrid.retrieve(c->getPosition(), c->getRadius());
+			for (const auto &mf : toTest) {
+				// checking if cell c is in contact with model face mf
+				const Vec &p0 = mf.first->vertices[mf.first->faces[mf.second].indices[0]];
+				const Vec &p1 = mf.first->vertices[mf.first->faces[mf.second].indices[1]];
+				const Vec &p2 = mf.first->vertices[mf.first->faces[mf.second].indices[2]];
+				pair<bool, Vec> projec = projectionIntriangle(p0, p1, p2, c->getPosition());
+				if (projec.first && (c->getPosition() - projec.second).sqlength() < pow(c->getRadius(), 2)) {
+					// collision
+					cerr << "collision !" << endl;
+					if (!cellModelConnections.count(mf.first->name) ||
+					    !cellModelConnections.at(mf.first->name).count({c, mf.second})) {
+						// new collision
+						cerr << "new collision" << endl;
+						// cellModelConnections[mf.first->name].emplace({c,mf.second}, {
+					}
+				}
+			}
+		}
+	}
+
 	void cellCollisions() {
 		for (auto &c : cells) {
 			vector<Cell *> toTest = grid.retrieve(c);
-			Connection<Cell> *s = nullptr;
+			connect_type *s = nullptr;
 			for (const auto &c2 : toTest) {
 				if (!c2->alreadyTested()) {
 					c->connection(c2, connections);
@@ -156,7 +205,7 @@ public:
 
 	void deleteImpossibleConnections() {
 		// erase and delete connections longer than their max length
-		connections.erase(remove_if(connections.begin(), connections.end(), [&](Connection<Cell> *c) {
+		connections.erase(remove_if(connections.begin(), connections.end(), [&](connect_type *c) {
 			                  double maxL = c->getNode0()->getRadius() + c->getNode1()->getRadius();
 			                  if (c->getLength() > maxL) {
 				                  c->getNode0()->removeConnection(c->getNode1(), c);
@@ -173,11 +222,11 @@ public:
 	// deleteOverlapingConnections
 	// deletes all connections going through cells
 	void deleteOverlapingConnections(Cell *cell) {
-		vector<Connection<Cell> *> &vec = cell->getRWConnections();
+		deque<connect_type *> &vec = cell->getRWConnections();
 		for (auto c0It = vec.begin(); c0It < vec.end();) {
 			bool deleted = false; // tells if c0 was deleted inside the inner loop (so we know
 			                      // if we have to increment c0It)
-			Connection<Cell> *c0 = *c0It;
+			connect_type *c0 = *c0It;
 			if (c0->getNode1() != nullptr) { // if this is not a wall connection
 				Vec c0dir;
 				Cell *other0 = nullptr;
@@ -194,7 +243,7 @@ public:
 				Vec c0v = c0dir * c0->getLength();
 				double c0SqLength = pow(c0->getLength(), 2);
 				for (auto c1It = c0It + 1; c1It < vec.end();) {
-					Connection<Cell> *c1 = *c1It;
+					connect_type *c1 = *c1It;
 					if (c1->getNode1() != nullptr) {
 						Vec c1dir;
 						Cell *other1 = nullptr;

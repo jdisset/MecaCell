@@ -1,6 +1,7 @@
 #ifndef CONNECTABLECELL_HPP
 #define CONNECTABLECELL_HPP
 #include <vector>
+#include <deque>
 #include <array>
 #include <sstream>
 #include <cmath>
@@ -20,7 +21,7 @@ using namespace std;
 namespace MecaCell {
 template <typename Derived> class ConnectableCell : public Movable, public Orientable {
 protected:
-	using ConnectionType = Connection<Derived>;
+	using ConnectionType = Connection<Derived *>;
 	bool dead = false; // is the cell dead or alive ?
 	array<double, 3> color = {{0.75, 0.12, 0.07}};
 	double radius = DEFAULT_CELL_RADIUS;
@@ -29,8 +30,8 @@ protected:
 	double dampRatio = DEFAULT_CELL_DAMP_RATIO;
 	double angularStiffness = DEFAULT_CELL_ANG_STIFFNESS;
 	bool tested = false; // has already been tested for collision
-	vector<ConnectionType *> connections;
-	vector<Derived *> connectedCells;
+	deque<ConnectionType *> connections;
+	deque<Derived *> connectedCells;
 
 public:
 	ConnectableCell(Vec pos) : Movable(pos) { randomColor(); }
@@ -53,7 +54,7 @@ public:
 		if (i < 3) return color[i];
 		return 0;
 	}
-	const std::vector<Derived *> &getConnectedCells() const { return connectedCells; }
+	const std::deque<Derived *> &getConnectedCells() const { return connectedCells; }
 	double getPressure() const {
 		double surface = 4.0f * M_PI * radius * radius;
 		return totalForce / surface;
@@ -98,12 +99,12 @@ public:
 	// Don't forget to implement this method in the derived class
 	double getAdhesionWith(const Derived *d) { return self().getAdhesionWith(d); }
 
-	vector<Connection<Derived> *> &getRWConnections() { return connections; }
+	deque<ConnectionType *> &getRWConnections() { return connections; }
 
 	/******************************
 	 * connections
 	 *****************************/
-	void connection(Derived *c, vector<ConnectionType *> &worldConnexions) {
+	void connection(Derived *c, deque<ConnectionType *> &worldConnexions) {
 		if (c != this) {
 			Vec AB = c->position - position;
 			double sqdist = AB.sqlength();
@@ -137,7 +138,7 @@ public:
 						double k = (stiffness * radius + c->stiffness * c->radius) / (radius + c->radius);
 						double dr = (dampRatio * radius + c->dampRatio * c->radius) / (radius + c->radius);
 						double maxTeta = mix(0.0, M_PI / 2.0, minAdh);
-						ConnectionType *s = new Connection<Derived>(
+						ConnectionType *s = new ConnectionType(
 						    pair<Derived *, Derived *>(selfptr(), c),
 						    Spring(k, dampingFromRatio(dr, mass + c->mass, k), l),
 						    make_pair(Joint(getAngularStiffness(),
@@ -189,7 +190,7 @@ public:
 		updateAllConnections();
 	}
 
-	void addConnection(Derived *c, Connection<Derived> *s) {
+	void addConnection(Derived *c, ConnectionType *s) {
 		connections.push_back(s);
 		c->connections.push_back(s);
 		connectedCells.push_back(c);
@@ -205,9 +206,9 @@ public:
 
 	// erase connection with a cell (calls deleteConnection(c,s))
 	void removeConnection(Derived *c) {
-		Connection<Derived> *s = nullptr;
+		ConnectionType *s = nullptr;
 		for (unsigned int i = 0; i < connections.size(); i++) {
-			Connection<Derived> *co = connections[i];
+			ConnectionType *co = connections[i];
 			if ((co->getNode1() == this && co->getNode0() == c) ||
 			    (co->getNode1() == c && co->getNode0() == this)) {
 				s = co;
@@ -219,7 +220,7 @@ public:
 
 	// erase connection S with cell C from the connections and connectedCells containers
 	// destructors are not called
-	void removeConnection(Derived *c, Connection<Derived> *s) {
+	void removeConnection(Derived *c, ConnectionType *s) {
 		assert(c);
 		eraseCell(c);
 		c->eraseCell(selfptr());
@@ -228,13 +229,13 @@ public:
 	}
 
 	// erase connection s f the connections container
-	void eraseConnection(Connection<Derived> *s) {
+	void eraseConnection(ConnectionType *s) {
 		connections.erase(remove(connections.begin(), connections.end(), s), connections.end());
 	}
 
-	void eraseAndDeleteAllConnections(vector<Connection<Derived> *> &aux) {
+	void eraseAndDeleteAllConnections(std::deque<ConnectionType *> &aux) {
 		for (auto cIt = connections.begin(); cIt != connections.end();) {
-			Connection<Derived> *sp = *cIt;
+			ConnectionType *sp = *cIt;
 			auto otherCell = sp->getNode0() == this ? sp->getNode1() : sp->getNode0();
 			if (otherCell != nullptr) {
 				aux.erase(remove(aux.begin(), aux.end(), sp), aux.end());

@@ -11,23 +11,23 @@ namespace MecaCell {
 template <typename O> class Grid {
 private:
 	double cellSize; // actually it's 1/cellSize, just so we can multiply
-	unordered_map<Vec, vector<O *>> um;
+	unordered_map<Vec, vector<O>> um;
 
 public:
 	Grid(double cs) : cellSize(1.0 / cs) {}
 
 	double getCellSize() const { return 1.0 / cellSize; }
-	const unordered_map<Vec, vector<O *>> &getContent() const { return um; }
+	const unordered_map<Vec, vector<O>> &getContent() const { return um; }
 
-	void insert(O *obj) {
-		Vec center = obj->getPosition() * cellSize;
-		double radius = obj->getRadius() * cellSize;
+	void insert(const O &obj) {
+		Vec center = ptr(obj)->getPosition() * cellSize;
+		double radius = ptr(obj)->getRadius() * cellSize;
 		Vec minCorner = center - radius;
 		Vec maxCorner = center + radius;
 		minCorner.iterateTo(maxCorner, [&](Vec v) { um[v].push_back(obj); });
 	}
 
-	void insert(O *obj, const Vec &p0, const Vec &p1, const Vec &p2) { // insert triangles
+	void insert(const O &obj, const Vec &p0, const Vec &p1, const Vec &p2) { // insert triangles
 		Vec n = p0.cross(p1).normalized();
 		Vec blf(min(p0.x, min(p1.x, p2.x)), min(p0.y, min(p1.y, p2.y)), min(p0.z, min(p1.z, p2.z)));
 		Vec trb(max(p0.x, max(p1.x, p2.x)), max(p0.y, max(p1.y, p2.y)), max(p0.z, max(p1.z, p2.z)));
@@ -48,8 +48,8 @@ public:
 		return Vec(floor(res.x), floor(res.y), floor(res.z));
 	}
 
-	vector<O *> retrieve(const Vec &coord, double r) const {
-		vector<O *> res;
+	vector<O> retrieve(const Vec &coord, double r) const {
+		vector<O> res;
 		Vec center = coord * cellSize;
 		double radius = r * cellSize;
 		Vec minCorner = center - radius;
@@ -61,10 +61,10 @@ public:
 		return res;
 	}
 
-	vector<O *> retrieve(O *obj) const {
-		vector<O *> res;
-		Vec center = obj->getPosition() * cellSize;
-		double radius = obj->getRadius() * cellSize;
+	vector<O> retrieve(const O &obj) const {
+		vector<O> res;
+		Vec center = ptr(obj)->getPosition() * cellSize;
+		double radius = ptr(obj)->getRadius() * cellSize;
 		Vec minCorner = center - radius;
 		Vec maxCorner = center + radius;
 		minCorner.iterateTo(maxCorner, [this, &res](const Vec &v) {

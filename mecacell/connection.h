@@ -64,51 +64,53 @@ struct Joint {
 // - Rotation getOrientationRotation()
 // - double getInertia()
 // - void receiveForce(double intensity, Vec direction, bool compressive)
-// - void receiveAngularAcceleration(Vec acc)
+// - void receiveTorque(Vec acc)
 template <typename N0, typename N1 = N0> class Connection {
 private:
 	bool scEnabled = true, fjEnabled = true, tjEnabled = true;
-	pair<N0 *, N1 *> connected; // the two connected nodes
-	Spring sc;                  // basic spring
-	pair<Joint, Joint> fj, tj;  // flexure and torsion joints (1 per node)
+	pair<N0, N1> connected;    // the two connected nodes
+	Spring sc;                 // basic spring
+	pair<Joint, Joint> fj, tj; // flexure and torsion joints (1 per node)
 
 public:
 	/**********************************************
 	 *               CONSTRUCTOR
 	 **********************************************/
-	Connection(const pair<N0 *, N1 *> &n, const Spring &SC, const pair<Joint, Joint> &FJ,
+	Connection(const pair<N0, N1> &n, const Spring &SC, const pair<Joint, Joint> &FJ,
 	           const pair<Joint, Joint> &TJ)
 	    : connected{n}, sc(SC), fj(FJ), tj(TJ) {
-		sc.updateLengthDirection(connected.first->getPosition(), connected.second->getPosition());
+		sc.updateLengthDirection(ptr(connected.first)->getPosition(), ptr(connected.second)->getPosition());
 		sc.prevLength = sc.length;
 		Vec ortho = sc.direction.ortho();
 		// rotations for joints (cell base to connection) =
 		// cellBasis -> worldBasis + worldBasis -> connectionBasis
-		fj.first.r = connected.first->getOrientationRotation().inverted() +
+		fj.first.r = ptr(connected.first)->getOrientationRotation().inverted() +
 		             Vec::getRotation(Basis<Vec>(), Basis<Vec>(sc.direction, ortho));
-		fj.second.r = connected.second->getOrientationRotation().inverted() +
+		fj.second.r = ptr(connected.second)->getOrientationRotation().inverted() +
 		              Vec::getRotation(Basis<Vec>(), Basis<Vec>(-sc.direction, ortho));
 		tj.first.r = fj.first.r;
 		tj.second.r = fj.second.r;
 
 		// joint current direction
-		fj.first.updateDirection(connected.first->getOrientation().X, connected.first->getOrientationRotation());
-		fj.second.updateDirection(connected.second->getOrientation().X,
-		                          connected.second->getOrientationRotation());
-		tj.first.updateDirection(connected.first->getOrientation().Y, connected.first->getOrientationRotation());
-		tj.second.updateDirection(connected.second->getOrientation().Y,
-		                          connected.second->getOrientationRotation());
+		fj.first.updateDirection(ptr(connected.first)->getOrientation().X,
+		                         ptr(connected.first)->getOrientationRotation());
+		fj.second.updateDirection(ptr(connected.second)->getOrientation().X,
+		                          ptr(connected.second)->getOrientationRotation());
+		tj.first.updateDirection(ptr(connected.first)->getOrientation().Y,
+		                         ptr(connected.first)->getOrientationRotation());
+		tj.second.updateDirection(ptr(connected.second)->getOrientation().Y,
+		                          ptr(connected.second)->getOrientationRotation());
 	}
 
 	/**********************************************
 	 *                GET & SET
 	 **********************************************/
-	N0 *getNode0() { return connected.first; }
-	N1 *getNode1() { return connected.second; }
+	N0 &getNode0() { return connected.first; }
+	N1 &getNode1() { return connected.second; }
 	float getLength() { return sc.length; }
 	void setBaseLength(const double d) { sc.l = d; }
 	Vec getDirection() { return sc.direction; }
-	template <typename R, typename T> R *getOtherNode(T *n) {
+	template <typename R, typename T> R &getOtherNode(const T &n) {
 		return n == connected.first ? connected.second : connected.first;
 	}
 
@@ -116,45 +118,45 @@ public:
 	 *              UPDATES
 	 **********************************************/
 	void updateLengthDirection() {
-		sc.updateLengthDirection(connected.first->getPosition(), connected.second->getPosition());
+		sc.updateLengthDirection(ptr(connected.first)->getPosition(), ptr(connected.second)->getPosition());
 	}
 	void computeForces(double dt) {
 		// BASIC SPRING
 		if (scEnabled) {
-			sc.updateLengthDirection(connected.first->getPosition(), connected.second->getPosition());
+			sc.updateLengthDirection(ptr(connected.first)->getPosition(), ptr(connected.second)->getPosition());
 			double x = sc.length - sc.l; // actual compression / elongation
 			double minlength = sc.minLengthRatio * sc.l;
 			if (sc.length < minlength) {
 				double d = minlength - sc.length;
-				Vec component0 = connected.first->getVelocity().dot(sc.direction) * sc.direction;
-				Vec tangent0 = connected.first->getVelocity() - component0;
-				Vec component1 = connected.second->getVelocity().dot(sc.direction) * sc.direction;
-				Vec tangent1 = connected.second->getVelocity() - component1;
-				connected.first->setPosition(connected.first->getPosition() - sc.direction * d / 2.0);
-				connected.second->setPosition(connected.second->getPosition() + sc.direction * d / 2.0);
-				connected.first->setVelocity(tangent0 + component1);
-				connected.second->setVelocity(tangent1 + component0);
+				Vec component0 = ptr(connected.first)->getVelocity().dot(sc.direction) * sc.direction;
+				Vec tangent0 = ptr(connected.first)->getVelocity() - component0;
+				Vec component1 = ptr(connected.second)->getVelocity().dot(sc.direction) * sc.direction;
+				Vec tangent1 = ptr(connected.second)->getVelocity() - component1;
+				ptr(connected.first)->setPosition(ptr(connected.first)->getPosition() - sc.direction * d / 2.0);
+				ptr(connected.second)->setPosition(ptr(connected.second)->getPosition() + sc.direction * d / 2.0);
+				ptr(connected.first)->setVelocity(tangent0 + component1);
+				ptr(connected.second)->setVelocity(tangent1 + component0);
 				sc.length = minlength;
 			}
 			bool compression = x < 0;
 			double v = sc.length - sc.prevLength;
 			double f = (-sc.k * x - sc.c * v / dt) / 2.0;
-			connected.first->receiveForce(f, -sc.direction, compression);
-			connected.second->receiveForce(f, sc.direction, compression);
+			ptr(connected.first)->receiveForce(f, -sc.direction, compression);
+			ptr(connected.second)->receiveForce(f, sc.direction, compression);
 			sc.prevLength = sc.length;
 		}
 		// update directions of both flex and tosion springs
 		if (fjEnabled) {
-			fj.first.updateDirection(connected.first->getOrientation().X,
-			                         connected.first->getOrientationRotation());
-			fj.second.updateDirection(connected.second->getOrientation().X,
-			                          connected.second->getOrientationRotation());
+			fj.first.updateDirection(ptr(connected.first)->getOrientation().X,
+			                         ptr(connected.first)->getOrientationRotation());
+			fj.second.updateDirection(ptr(connected.second)->getOrientation().X,
+			                          ptr(connected.second)->getOrientationRotation());
 		}
 		if (tjEnabled) {
-			tj.first.updateDirection(connected.first->getOrientation().Y,
-			                         connected.first->getOrientationRotation());
-			tj.second.updateDirection(connected.second->getOrientation().Y,
-			                          connected.second->getOrientationRotation());
+			tj.first.updateDirection(ptr(connected.first)->getOrientation().Y,
+			                         ptr(connected.first)->getOrientationRotation());
+			tj.second.updateDirection(ptr(connected.second)->getOrientation().Y,
+			                          ptr(connected.second)->getOrientationRotation());
 		}
 		if (tjEnabled || fjEnabled) {
 			for (unsigned int n = 0; n < 2; ++n) {

@@ -16,7 +16,7 @@ public:
 		shader.link();
 		lines.load(shader);
 	}
-	void draw(const vector<C *> &co, const QMatrix4x4 &view, const QMatrix4x4 &projection) {
+	void draw(const deque<C *> &co, const QMatrix4x4 &view, const QMatrix4x4 &projection) {
 		lines.vertices = std::vector<float>();
 		for (auto &c : co) {
 			auto cell0 = c->getNode0();

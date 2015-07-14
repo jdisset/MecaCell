@@ -44,15 +44,15 @@ void Model::updateFromTransformation() {
 }
 void Model::updateFacesFromObj() {
 	for (auto &f : obj.faces) {
-		faces.push_back(ModelFace(f.at("v"), this));
+		faces.push_back(f.at("v"));
 	}
 	changed = true;
 }
 void Model::computeAdjacency() {
 	for (size_t i = 0; i < faces.size(); ++i) {
-		Triangle &ti = faces[i].t;
+		Triangle &ti = faces[i];
 		for (size_t j = i + 1; j < faces.size(); ++j) {
-			Triangle &tj = faces[j].t;
+			Triangle &tj = faces[j];
 			if (ti.indices[0] == tj.indices[0] || ti.indices[0] == tj.indices[1] ||
 			    ti.indices[0] == tj.indices[2] || ti.indices[1] == tj.indices[0] ||
 			    ti.indices[1] == tj.indices[1] || ti.indices[1] == tj.indices[2] ||

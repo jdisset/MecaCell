@@ -31,5 +31,9 @@ std::pair<bool, Vec> projectionIntriangle(const Vec &v0, const Vec &v1, const Ve
 Vec hsvToRgb(double h, double s, double v);
 extern std::default_random_engine globalRand;
 std::vector<std::string> splitStr(const std::string &s, char delim);
+
+// return a pointer (transform reference into pointer)
+template <typename T> T *ptr(T &obj) { return &obj; }
+template <typename T> T *ptr(T *obj) { return obj; }
 }
 #endif
