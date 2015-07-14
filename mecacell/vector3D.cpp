@@ -179,7 +179,20 @@ void Vector3D::addAsAngularVelocity(const Vector3D &v, Rotation<Vector3D> &r) {
 	r = addRotations(r, Rotation<Vector3D>(n0, dTeta));
 }
 
-Vector3D getProjection(const Vector3D &origin, const Vector3D &B, const Vector3D &P) {
+double Vector3D::rayCast(const Vector3D &o, const Vector3D &n, const Vector3D &p, const Vector3D &r) {
+	// returns l such that p + l.r lies on the plane defined by its normal n and an offset o
+	// l > 0 means that the ray hits the plane, l < 0 means that the ray dos not face the plane
+	// l = 0 means that the ray is parallel to the plane or that p is on the plane
+	double nr = n.dot(r);
+	return (nr == 0) ? 0 : n.dot(o - p) / nr;
+}
+
+Vector3D Vector3D::getProjectionOnPlane(const Vector3D &o, const Vector3D &n, const Vector3D &p) {
+	// returns the projection of p onto a plane defined by its normal n and an offset o
+	return p - (n.dot(p - o) * n);
+}
+
+Vector3D Vector3D::getProjection(const Vector3D &origin, const Vector3D &B, const Vector3D &P) {
 	// returns the projected P point onto the origin -> B vector
 	Vector3D a = B - origin;
 	return origin + a * (a.dot(P - origin) / a.sqlength());
@@ -216,7 +229,7 @@ Vector3D operator*(const double &s, const Vector3D &v) { return Vector3D(v.x * s
 bool operator==(const Vector3D &a, const Vector3D &b) { return (a.x == b.x && a.y == b.y && a.z == b.z); }
 bool operator!=(const Vector3D &a, const Vector3D &b) { return !operator==(a, b); }
 
-ostream &operator<<(ostream &out, Vector3D &v) {
+ostream &operator<<(ostream &out, const Vector3D &v) {
 	out << "(" << v.x << ", " << v.y << ", " << v.z << ")";
 	return out;
 }

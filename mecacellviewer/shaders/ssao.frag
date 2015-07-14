@@ -77,7 +77,7 @@ void main(){
 		float aoMedium = computeAO(z0,0.004,0.003,6.0);
 		float aoSmall = computeAO(z0, 0.002,0.001,4.0);
 		FragColor.rgb = color.rgb*vec3(aoLarge*aoSmall*aoMedium);
-		FragColor.rgb += (1.0-computeThing(z0,0.001,0.001,10.0))*0.7;
+		FragColor.rgb += (1.0-computeThing(z0,0.001,0.001,7.0))*0.7;
 		FragColor.a = 1.0;
 		/*FragColor.rgb = vec3(computeThing(z0,0.000003,0.00001,5.0));*/
 	}

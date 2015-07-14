@@ -6,6 +6,7 @@
 #include <string>
 #include <vector>
 #include <iostream>
+#define dispV(v) "(" << v.x << "," << v.y << "," << v.z << ")"
 
 namespace MecaCell {
 typedef Vector3D Vec;
@@ -24,6 +25,9 @@ double dampingFromRatio(const double r, const double m, const double k);
 template <typename T> constexpr T mix(const T &a, const T &b, const double &c) {
 	return a * (1.0 - c) + c * b;
 }
+double closestDistToTriangleEdge(const Vec &v0, const Vec &v1, const Vec &v2, const Vec &n);
+std::pair<bool, Vec> projectionIntriangle(const Vec &v0, const Vec &v1, const Vec &v2, const Vec &p,
+                                          const double tolerance = 0.0);
 Vec hsvToRgb(double h, double s, double v);
 extern std::default_random_engine globalRand;
 std::vector<std::string> splitStr(const std::string &s, char delim);

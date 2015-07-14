@@ -28,6 +28,24 @@ public:
 	}
 
 	void insert(O *obj, const Vec &p0, const Vec &p1, const Vec &p2) { // insert triangles
+		Vec n = p0.cross(p1).normalized();
+		Vec blf(min(p0.x, min(p1.x, p2.x)), min(p0.y, min(p1.y, p2.y)), min(p0.z, min(p1.z, p2.z)));
+		Vec trb(max(p0.x, max(p1.x, p2.x)), max(p0.y, max(p1.y, p2.y)), max(p0.z, max(p1.z, p2.z)));
+		double cs = 1.0 / cellSize;
+		getIndexFromPosition(blf).iterateTo(getIndexFromPosition(trb) + 1, [&](const Vec &v) {
+			Vec center = cs * v;
+			std::pair<bool, Vec> projec = projectionIntriangle(p0, p1, p2, center);
+			if ((center - projec.second).sqlength() < 0.8 * cs * cs) {
+				if (projec.first || closestDistToTriangleEdge(p0, p1, p2, center) < 0.87 * cs) {
+					um[v].push_back(obj);
+				}
+			}
+		});
+	}
+
+	Vec getIndexFromPosition(const Vec &v) {
+		Vec res = v * cellSize;
+		return Vec(floor(res.x), floor(res.y), floor(res.z));
 	}
 
 	vector<O *> retrieve(const Vec &coord, double r) const {
@@ -38,7 +56,7 @@ public:
 		Vec maxCorner = center + radius;
 		// TODO check if faster with a set (uniques...) and by removing  selfcollision
 		minCorner.iterateTo(maxCorner, [&](const Vec &v) {
-			if (um.count(v) > 0) res.insert(res.end(), um.at(v).begin(), um.at(v).end());
+			if (um.count(v)) res.insert(res.end(), um.at(v).begin(), um.at(v).end());
 		});
 		return res;
 	}
@@ -50,7 +68,7 @@ public:
 		Vec minCorner = center - radius;
 		Vec maxCorner = center + radius;
 		minCorner.iterateTo(maxCorner, [this, &res](const Vec &v) {
-			if (um.count(v) > 0) res.insert(res.end(), um.at(v).begin(), um.at(v).end());
+			if (um.count(v)) res.insert(res.end(), um.at(v).begin(), um.at(v).end());
 		});
 		return res;
 	}

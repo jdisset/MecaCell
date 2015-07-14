@@ -16,7 +16,7 @@ protected:
 	int frame = 0;
 	vector<Cell *> cellsToDestroy;
 	Grid<Cell> grid = Grid<Cell>(5.0 * DEFAULT_CELL_RADIUS);
-	Grid<ModelFace> modelGrid = Grid<ModelFace>(5.0 * DEFAULT_CELL_RADIUS);
+	Grid<ModelFace> modelGrid = Grid<ModelFace>(150);
 	bool cellCellCollisions = true;
 	Vec g = Vec::zero();
 	double viscosityCoef = 0.001;
@@ -40,8 +40,8 @@ public:
 	 *********************************************/
 	Vec getG() const { return g; }
 	void setG(const Vec &v) { g = v; }
-	const Grid<Cell>& getCellGrid(){return grid;}
-	const Grid<ModelFace>& getModelGrid(){return modelGrid;}
+	const Grid<Cell> &getCellGrid() { return grid; }
+	const Grid<ModelFace> &getModelGrid() { return modelGrid; }
 	double getViscosityCoef() const { return viscosityCoef; }
 	void setViscosityCoef(const double d) { viscosityCoef = d; }
 
@@ -49,6 +49,19 @@ public:
 	 *             MAIN UPDATE ROUTINE            *
 	 *********************************************/
 	void update() {
+		bool modelChange = false;
+		for (auto &m : models) {
+			if (m.second.changedSinceLastCheck()) {
+				modelChange = true;
+			}
+		}
+		if (modelChange) {
+			modelGrid.clear();
+			for (auto &m : models) {
+				insertInGrid(m.second);
+			}
+		}
+
 		if (cells.size() > 0) {
 			resetForces();
 			computeForces();
@@ -118,6 +131,13 @@ public:
 	 *           MODELS           *
 	 ******************************/
 	void addModel(const string &name, const string &path) { models.emplace(name, path); }
+
+	void insertInGrid(Model &m) {
+		for (auto &f : m.faces) {
+			modelGrid.insert(&f, m.vertices[f.t.indices[0]], m.vertices[f.t.indices[1]],
+			                 m.vertices[f.t.indices[2]]);
+		}
+	}
 	/******************************
 	 *         COLLISIONS         *
 	 ******************************/

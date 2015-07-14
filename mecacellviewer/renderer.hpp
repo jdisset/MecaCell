@@ -113,12 +113,10 @@ public:
 			           selectedCell);
 		}
 		if (gc.contains("cellGrid")) {
-			gridViewer.draw(scenario.getWorld().getCellGrid(), view, projection,
-			                              QVector4D(0.99, 0.9, 0.4, 1.0));
+			gridViewer.draw(scenario.getWorld().getCellGrid(), view, projection, QVector4D(0.99, 0.9, 0.4, 1.0));
 		}
 		if (gc.contains("modelGrid")) {
-			gridViewer.draw(scenario.getWorld().getModelGrid(), view, projection,
-			                               QVector4D(0.9, 0.9, 0.9, 1.0));
+			gridViewer.draw(scenario.getWorld().getModelGrid(), view, projection, QVector4D(0.6, 0.1, 0.1, 1.0));
 		}
 
 		for (auto &m : scenario.getWorld().models) {
@@ -148,10 +146,9 @@ public:
 		if (gc.contains("connections")) {
 			connections.draw(scenario.getWorld().connections, view, projection);
 		}
-		finalFBO->release();
 
-		finalFBO->bind();
 		GL->glViewport(0, 0, viewportSize.width() * screenCoef, viewportSize.height() * screenCoef);
+
 		QOpenGLFramebufferObject::blitFramebuffer(
 		    fsaaFBO.get(), QRect(QPoint(0, 0), viewportSize * screenCoef), finalFBO.get(),
 		    QRect(QPoint(0, 0), viewportSize * FSAA_COEF * screenCoef), GL_COLOR_BUFFER_BIT, GL_LINEAR);

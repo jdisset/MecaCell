@@ -13,7 +13,7 @@ public:
 	static const int dimension = 3;
 	Vector3D(double a, double b, double c) : x(a), y(b), z(c) {}
 	Vector3D() : x(0), y(0), z(0) {}
-	Vector3D(double a) : x(a), y(a), z(a) {}
+	explicit Vector3D(double a) : x(a), y(a), z(a) {}
 	Vector3D(const Vector3D &v) : x(v.x), y(v.y), z(v.z) {}
 
 	double dot(const Vector3D &v) const;
@@ -52,7 +52,9 @@ public:
 	static Rotation<Vector3D> getRotation(const Vector3D &, const Vector3D &, const Vector3D &,
 	                                      const Vector3D &);
 	static Rotation<Vector3D> getRotation(const Basis<Vector3D> &, const Basis<Vector3D> &);
-	static Vector3D getProjection(const Vector3D& origin, const Vector3D& A, const Vector3D& B);
+	static Vector3D getProjection(const Vector3D &origin, const Vector3D &A, const Vector3D &B);
+	static Vector3D getProjectionOnPlane(const Vector3D &o, const Vector3D &n, const Vector3D &p);
+	static double rayCast(const Vector3D &o, const Vector3D &n, const Vector3D &p, const Vector3D &r);
 
 	double getX() const;
 	double getY() const;
@@ -69,7 +71,7 @@ public:
 
 	Vector3D ortho() const;
 	Vector3D ortho(Vector3D v) const;
-	friend ostream &operator<<(ostream &out, Vector3D &v);
+	friend ostream &operator<<(ostream &out, const Vector3D &v);
 };
 Vector3D operator*(const Vector3D &v, const double &s);
 Vector3D operator*(const double &s, const Vector3D &v);

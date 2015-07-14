@@ -31,6 +31,7 @@ struct Model {
 	void updateFromTransformation();
 	void computeAdjacency();
 	void updateFacesFromObj();
+	bool changedSinceLastCheck();
 
 	ObjModel obj;
 	Matrix4x4 transformation;
@@ -38,6 +39,7 @@ struct Model {
 	vector<Vec> normals;
 	vector<ModelFace> faces;
 	unordered_map<size_t, unordered_set<size_t>> adjacency; // adjacent faces share at least one vertex
+	bool changed = true;
 };
 
 struct ModelConnectionPoint {

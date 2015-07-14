@@ -54,7 +54,7 @@ public:
 						vector<string> index = splitStr(vs[i], '/');
 						if (index.size() == 3) {
 							tf["v"].indices[i - 1] = stoi(index[0]) - 1;
-							tf["t"].indices[i - 1] = stoi(index[1]) - 1;
+							if (!index[1].empty()) tf["t"].indices[i - 1] = stoi(index[1]) - 1;
 							tf["n"].indices[i - 1] = stoi(index[2]) - 1;
 						}
 					}
@@ -62,8 +62,8 @@ public:
 				}
 			}
 		}
-		std::cout << "Object loaded, vertices.size = " << vertices.size() << ", normals.size = " << normals.size()
-		          << ", faces.size = " << faces.size() << std::endl;
+		//std::cout << "Object loaded, vertices.size = " << vertices.size() << ", normals.size = " << normals.size()
+							//<< ", faces.size = " << faces.size() << std::endl;
 	}
 };
 }

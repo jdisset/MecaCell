@@ -7,8 +7,8 @@ using std::unordered_set;
 
 namespace MecaCell {
 Model::Model(const string &filepath) : obj(filepath) {
-	//updateFacesFromObj();
-	//computeAdjacency();
+	updateFacesFromObj();
+	// computeAdjacency();
 	updateFromTransformation();
 }
 
@@ -24,6 +24,13 @@ void Model::rotate(const Rotation<Vec> &r) {
 	transformation.rotate(r);
 	updateFromTransformation();
 }
+
+bool Model::changedSinceLastCheck() {
+	bool c = changed;
+	changed = false;
+	return c;
+}
+
 void Model::updateFromTransformation() {
 	vertices.clear();
 	normals.clear();
@@ -33,11 +40,13 @@ void Model::updateFromTransformation() {
 	for (auto &n : obj.normals) {
 		normals.push_back((transformation * n).normalized());
 	}
+	changed = true;
 }
 void Model::updateFacesFromObj() {
 	for (auto &f : obj.faces) {
-		faces.push_back(ModelFace(f.at("vt"), this));
+		faces.push_back(ModelFace(f.at("v"), this));
 	}
+	changed = true;
 }
 void Model::computeAdjacency() {
 	for (size_t i = 0; i < faces.size(); ++i) {
