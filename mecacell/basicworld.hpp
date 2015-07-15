@@ -48,11 +48,18 @@ public:
 	// because shared_ptr would slow down the app
 	// because it is not a difficult case of memory management
 	vector<connect_type *> connections;
+
+	// all the cells are in this container
 	vector<Cell *> cells;
+
+	// cellModelConnections :
+	// modelName -> [ {Cell_ptr, faceId} -> pair<FTconnection,Sconnection> ]
+	// A cell / model connection is composed of two sub connections : one for flexion and torsion,
+	// and one for compression and elongation, which is always perpendicular to the surface
 	unordered_map<string, map<pair<Cell *, size_t>, Connection<ModelConnectionPoint, Cell *>>>
 	    cellModelConnections;
-	// cellModelConnections :
-	// modelName -> [ {Cell_ptr, faceId} -> connection ]
+
+	// all models are stored in this map, using their name as the key
 	unordered_map<string, Model> models;
 
 	/**********************************************

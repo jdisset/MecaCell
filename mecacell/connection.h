@@ -18,6 +18,7 @@ struct Spring {
 	double minLengthRatio = 0.5; // max compression
 	Vec direction;               // current direction from node 0 to node 1
 
+	Spring(){};
 	Spring(const double &K, const double &C, const double &L) : k(K), c(C), l(L), length(L){};
 
 	void updateLengthDirection(const Vec &p0, const Vec &p1) {
@@ -40,6 +41,7 @@ struct Joint {
 	Rotation<Vec> prevDelta;
 	Vec direction; // current direction
 	Vec target;    // targeted direction
+	Joint(){};
 
 	Joint(const double &K, const double &C, const double &MTETA) : k(K), c(C), maxTeta(MTETA) {}
 
@@ -76,11 +78,27 @@ public:
 	/**********************************************
 	 *               CONSTRUCTOR
 	 **********************************************/
+	Connection(const pair<N0, N1> &n, const Spring &S)
+	    : connected{n}, sc(S), fjEnabled(false), tjEnabled(false) {
+		initS();
+	}
+	Connection(const pair<N0, N1> &n, const pair<Joint, Joint> &FJ, const pair<Joint, Joint> &TJ)
+	    : connected{n}, fj(FJ), tj(TJ), scEnabled(false) {
+		initS();
+		initFJ();
+	}
 	Connection(const pair<N0, N1> &n, const Spring &SC, const pair<Joint, Joint> &FJ,
 	           const pair<Joint, Joint> &TJ)
 	    : connected{n}, sc(SC), fj(FJ), tj(TJ) {
+		initS();
+		initFJ();
+	}
+
+	void initS() {
 		sc.updateLengthDirection(ptr(connected.first)->getPosition(), ptr(connected.second)->getPosition());
 		sc.prevLength = sc.length;
+	}
+	void initFJ() {
 		Vec ortho = sc.direction.ortho();
 		// rotations for joints (cell base to connection) =
 		// cellBasis -> worldBasis + worldBasis -> connectionBasis
@@ -101,7 +119,6 @@ public:
 		tj.second.updateDirection(ptr(connected.second)->getOrientation().Y,
 		                          ptr(connected.second)->getOrientationRotation());
 	}
-
 	/**********************************************
 	 *                GET & SET
 	 **********************************************/

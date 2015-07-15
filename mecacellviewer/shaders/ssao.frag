@@ -73,10 +73,10 @@ void main(){
 	z0 = getLinearDepth(UV);
 	if (z0<0.7){
 
-		float aoLarge = computeAO(z0,0.006,0.015,8.0);
+		float aoLarge = computeAO(z0,0.006,0.015,6.0);
 		float aoMedium = computeAO(z0,0.004,0.003,6.0);
 		float aoSmall = computeAO(z0, 0.002,0.001,4.0);
-		FragColor.rgb = color.rgb*vec3(aoLarge*aoSmall*aoMedium);
+		FragColor.rgb = color.rgb*vec3(aoLarge*aoMedium*aoSmall);
 		FragColor.rgb += (1.0-computeThing(z0,0.001,0.001,7.0))*0.7;
 		FragColor.a = 1.0;
 		/*FragColor.rgb = vec3(computeThing(z0,0.000003,0.00001,5.0));*/
