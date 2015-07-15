@@ -44,6 +44,9 @@ struct ModelConnectionPoint {
 	Model *model;
 	Vec position;
 	size_t face;
+	// TODO : toggle movable / orientable in connection
+	Vec setPosition(const Vec &){};
+	Vec setVelocity(const Vec &){};
 	Vec getPosition() { return position; }
 	Vec getVelocity() { return Vec::zero(); }
 	Vec getAngularVelocity() { return Vec::zero(); }
@@ -51,6 +54,7 @@ struct ModelConnectionPoint {
 	Rotation<Vec> getOrientationRotation() { return Rotation<Vec>(); }
 	double getInertia() { return 1; }
 	void receiveForce(double, const Vec &, bool) {}
+	void receiveForce(const Vec &) {}
 	void receiveTorque(const Vec &) {}
 };
 }

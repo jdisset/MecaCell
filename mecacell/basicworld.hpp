@@ -47,9 +47,9 @@ public:
 	// because it is impossible to use unique_ptr here
 	// because shared_ptr would slow down the app
 	// because it is not a difficult case of memory management
-	deque<connect_type *> connections;
+	vector<connect_type *> connections;
 	vector<Cell *> cells;
-	unordered_map<string, map<pair<Cell *, size_t>, Connection<ModelConnectionPoint, Cell>>>
+	unordered_map<string, map<pair<Cell *, size_t>, Connection<ModelConnectionPoint, Cell *>>>
 	    cellModelConnections;
 	// cellModelConnections :
 	// modelName -> [ {Cell_ptr, faceId} -> connection ]
@@ -103,6 +103,11 @@ public:
 		// connections
 		for (auto &con : connections)
 			con->computeForces(dt);
+		for (auto &n : cellModelConnections) {
+			for (auto &p : n.second) {
+				p.second.computeForces(dt);
+			}
+		}
 
 		for (auto &c : cells) {
 			// friction
@@ -178,12 +183,37 @@ public:
 				pair<bool, Vec> projec = projectionIntriangle(p0, p1, p2, c->getPosition());
 				if (projec.first && (c->getPosition() - projec.second).sqlength() < pow(c->getRadius(), 2)) {
 					// collision
-					cerr << "collision !" << endl;
 					if (!cellModelConnections.count(mf.first->name) ||
 					    !cellModelConnections.at(mf.first->name).count({c, mf.second})) {
 						// new collision
 						cerr << "new collision" << endl;
-						// cellModelConnections[mf.first->name].emplace({c,mf.second}, {
+						double adh = c->getAdhesionWithModel(mf.first->name);
+						double l = Cell::getConnectionLength(c->getRadius(), adh);
+						double maxTeta = mix(0.0, M_PI / 2.0, adh);
+						cellModelConnections[mf.first->name].emplace(
+						    pair<pair<Cell *, size_t>, Connection<ModelConnectionPoint, Cell *>>(
+						        make_pair(c, mf.second),
+						        Connection<ModelConnectionPoint, Cell *>(
+						            make_pair(ModelConnectionPoint(mf.first, projec.second, mf.second), c),
+						            Spring(c->getStiffness(),
+						                   dampingFromRatio(c->getDampRatio(), c->getMass(), c->getStiffness()), l),
+						            make_pair(Joint(c->getAngularStiffness(),
+						                            dampingFromRatio(c->getDampRatio(), c->getMomentOfInertia(),
+						                                             c->getAngularStiffness()),
+						                            maxTeta),
+						                      Joint(c->getAngularStiffness(),
+						                            dampingFromRatio(c->getDampRatio(), c->getMomentOfInertia(),
+						                                             c->getAngularStiffness()),
+						                            maxTeta)),
+						            make_pair(Joint(c->getAngularStiffness(),
+						                            dampingFromRatio(c->getDampRatio(), c->getMomentOfInertia(),
+						                                             c->getAngularStiffness()),
+						                            maxTeta),
+						                      Joint(c->getAngularStiffness(),
+						                            dampingFromRatio(c->getDampRatio(), c->getMomentOfInertia(),
+						                                             c->getAngularStiffness()),
+						                            maxTeta)))));
+						cellModelConnections[mf.first->name];
 					}
 				}
 			}
@@ -222,7 +252,7 @@ public:
 	// deleteOverlapingConnections
 	// deletes all connections going through cells
 	void deleteOverlapingConnections(Cell *cell) {
-		deque<connect_type *> &vec = cell->getRWConnections();
+		vector<connect_type *> &vec = cell->getRWConnections();
 		for (auto c0It = vec.begin(); c0It < vec.end();) {
 			bool deleted = false; // tells if c0 was deleted inside the inner loop (so we know
 			                      // if we have to increment c0It)

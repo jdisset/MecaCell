@@ -30,8 +30,8 @@ protected:
 	double dampRatio = DEFAULT_CELL_DAMP_RATIO;
 	double angularStiffness = DEFAULT_CELL_ANG_STIFFNESS;
 	bool tested = false; // has already been tested for collision
-	deque<ConnectionType *> connections;
-	deque<Derived *> connectedCells;
+	vector<ConnectionType *> connections;
+	vector<Derived *> connectedCells;
 
 public:
 	ConnectableCell(Vec pos) : Movable(pos) { randomColor(); }
@@ -54,7 +54,7 @@ public:
 		if (i < 3) return color[i];
 		return 0;
 	}
-	const std::deque<Derived *> &getConnectedCells() const { return connectedCells; }
+	const std::vector<Derived *> &getConnectedCells() const { return connectedCells; }
 	double getPressure() const {
 		double surface = 4.0f * M_PI * radius * radius;
 		return totalForce / surface;
@@ -78,6 +78,7 @@ public:
 	double getBaseVolume() const { return (4.0 / 3.0) * M_PI * baseRadius * baseRadius * baseRadius; }
 	double getVolume() const { return (4.0 / 3.0) * M_PI * radius * radius * radius; }
 	double getRelativeVolume() const { return getVolume() / getBaseVolume(); }
+	double getDampRatio() const { return dampRatio; }
 
 	// return the connection length with another cell
 	// according to an adhesion coef (0 <= adh <= 1)
@@ -98,13 +99,14 @@ public:
 
 	// Don't forget to implement this method in the derived class
 	double getAdhesionWith(const Derived *d) { return self().getAdhesionWith(d); }
+	double getAdhesionWithModel(const string &) { return 0.7; }
 
-	deque<ConnectionType *> &getRWConnections() { return connections; }
+	vector<ConnectionType *> &getRWConnections() { return connections; }
 
 	/******************************
 	 * connections
 	 *****************************/
-	void connection(Derived *c, deque<ConnectionType *> &worldConnexions) {
+	void connection(Derived *c, vector<ConnectionType *> &worldConnexions) {
 		if (c != this) {
 			Vec AB = c->position - position;
 			double sqdist = AB.sqlength();
@@ -233,7 +235,7 @@ public:
 		connections.erase(remove(connections.begin(), connections.end(), s), connections.end());
 	}
 
-	void eraseAndDeleteAllConnections(std::deque<ConnectionType *> &aux) {
+	void eraseAndDeleteAllConnections(std::vector<ConnectionType *> &aux) {
 		for (auto cIt = connections.begin(); cIt != connections.end();) {
 			ConnectionType *sp = *cIt;
 			auto otherCell = sp->getNode0() == this ? sp->getNode1() : sp->getNode0();

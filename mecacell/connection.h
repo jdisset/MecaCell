@@ -159,62 +159,63 @@ public:
 			                          ptr(connected.second)->getOrientationRotation());
 		}
 		if (tjEnabled || fjEnabled) {
-			for (unsigned int n = 0; n < 2; ++n) {
-				Joint &tjNode = n == 0 ? tj.first : tj.second;
-				Joint &tjOther = n == 0 ? tj.second : tj.first;
-				Joint &fjNode = n == 0 ? fj.first : fj.second;
-				auto node = n == 0 ? connected.first : connected.second;
-				auto other = n == 0 ? connected.second : connected.first;
-				const double sign = n == 0 ? 1 : -1;
+			updateFT<0>();
+			updateFT<1>();
+		}
+	}
+	template <int n> void updateFT() {
+		Joint &tjNode = n == 0 ? tj.first : tj.second;
+		Joint &tjOther = n == 0 ? tj.second : tj.first;
+		Joint &fjNode = n == 0 ? fj.first : fj.second;
+		const auto &node = ptr(get<n>(connected));
+		const auto &other = ptr(get < n == 0 ? 1 : 0 > (connected));
+		const double sign = n == 0 ? 1 : -1;
 
-				if (fjEnabled) {
-					fjNode.target = sc.direction * sign;
-					fjNode.updateDelta();
-					if (fjNode.delta.teta > fjNode.maxTeta) { // if we passed flex break angle
-						float dif = fjNode.delta.teta - fjNode.maxTeta;
-						fjNode.r = fjNode.r + Rotation<Vec>(fjNode.delta.n, dif);
-						fjNode.direction = fjNode.direction.rotated(Rotation<Vec>(fjNode.delta.n, dif));
-						fjNode.r = node->getOrientationRotation().inverted() +
-						           Vec::getRotation(Basis<Vec>(), Basis<Vec>(fjNode.direction, fjNode.direction.ortho()));
-					}
-					// flex torque and force
-					fjNode.delta.n.normalize();
-					double torque = fjNode.k * fjNode.delta.teta +
-					                fjNode.c * (fjNode.delta.teta - fjNode.prevDelta.teta); // -kx - cv
-					Vec vFlex = fjNode.delta.n * torque;                                    // torque
-					Vec ortho = sc.direction.ortho(fjNode.delta.n).normalized();            // force direction
-					Vec force = sign * ortho * torque;
-
-					node->receiveForce(-force);
-					other->receiveForce(force);
-
-					node->receiveTorque(vFlex);
-					fjNode.prevDelta = fjNode.delta;
-				}
-				if (tjEnabled) {
-					// updating torsion joint (needs to stay perp to sc.direction)
-					double scalar = tjNode.direction.dot(sc.direction);
-					// if the angle between our torsion spring and sc.direction is too far from 90°,
-					// we reproject & recompute it
-					if (abs(scalar) > MAX_TS_INCL) {
-						tjNode.r = node->getOrientationRotation().inverted() +
-						           Vec::getRotation(Basis<Vec>(Vec(1, 0, 0), Vec(0, 1, 0)),
-						                            Basis<Vec>(sc.direction, tjNode.direction));
-					} else {
-						tjNode.direction = tjNode.direction.normalized() - scalar * sc.direction;
-					}
-					// updating targets
-					tjNode.target = tjOther.direction; // we want torsion springs to stay aligned with each other
-					tjNode.updateDelta();
-					// torsion torque
-					tjNode.delta.n.normalize();
-					double torque =
-					    tjNode.k *
-					    tjNode.delta.teta; // - tjNode.c * node->getAngularVelocity().dot(tjNode.delta.teta.n)
-					Vec vTorsion = torque * tjNode.delta.n;
-					node->receiveTorque(vTorsion);
-				}
+		if (fjEnabled) {
+			fjNode.target = sc.direction * sign;
+			fjNode.updateDelta();
+			if (fjNode.delta.teta > fjNode.maxTeta) { // if we passed flex break angle
+				float dif = fjNode.delta.teta - fjNode.maxTeta;
+				fjNode.r = fjNode.r + Rotation<Vec>(fjNode.delta.n, dif);
+				fjNode.direction = fjNode.direction.rotated(Rotation<Vec>(fjNode.delta.n, dif));
+				fjNode.r = node->getOrientationRotation().inverted() +
+				           Vec::getRotation(Basis<Vec>(), Basis<Vec>(fjNode.direction, fjNode.direction.ortho()));
 			}
+			// flex torque and force
+			fjNode.delta.n.normalize();
+			double torque =
+			    fjNode.k * fjNode.delta.teta + fjNode.c * (fjNode.delta.teta - fjNode.prevDelta.teta); // -kx - cv
+			Vec vFlex = fjNode.delta.n * torque;                                                       // torque
+			Vec ortho = sc.direction.ortho(fjNode.delta.n).normalized(); // force direction
+			Vec force = sign * ortho * torque;
+
+			node->receiveForce(-force);
+			other->receiveForce(force);
+
+			node->receiveTorque(vFlex);
+			fjNode.prevDelta = fjNode.delta;
+		}
+		if (tjEnabled) {
+			// updating torsion joint (needs to stay perp to sc.direction)
+			double scalar = tjNode.direction.dot(sc.direction);
+			// if the angle between our torsion spring and sc.direction is too far from 90°,
+			// we reproject & recompute it
+			if (abs(scalar) > MAX_TS_INCL) {
+				tjNode.r = node->getOrientationRotation().inverted() +
+				           Vec::getRotation(Basis<Vec>(Vec(1, 0, 0), Vec(0, 1, 0)),
+				                            Basis<Vec>(sc.direction, tjNode.direction));
+			} else {
+				tjNode.direction = tjNode.direction.normalized() - scalar * sc.direction;
+			}
+			// updating targets
+			tjNode.target = tjOther.direction; // we want torsion springs to stay aligned with each other
+			tjNode.updateDelta();
+			// torsion torque
+			tjNode.delta.n.normalize();
+			double torque =
+			    tjNode.k * tjNode.delta.teta; // - tjNode.c * node->getAngularVelocity().dot(tjNode.delta.teta.n)
+			Vec vTorsion = torque * tjNode.delta.n;
+			node->receiveTorque(vTorsion);
 		}
 	}
 };
