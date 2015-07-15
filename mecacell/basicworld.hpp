@@ -56,7 +56,8 @@ public:
 	// modelName -> [ {Cell_ptr, faceId} -> pair<FTconnection,Sconnection> ]
 	// A cell / model connection is composed of two sub connections : one for flexion and torsion,
 	// and one for compression and elongation, which is always perpendicular to the surface
-	unordered_map<string, map<pair<Cell *, size_t>, Connection<ModelConnectionPoint, Cell *>>>
+	unordered_map<string, map<pair<Cell *, size_t>, pair<Connection<ModelConnectionPoint, Cell *>,
+	                                                     Connection<ModelConnectionPoint, Cell *>>>>
 	    cellModelConnections;
 
 	// all models are stored in this map, using their name as the key
@@ -112,7 +113,8 @@ public:
 			con->computeForces(dt);
 		for (auto &n : cellModelConnections) {
 			for (auto &p : n.second) {
-				p.second.computeForces(dt);
+				//p.second.first.computeForces(dt);
+				p.second.second.computeForces(dt);
 			}
 		}
 
@@ -198,28 +200,39 @@ public:
 						double l = Cell::getConnectionLength(c->getRadius(), adh);
 						double maxTeta = mix(0.0, M_PI / 2.0, adh);
 						cellModelConnections[mf.first->name].emplace(
-						    pair<pair<Cell *, size_t>, Connection<ModelConnectionPoint, Cell *>>(
-						        make_pair(c, mf.second),
-						        Connection<ModelConnectionPoint, Cell *>(
-						            make_pair(ModelConnectionPoint(mf.first, projec.second, mf.second), c),
-						            Spring(c->getStiffness(),
-						                   dampingFromRatio(c->getDampRatio(), c->getMass(), c->getStiffness()), l),
-						            make_pair(Joint(c->getAngularStiffness(),
-						                            dampingFromRatio(c->getDampRatio(), c->getMomentOfInertia(),
-						                                             c->getAngularStiffness()),
-						                            maxTeta),
-						                      Joint(c->getAngularStiffness(),
-						                            dampingFromRatio(c->getDampRatio(), c->getMomentOfInertia(),
-						                                             c->getAngularStiffness()),
-						                            maxTeta)),
-						            make_pair(Joint(c->getAngularStiffness(),
-						                            dampingFromRatio(c->getDampRatio(), c->getMomentOfInertia(),
-						                                             c->getAngularStiffness()),
-						                            maxTeta),
-						                      Joint(c->getAngularStiffness(),
-						                            dampingFromRatio(c->getDampRatio(), c->getMomentOfInertia(),
-						                                             c->getAngularStiffness()),
-						                            maxTeta)))));
+						    pair<pair<Cell *, size_t>, pair<Connection<ModelConnectionPoint, Cell *>,
+						                                    Connection<ModelConnectionPoint, Cell *>>>(
+						        // emplace {key, value}
+						        {c, mf.second}, // key = {cell, face id}
+						        {
+						            // value = {connection, connection} (one w flexion/torsion, the other w compression)
+						            Connection<ModelConnectionPoint, Cell *>(
+						                {ModelConnectionPoint(mf.first, projec.second, mf.second), c}, // N0, N1
+						                {Joint(c->getAngularStiffness(),
+						                       dampingFromRatio(c->getDampRatio(), c->getMomentOfInertia(),
+						                                        c->getAngularStiffness()),
+						                       maxTeta),
+						                 Joint(c->getAngularStiffness(),
+						                       dampingFromRatio(c->getDampRatio(), c->getMomentOfInertia(),
+						                                        c->getAngularStiffness()),
+						                       maxTeta)} // Flex Joint
+						                ,
+						                {Joint(c->getAngularStiffness(),
+						                       dampingFromRatio(c->getDampRatio(), c->getMomentOfInertia(),
+						                                        c->getAngularStiffness()),
+						                       maxTeta),
+						                 Joint(c->getAngularStiffness(),
+						                       dampingFromRatio(c->getDampRatio(), c->getMomentOfInertia(),
+						                                        c->getAngularStiffness()),
+						                       maxTeta)} // Torsion Joint
+						                ),
+						            Connection<ModelConnectionPoint, Cell *>(
+						                {ModelConnectionPoint(mf.first, projec.second, mf.second), c}, // N0, N1
+						                Spring(c->getStiffness(),
+						                       dampingFromRatio(c->getDampRatio(), c->getMass(), c->getStiffness()), l))
+						            // end value pair & end emplace
+						        }));
+
 						cellModelConnections[mf.first->name];
 					}
 				}

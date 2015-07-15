@@ -12,6 +12,7 @@
 #include "movable.h"
 #include "orientable.h"
 #include "connection.h"
+#include "model.h"
 
 #define CUBICROOT2 1.25992104989
 #define VOLUMEPI 0.23873241463 // 1/(4/3*pi)
@@ -31,6 +32,7 @@ protected:
 	double angularStiffness = DEFAULT_CELL_ANG_STIFFNESS;
 	bool tested = false; // has already been tested for collision
 	vector<ConnectionType *> connections;
+	vector<Connection<ModelConnectionPoint, Derived *>> modelConnections;
 	vector<Derived *> connectedCells;
 
 public:
