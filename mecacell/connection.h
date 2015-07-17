@@ -36,7 +36,7 @@ struct Joint {
 	double k = 1.0;        // angular stiffness
 	double c = 1.0;        // damp
 	double maxTeta = M_PI; // maximum angle
-	Rotation<Vec> r;       // rotation from cell to joint
+	Rotation<Vec> r;       // rotation from node to joint
 	Rotation<Vec> delta;   // current rotation
 	Rotation<Vec> prevDelta;
 	Vec direction; // current direction
@@ -45,6 +45,7 @@ struct Joint {
 
 	Joint(const double &K, const double &C, const double &MTETA) : k(K), c(C), maxTeta(MTETA) {}
 
+	// current direction is computed using a reference Vector v rotated with rotation rot
 	void updateDirection(const Vec &v, const Rotation<Vec> &rot) { direction = v.rotated(r.rotated(rot)); }
 	void updateDelta() { delta = Vec::getRotation(direction, target); }
 };
@@ -69,7 +70,7 @@ struct Joint {
 // - void receiveTorque(Vec acc)
 template <typename N0, typename N1 = N0> class Connection {
 private:
-	bool scEnabled = true, fjEnabled = true, tjEnabled = true;
+	bool scEnabled = true, fjEnabled = true, tjEnabled = false;
 	pair<N0, N1> connected;    // the two connected nodes
 	Spring sc;                 // basic spring
 	pair<Joint, Joint> fj, tj; // flexure and torsion joints (1 per node)
@@ -122,6 +123,9 @@ public:
 	/**********************************************
 	 *                GET & SET
 	 **********************************************/
+	Spring &getSc() { return sc; }
+	pair<Joint, Joint> &getFlex() { return fj; }
+	pair<Joint, Joint> &getTorsion() { return tj; }
 	N0 &getNode0() { return connected.first; }
 	N1 &getNode1() { return connected.second; }
 	float getLength() { return sc.length; }
@@ -200,11 +204,14 @@ public:
 			}
 			// flex torque and force
 			fjNode.delta.n.normalize();
+			double d = scEnabled ?
+			               sc.length :
+			               (ptr(connected.first)->getPosition() - ptr(connected.second)->getPosition()).length();
 			double torque =
 			    fjNode.k * fjNode.delta.teta + fjNode.c * (fjNode.delta.teta - fjNode.prevDelta.teta); // -kx - cv
 			Vec vFlex = fjNode.delta.n * torque;                                                       // torque
 			Vec ortho = sc.direction.ortho(fjNode.delta.n).normalized(); // force direction
-			Vec force = sign * ortho * torque;
+			Vec force = sign * ortho * torque / d;
 
 			node->receiveForce(-force);
 			other->receiveForce(force);

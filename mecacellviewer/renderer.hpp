@@ -28,6 +28,7 @@ private:
 	using Vec = decltype(((Cell *)nullptr)->getPosition());
 	using ConnectType = typename World::connect_type;
 	using ModelType = typename World::model_type;
+	using modelConn_ptr = typename World::modelConn_ptr;
 
 	// Scenario
 	int argc;
@@ -38,7 +39,7 @@ private:
 	// Visual elements
 	Camera camera;
 	CellGroup<Cell> cells;
-	ConnectionsGroup<ConnectType> connections;
+	ConnectionsGroup connections;
 	Skybox skybox;
 	unique_ptr<QOpenGLFramebufferObject> ssaoFBO, msaaFBO, finalFBO, fsaaFBO;
 	QOpenGLFramebufferObjectFormat ssaoFormat, msaaFormat, finalFormat;
@@ -144,7 +145,9 @@ public:
 			           selectedCell);
 		}
 		if (gc.contains("connections")) {
-			connections.draw(scenario.getWorld().connections, view, projection);
+			connections.draw<ConnectType>(scenario.getWorld().connections, view, projection);
+			connections.drawModelConnections<Cell, modelConn_ptr>(scenario.getWorld().cellModelConnections, view,
+			                                                      projection);
 		}
 
 		GL->glViewport(0, 0, viewportSize.width() * screenCoef, viewportSize.height() * screenCoef);
@@ -173,6 +176,7 @@ public:
 		chrono::duration<double> dv = t1 - t0;
 		viewDt = dv.count();
 		t0 = chrono::high_resolution_clock::now();
+		camera.updatePosition(viewDt);
 		++frame;
 		if (window) window->update();
 	}

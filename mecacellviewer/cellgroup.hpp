@@ -51,6 +51,7 @@ public:
 					QVector3D center = toQV3D(c->getPosition());
 					if ((cut && QVector3D::dotProduct(center, QVector3D(1, 0, 0)) > 0) || !cut) {
 						model.translate(center);
+						model.rotate(radToDeg(c->getOrientationRotation().teta), toQV3D(c->getOrientationRotation().n));
 						if (drawMode == plain) {
 							model.scale(QVector3D(radius, radius, radius));
 						} else {

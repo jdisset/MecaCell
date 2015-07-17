@@ -28,8 +28,15 @@ public:
 	QVector3D target = QVector3D(0, 0, 0);
 	QVector3D viewVector = target - position;
 	bool adjustForAspectRatio = true;
+
 	float sensitivity = 0.2;
-	float speed = 1000;
+	float forceIntensity = 15000;
+	float rotationSensitivity = 65;
+	float friction = 7.5;
+	QVector3D force;
+	QVector3D speed;
+	QVector3D torque;
+	QVector3D angularVelocity;
 
 	Camera() {}
 
@@ -140,19 +147,8 @@ public:
 			upVector = q2.rotatedVector(upVector);
 			setPosition(newpos);
 		} else if (mode == fps) {
-			upVector = q1.rotatedVector(upVector);
-			// plane projection
-			upVector = (upVector -
-			            QVector3D(1, 0, 0) * QVector3D::dotProduct(upVector, QVector3D(1, 0, 0)) /
-			                upVector.lengthSquared())
-			               .normalized();
-			viewVector = q1.rotatedVector(viewVector);
-			QQuaternion q2 = pan(sensitivity * x);
-			viewVector = q2.rotatedVector(viewVector);
-			target = position + viewVector;
-			// newpos = target + q2.rotatedVector(-viewVector);
-			// upVector = q2.rotatedVector(upVector);
-			// setPosition(newpos);
+			torque += rotationSensitivity *
+			          (upVector * x + QVector3D::crossProduct(viewVector, upVector).normalized() * y);
 		}
 	}
 
@@ -170,25 +166,22 @@ public:
 	}
 
 	void right(float dt) {
-		QVector3D v = QVector3D::crossProduct(viewVector, upVector).normalized() * speed * dt;
-		position += v;
-		target = position + viewVector;
+		QVector3D v = QVector3D::crossProduct(viewVector, upVector).normalized();
+		force += v * forceIntensity;
 		if (mode == centered) {
 			viewVector = (target - position).normalized();
 		}
 	}
 	void left(float dt) {
-		QVector3D v = QVector3D::crossProduct(upVector, viewVector).normalized() * speed * dt;
-		position += v;
-		target = position + viewVector;
+		QVector3D v = QVector3D::crossProduct(upVector, viewVector).normalized();
+		force += v * forceIntensity;
 		if (mode == centered) {
 			viewVector = (target - position).normalized();
 		}
 	}
 	void backward(float dt) {
 		if (mode == fps) {
-			position += -viewVector.normalized() * speed * dt;
-			target = position + viewVector;
+			force += -viewVector.normalized() * forceIntensity;
 		} else if (mode == centered) {
 			float amount = 0.1 * (position - target).length();
 			translate(-viewVector.normalized() * dt * amount);
@@ -196,11 +189,25 @@ public:
 	}
 	void forward(float dt) {
 		if (mode == fps) {
-			position += viewVector.normalized() * speed * dt;
-			target = position + viewVector;
+			force += viewVector.normalized() * forceIntensity;
 		} else if (mode == centered) {
 			float amount = 0.1 * (position - target).length();
 			translate(viewVector.normalized() * dt * amount);
+		}
+	}
+
+	void updatePosition(float dt) {
+		if (mode == fps) {
+			speed += force * dt - speed * friction * dt;
+			position += speed * dt;
+			force = QVector3D(0, 0, 0);
+			angularVelocity += (torque - friction * angularVelocity) * dt;
+			QQuaternion q1 =
+			    QQuaternion::fromAxisAndAngle(angularVelocity.normalized(), dt * angularVelocity.length());
+			viewVector = q1.rotatedVector(viewVector);
+			upVector = q1.rotatedVector(upVector);
+			torque = QVector3D(0, 0, 0);
+			target = position + viewVector;
 		}
 	}
 	/**************************

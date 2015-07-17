@@ -23,6 +23,8 @@ namespace MecaCell {
 template <typename Derived> class ConnectableCell : public Movable, public Orientable {
 protected:
 	using ConnectionType = Connection<Derived *>;
+	using ModelConnectionType =
+	    pair<Connection<ModelConnectionPoint, Derived *>, Connection<ModelConnectionPoint, Derived *>>;
 	bool dead = false; // is the cell dead or alive ?
 	array<double, 3> color = {{0.75, 0.12, 0.07}};
 	double radius = DEFAULT_CELL_RADIUS;
@@ -32,7 +34,7 @@ protected:
 	double angularStiffness = DEFAULT_CELL_ANG_STIFFNESS;
 	bool tested = false; // has already been tested for collision
 	vector<ConnectionType *> connections;
-	vector<Connection<ModelConnectionPoint, Derived *>> modelConnections;
+	vector<ModelConnectionType *> modelConnections;
 	vector<Derived *> connectedCells;
 
 public:
@@ -104,6 +106,14 @@ public:
 	double getAdhesionWithModel(const string &) { return 0.7; }
 
 	vector<ConnectionType *> &getRWConnections() { return connections; }
+	vector<ModelConnectionType *> &getRWModelConnections() { return modelConnections; }
+
+	// TODO : try using set instead of vectors for connections (faster random deletion)
+	void addModelConnection(ModelConnectionType *con) { modelConnections.push_back(con); }
+	void removeModelConnection(ModelConnectionType *con) {
+		modelConnections.erase(remove(modelConnections.begin(), modelConnections.end(), con),
+		                       modelConnections.end());
+	}
 
 	/******************************
 	 * connections

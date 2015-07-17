@@ -5,7 +5,6 @@
 // using structs instead of lambda templates (c++14 feature :-/ )
 namespace MecaCell {
 
-// Pretty fast, not extremely accurate.
 struct Verlet {
 	template <typename C> void operator()(C &c, const double &dt) {
 
