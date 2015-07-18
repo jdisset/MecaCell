@@ -17,8 +17,11 @@ using namespace std;
 namespace MecacellViewer {
 class SignalSlotBase;
 
+enum colorMode { normalColor, pressure };
 class SignalSlotRenderer : public QObject {
+
 	Q_OBJECT
+
 protected:
 	QSize viewportSize;
 	QQuickWindow *window = nullptr;

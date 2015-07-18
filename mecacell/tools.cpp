@@ -134,12 +134,12 @@ std::vector<std::string> splitStr(const std::string &s, char delim) {
 	return res;
 }
 
-double DEFAULT_CELL_DAMP_RATIO = 1.0;
+double DEFAULT_CELL_DAMP_RATIO = 0.5;
 double DEFAULT_CELL_MASS = 1.0;
 double DEFAULT_CELL_RADIUS = 40.0;
-double DEFAULT_CELL_STIFFNESS = 30.0;
-double DEFAULT_CELL_ANG_STIFFNESS = 20000.0;
-double MIN_CELL_ADH_LENGTH = 0.5;
+double DEFAULT_CELL_STIFFNESS = 70.0;
+double DEFAULT_CELL_ANG_STIFFNESS = 1.0;
+double MIN_CELL_ADH_LENGTH = 0.6;
 double MAX_CELL_ADH_LENGTH = 0.8;
 double ADH_THRESHOLD = 0.1;
 }

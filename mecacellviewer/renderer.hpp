@@ -72,6 +72,8 @@ private:
 	bool worldUpdate = true;
 	bool loopStep = true;
 	bool cut = false;
+	bool takeScreen = false;
+	colorMode cMode;
 
 public:
 	explicit Renderer(int c, char **v) : SignalSlotRenderer(), argc(c), argv(v) {
@@ -111,7 +113,7 @@ public:
 		if (gc.contains("cells")) {
 			cells.drawMode = plain;
 			cells.draw(scenario.getWorld().cells, view, projection, camera.getViewVector(), camera.getPosition(),
-			           selectedCell);
+			           cMode, selectedCell);
 		}
 		if (gc.contains("cellGrid")) {
 			gridViewer.draw(scenario.getWorld().getCellGrid(), view, projection, QVector4D(0.99, 0.9, 0.4, 1.0));
@@ -142,7 +144,7 @@ public:
 		if (gc.contains("centers")) {
 			cells.drawMode = centers;
 			cells.draw(scenario.getWorld().cells, view, projection, camera.getViewVector(), camera.getPosition(),
-			           selectedCell);
+			           cMode, selectedCell);
 		}
 		if (gc.contains("connections")) {
 			connections.draw<ConnectType>(scenario.getWorld().connections, view, projection);
@@ -156,6 +158,12 @@ public:
 		    fsaaFBO.get(), QRect(QPoint(0, 0), viewportSize * screenCoef), finalFBO.get(),
 		    QRect(QPoint(0, 0), viewportSize * FSAA_COEF * screenCoef), GL_COLOR_BUFFER_BIT, GL_LINEAR);
 
+		if (takeScreen) {
+			cerr << "screen" << endl;
+			stringstream screenshotName;
+			screenshotName << "screen" << frame << ".png";
+			fsaaFBO->toImage().save(QString::fromStdString(screenshotName.str()));
+		}
 		blurTarget.draw(fsaaFBO->texture(), 5, viewportSize * screenCoef,
 		                QRect(QPoint(0, 0), QSize(menuSize * screenCoef, viewportSize.height() * screenCoef)));
 
@@ -176,7 +184,8 @@ public:
 		chrono::duration<double> dv = t1 - t0;
 		viewDt = dv.count();
 		t0 = chrono::high_resolution_clock::now();
-		camera.updatePosition(viewDt);
+		// camera.updatePosition(viewDt);
+		camera.updatePosition(0.02);
 		++frame;
 		if (window) window->update();
 	}

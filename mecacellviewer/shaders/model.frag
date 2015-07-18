@@ -18,19 +18,20 @@ const float screenGamma = 2.2;
 
 
 void main(){
-	vec4 modelDiffuseColor = color;
+	/*vec4 modelDiffuseColor = color;*/
+	vec4 modelDiffuseColor = vec4(1.0);
 	vec4 modelAmbientColor = vec4(modelDiffuseColor.xyz * 0.07, modelDiffuseColor.a); 
 
 	DirectionalLight lights[nbLights];
-	lights[0].direction = vec3(10,10,5);
+	lights[0].direction = vec3(-0.10, 1, 0.1);
 	lights[0].color = vec3(1.0,1.0,1.0);
-	lights[0].intensity = 0.5;
+	lights[0].intensity = 0.65;
 	lights[1].direction = vec3(-0.8,0.2,-0.1);
 	lights[1].color = vec3(1.0,0.63,0.57);
-	lights[1].intensity = 0.42;
+	lights[1].intensity = 0.52;
 	lights[2].direction = vec3(0.8,0.2,0.0);
 	lights[2].color = vec3(0.56,0.65,1.0);
-	lights[2].intensity = 0.42;
+	lights[2].intensity = 0.52;
 
 	vec3 normal = normalize(normalInterp);
 

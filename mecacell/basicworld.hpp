@@ -27,7 +27,7 @@ protected:
 	Grid<Cell *> grid = Grid<Cell *>(5.0 * DEFAULT_CELL_RADIUS);
 
 	// model grid containting pair<model_ptr, face_id>
-	Grid<pair<Model *, size_t>> modelGrid = Grid<pair<Model *, size_t>>(150);
+	Grid<pair<Model *, size_t>> modelGrid = Grid<pair<Model *, size_t>>(100);
 
 	// enabled collisions
 	bool cellCellCollisions = true;
@@ -115,7 +115,7 @@ public:
 			con->computeForces(dt);
 		for (auto &n : cellModelConnections) {
 			for (auto &p : n.second) {
-				p.second->first.computeForces(dt);
+				// p.second->first.computeForces(dt);
 				p.second->second.computeForces(dt);
 			}
 		}
@@ -148,21 +148,21 @@ public:
 				// il faut faire glisser le point d'accroche vers la projection de la cell
 				// (le comportement par défaut est de faire pivoter l'angle de référence).
 				// TODO : plus joli, mieux intégré, moins couteux...
-				Joint &flex = p.second->first.getFlex().first;
-				double MTETA = 0.01;
-				if (flex.delta.teta > MTETA) {
-					ModelConnectionPoint &fjMCP = p.second->first.getNode0();
-					const Triangle &ft = fjMCP.model->faces[fjMCP.face];
-					auto projecfj =
-					    projectionIntriangle(fjMCP.model->vertices[ft.indices[0]], fjMCP.model->vertices[ft.indices[1]],
-					                         fjMCP.model->vertices[ft.indices[2]], c->getPosition());
-					double mvLength =
-					    (projecfj.second - c->getPosition()).length() * (tan(flex.delta.teta) - tan(MTETA));
-					fjMCP.position += mvLength * (projecfj.second - fjMCP.position).normalized();
-				}
+				// Joint &flex = p.second->first.getFlex().first;
+				// double MTETA = 0.01;
+				// if (flex.delta.teta > MTETA) {
+				// ModelConnectionPoint &fjMCP = p.second->first.getNode0();
+				// const Triangle &ft = fjMCP.model->faces[fjMCP.face];
+				// auto projecfj =
+				// projectionIntriangle(fjMCP.model->vertices[ft.indices[0]], fjMCP.model->vertices[ft.indices[1]],
+				// fjMCP.model->vertices[ft.indices[2]], c->getPosition());
+				// double mvLength =
+				//(projecfj.second - c->getPosition()).length() * (tan(flex.delta.teta) - tan(MTETA));
+				// fjMCP.position += mvLength * (projecfj.second - fjMCP.position).normalized();
+				//}
 
 				// we need to remove a connection if its length is longer than the cell radius
-				if (p.second->second.getSc().length > c->getRadius()) {
+				if (!projec.first || p.second->second.getSc().length > c->getRadius()) {
 					p.second->second.getNode1()->removeModelConnection(p.second.get());
 					it = m.second.erase(it);
 				} else {
@@ -186,6 +186,13 @@ public:
 
 	void updateConnectionsLengthAndDirection() {
 		for (auto &c : connections) {
+			double contactSurface =
+			    M_PI * (pow(c->getSc().length, 2) +
+			            pow((c->getNode0()->getRadius() + c->getNode1()->getRadius()) / 2.0, 2));
+			c->getFlex().first.setCurrentKCoef(contactSurface);
+			c->getFlex().second.setCurrentKCoef(contactSurface);
+			c->getTorsion().first.setCurrentKCoef(contactSurface);
+			c->getTorsion().second.setCurrentKCoef(contactSurface);
 			c->updateLengthDirection();
 		}
 	}
@@ -241,7 +248,8 @@ public:
 					pair<bool, Vec> projec = projectionIntriangle(p0, p1, p2, c->getPosition());
 					if (projec.first && (c->getPosition() - projec.second).sqlength() < pow(c->getRadius(), 2)) {
 						// new collision
-						double adh = c->getAdhesionWithModel(mf.first->name);
+						double adh = 0;
+						// c->getAdhesionWithModel(mf.first->name);
 						double l = Cell::getConnectionLength(c->getRadius(), adh);
 						double maxTeta = mix(0.0, M_PI / 2.0, adh);
 						modelConn_ptr p(new modelConnPair(
@@ -269,7 +277,7 @@ public:
 						    Connection<ModelConnectionPoint, Cell *>(
 						        {ModelConnectionPoint(mf.first, projec.second, mf.second), c}, // N0, N1
 						        Spring(c->getStiffness(),
-						               dampingFromRatio(c->getDampRatio(), c->getMass(), c->getStiffness()), l))
+						               dampingFromRatio(c->getDampRatio(), c->getMass(), c->getStiffness() * 1.0), l))
 						    // end value pair & end emplace
 						    ));
 						c->addModelConnection(p.get());
@@ -312,6 +320,7 @@ public:
 	// deleteOverlapingConnections
 	// deletes all connections going through cells
 	void deleteOverlapingConnections(Cell *cell) {
+		double overlapCoef = 0.8;
 		vector<connect_type *> &vec = cell->getRWConnections();
 		for (auto c0It = vec.begin(); c0It < vec.end();) {
 			bool deleted = false; // tells if c0 was deleted inside the inner loop (so we know
@@ -351,7 +360,8 @@ public:
 						double c1SqLength = pow(c1->getLength(), 2);
 						double scal01 = c0v.dot(c1dir);
 						double scal10 = c1v.dot(c0dir);
-						if (scal01 > 0 && c0SqLength < c1SqLength && (c0SqLength - scal01 * scal01) < r0 * r0 * 0.6) {
+						if (scal01 > 0 && c0SqLength < c1SqLength &&
+						    (c0SqLength - scal01 * scal01) < r0 * r0 * overlapCoef) {
 							c1It = vec.erase(c1It);
 							other1->eraseConnection(c1);
 							cell->eraseCell(other1);
@@ -359,7 +369,7 @@ public:
 							connections.erase(remove(connections.begin(), connections.end(), c1), connections.end());
 							delete c1;
 						} else if (scal10 > 0 && c1SqLength < c0SqLength &&
-						           (c1SqLength - scal10 * scal10) < r1 * r1 * 0.6) {
+						           (c1SqLength - scal10 * scal10) < r1 * r1 * overlapCoef) {
 							c0It = vec.erase(c0It);
 							other0->eraseConnection(c0);
 							cell->eraseCell(other0);

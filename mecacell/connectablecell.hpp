@@ -139,7 +139,7 @@ public:
 							Vec AP = AB * AOdotAB / sqdist;
 							if (AP.dot(AB) < sqdist) {
 								// the other cell's projection is closer than our candidate
-								if ((AP - AO).sqlength() < pow(otherCell->getRadius(), 2)) {
+								if ((AP - AO).sqlength() < 0.7 * pow(otherCell->getRadius(), 2)) {
 									ok = false;
 									break;
 								}
@@ -165,7 +165,13 @@ public:
 						              Joint(getAngularStiffness(),
 						                    dampingFromRatio(dr, c->getMomentOfInertia() * 2.0, c->angularStiffness),
 						                    maxTeta)));
+						double contactSurface = M_PI * (sqdist + pow((radius + c->radius) / 2, 2));
+						s->getFlex().first.setCurrentKCoef(contactSurface);
+						s->getFlex().second.setCurrentKCoef(contactSurface);
+						s->getTorsion().first.setCurrentKCoef(contactSurface);
+						s->getTorsion().second.setCurrentKCoef(contactSurface);
 						addConnection(c, s);
+
 						worldConnexions.push_back(s);
 					}
 				}

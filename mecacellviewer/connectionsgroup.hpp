@@ -20,22 +20,22 @@ public:
 	void drawModelConnections(const unordered_map<string, map<pair<Cell *, size_t>, modelConn_ptr>> &co,
 	                          const QMatrix4x4 &view, const QMatrix4x4 &projection) {
 		lines.vertices = std::vector<float>();
-		for (auto &p : co) {
-			for (auto &c : p.second) {
-				// Flex & Torsion
-				auto F0 = c.second->first.getNode0(); // ModelConnectionPoint&
-				auto F1 = c.second->first.getNode1(); // Cell *
+		// for (auto &p : co) {
+		// for (auto &c : p.second) {
+		//// Flex & Torsion
+		// auto F0 = c.second->first.getNode0(); // ModelConnectionPoint&
+		// auto F1 = c.second->first.getNode1(); // Cell *
 
-				QVector3D center0 = toQV3D(F0.getPosition());
-				QVector3D center1 = toQV3D(F1->getPosition());
-				lines.vertices.push_back(center0.x());
-				lines.vertices.push_back(center0.y());
-				lines.vertices.push_back(center0.z());
-				lines.vertices.push_back(center1.x());
-				lines.vertices.push_back(center1.y());
-				lines.vertices.push_back(center1.z());
-			}
-		}
+		// QVector3D center0 = toQV3D(F0.getPosition());
+		// QVector3D center1 = toQV3D(F1->getPosition());
+		// lines.vertices.push_back(center0.x());
+		// lines.vertices.push_back(center0.y());
+		// lines.vertices.push_back(center0.z());
+		// lines.vertices.push_back(center1.x());
+		// lines.vertices.push_back(center1.y());
+		// lines.vertices.push_back(center1.z());
+		//}
+		//}
 		shader.bind();
 		lines.vao.bind();
 		lines.vbuf.bind();

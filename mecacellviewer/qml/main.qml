@@ -6,8 +6,8 @@ import QtQuick.Controls 1.3
 Item {
 	property
 	var guictrl: renderer.getGuiCtrl();
-	width: 1300
-	height: 850
+	width: 1280
+	height: 720
 	id: main
 	Component.onCompleted: {
 		guictrl["visibleElements"] = new Array();

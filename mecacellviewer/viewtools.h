@@ -12,4 +12,5 @@ template <typename V> QVector3D toQV3D(const V &v) { return QVector3D(v.x, v.y, 
 QString shaderWithHeader(QString filename);
 void initResources();
 inline double radToDeg(double x) { return x / M_PI * 180; }
+template <typename T> T mix(T m, T M, double v) { return (1.0 - v) * m + v * M; }
 #endif
