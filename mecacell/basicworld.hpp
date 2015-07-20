@@ -15,7 +15,7 @@ template <typename Cell, typename Integrator> class BasicWorld {
 protected:
 	Integrator updateCellPos;
 
-	double dt = 1.0 / 45.0;
+	double dt = 1.0 / 50.0;
 
 	// current update ID
 	int frame = 0;
@@ -80,7 +80,6 @@ public:
 	void update() {
 
 		if (cells.size() > 0) {
-			resetForces();
 			computeForces();
 			updatePositionsAndOrientations();
 			if (cellModelCollisions) {
@@ -97,6 +96,7 @@ public:
 			}
 			updateBehavior();
 			destroyCells();
+			resetForces();
 		}
 		++frame;
 	}
@@ -109,6 +109,7 @@ public:
 	 *           FORCES           *
 	 ******************************/
 
+	void setDt(double d) { dt = d; }
 	void computeForces() {
 		// connections
 		for (auto &con : connections)
@@ -320,7 +321,7 @@ public:
 	// deleteOverlapingConnections
 	// deletes all connections going through cells
 	void deleteOverlapingConnections(Cell *cell) {
-		double overlapCoef = 0.8;
+		double overlapCoef = 0.9;
 		vector<connect_type *> &vec = cell->getRWConnections();
 		for (auto c0It = vec.begin(); c0It < vec.end();) {
 			bool deleted = false; // tells if c0 was deleted inside the inner loop (so we know

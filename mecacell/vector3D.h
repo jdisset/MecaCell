@@ -20,6 +20,7 @@ public:
 	Vector3D cross(const Vector3D &v) const;
 
 	void random();
+	Vector3D deltaDirection(double amount);
 	static Vector3D randomUnit();
 	static Vector3D zero();
 	bool isZero() const;

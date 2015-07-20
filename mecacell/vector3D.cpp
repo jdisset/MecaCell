@@ -33,6 +33,11 @@ Vector3D Vector3D::randomUnit() {
 	return v;
 }
 
+Vector3D Vector3D::deltaDirection(double amount) {
+	std::normal_distribution<double> nDist(0.0, amount);
+	return Vector3D(x + nDist(globalRand), y + nDist(globalRand), z + nDist(globalRand)).normalized();
+}
+
 Vector3D Vector3D::zero() { return Vector3D(0, 0, 0); }
 
 bool Vector3D::isZero() const { return (x == 0 && y == 0 && z == 0); }

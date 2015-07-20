@@ -9,6 +9,7 @@ protected:
 	Vec prevposition = Vec::zero();
 	Vec velocity = Vec::zero();
 	Vec force = Vec::zero();
+	bool movementEnabled = true;
 	double mass = 1.0;
 	double baseMass = 1.0;
 	double totalForce = 0;
@@ -23,6 +24,9 @@ public:
 	/**********************************************
 	 *                GET & SET
 	 **********************************************/
+	bool isMovementEnabled() { return movementEnabled; }
+	void disableMovement() { movementEnabled = false; }
+	void enableMovement() { movementEnabled = true; }
 	Vec getPosition() const { return position; }
 	Vec getVelocity() const { return velocity; }
 	Vec getForce() const { return force; }
@@ -41,9 +45,7 @@ public:
 		totalForce += compressive ? intensity : -intensity;
 	}
 	void receiveForce(const Vec &f) { force += f; }
-	void resetVelocity() {
-		velocity = Vec::zero();
-	}
+	void resetVelocity() { velocity = Vec::zero(); }
 	void resetForce() {
 		totalForce = 0;
 		force = Vec::zero();

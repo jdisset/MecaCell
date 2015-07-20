@@ -36,7 +36,7 @@ struct Joint {
 	double k = 1.0; // angular stiffness
 	double currentK = 1.0;
 	double c = 1.0;               // damp
-	double maxTeta = M_PI / 12.0; // maximum angle
+	double maxTeta = M_PI / 20.0; // maximum angle
 	Rotation<Vec> r;              // rotation from node to joint
 	Rotation<Vec> delta;          // current rotation
 	Rotation<Vec> prevDelta;

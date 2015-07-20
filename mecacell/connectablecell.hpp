@@ -76,6 +76,8 @@ public:
 	 * main setters & getters
 	 *****************************/
 
+	void setStiffness(double s) { stiffness = s; }
+	void setAngularStiffness(double s) { angularStiffness = s; }
 	void setRadius(double r) { radius = r; }
 	void markAsTested() { tested = true; }
 	void markAsNotTested() { tested = false; }
@@ -139,7 +141,7 @@ public:
 							Vec AP = AB * AOdotAB / sqdist;
 							if (AP.dot(AB) < sqdist) {
 								// the other cell's projection is closer than our candidate
-								if ((AP - AO).sqlength() < 0.7 * pow(otherCell->getRadius(), 2)) {
+								if ((AP - AO).sqlength() < 0.92 * pow(otherCell->getRadius(), 2)) {
 									ok = false;
 									break;
 								}
@@ -151,7 +153,8 @@ public:
 						double l = getConnectionLength(c, minAdh);
 						double k = (stiffness * radius + c->stiffness * c->radius) / (radius + c->radius);
 						double dr = (dampRatio * radius + c->dampRatio * c->radius) / (radius + c->radius);
-						double maxTeta = mix(0.0, M_PI / 2.0, minAdh);
+						// double maxTeta = mix(0.0, M_PI / 2.0, minAdh);
+						double maxTeta = M_PI / 12.0;
 						ConnectionType *s = new ConnectionType(
 						    pair<Derived *, Derived *>(selfptr(), c),
 						    Spring(k, dampingFromRatio(dr, mass + c->mass, k), l),

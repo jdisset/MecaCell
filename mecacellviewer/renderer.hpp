@@ -72,7 +72,7 @@ private:
 	bool worldUpdate = true;
 	bool loopStep = true;
 	bool cut = false;
-	bool takeScreen = false;
+	bool takeScreen = true;
 	colorMode cMode;
 
 public:
@@ -91,7 +91,7 @@ public:
 		}
 
 		cells.cut = cut;
-		FSAA_COEF = screenCoef == 2.0 ? 0.7 : 1.0;
+		FSAA_COEF = screenCoef == 2.0 ? 0.6 : 1.0;
 
 		processEvents();
 		msaaFBO->bind();
@@ -152,8 +152,6 @@ public:
 			                                                      projection);
 		}
 
-		GL->glViewport(0, 0, viewportSize.width() * screenCoef, viewportSize.height() * screenCoef);
-
 		QOpenGLFramebufferObject::blitFramebuffer(
 		    fsaaFBO.get(), QRect(QPoint(0, 0), viewportSize * screenCoef), finalFBO.get(),
 		    QRect(QPoint(0, 0), viewportSize * FSAA_COEF * screenCoef), GL_COLOR_BUFFER_BIT, GL_LINEAR);
@@ -161,9 +159,10 @@ public:
 		if (takeScreen) {
 			cerr << "screen" << endl;
 			stringstream screenshotName;
-			screenshotName << "screen" << frame << ".png";
-			fsaaFBO->toImage().save(QString::fromStdString(screenshotName.str()));
+			screenshotName << "screen" << frame << ".jpg";
+			finalFBO->toImage().save(QString::fromStdString(screenshotName.str()), 0, 98);
 		}
+		GL->glViewport(0, 0, viewportSize.width() * screenCoef, viewportSize.height() * screenCoef);
 		blurTarget.draw(fsaaFBO->texture(), 5, viewportSize * screenCoef,
 		                QRect(QPoint(0, 0), QSize(menuSize * screenCoef, viewportSize.height() * screenCoef)));
 

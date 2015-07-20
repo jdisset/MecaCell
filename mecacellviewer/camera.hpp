@@ -23,7 +23,7 @@ public:
 	float farPlane = 30000;
 	QSizeF viewSize = QSizeF(2.0f, 2.0f);
 	QSizeF minViewSize = QSizeF(0.01f, 0.01f);
-	QVector3D position = QVector3D(0, 200, 500);
+	QVector3D position = QVector3D(0, 1000, 2200);
 	QVector3D upVector = QVector3D(0, 1, 0);
 	QVector3D target = QVector3D(0, 0, 0);
 	QVector3D viewVector = target - position;
