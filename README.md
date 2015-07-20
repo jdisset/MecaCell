@@ -7,12 +7,13 @@ It comes in the form of two libraries :
 
 
 ##Installation
-You will need cmake 2.8+, a recent C++ compiler (C++11 support is required) and Qt 5.2+
+You will need cmake 2.8+, a relatively recent C++ compiler (C++11 support is required) and Qt 5.2+
 - Clone this repository
 - cd in it and create a build directory
 - cmake .. && make && make install
 
 ##Basic usage, simple example
+
 
 
 
