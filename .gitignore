@@ -26,3 +26,9 @@
 *.exe
 *.out
 *.app
+
+build/*
+.*
+back/*
+*.xcf
+*.todo
