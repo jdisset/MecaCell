@@ -22,11 +22,11 @@ Your cell type must inherit from the MecaCell::ConnectableCell (it uses the curr
 class MyCell : public MecaCell::ConnectableCell<MyCell> {
 ```
 a cell is required to have at least 2 methods:
-- ```c++
+```c++
 	// returns the adhesion coef (between 0 & 1) with the cell *c
 	double getAdhesionWith(const MyCell *c) { return 0.9; }
 ```
-- ```c++
+```c++
   // update routine, called at every loop iteration
 	// returns a pointer to a new cell if division
 	// returns nullptr if not
@@ -53,14 +53,14 @@ public:
 ```
 
 It should also contains at least these 2 methods:
-- ```c++
+```c++
 	// called at initialisation
 void init(int argc, char** argv) {
 // here we just add a cell at (0,0,0);
 					w.addCell(new Cell(MecaCell::Vec::zero()));
 }
 ```
-- ```c++
+```c++
 void loop(){
 // this code is called before every frame by the viewer
 // here we just call the world update method, which will handle all the physics and call
