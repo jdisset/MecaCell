@@ -71,4 +71,17 @@ It should also contain at least these 2 methods:
 	}
 };
 ```
-That's it for our extremely basic example. Now compile your project (don't forget to link to mecacell library and mecacellviewer + Qt) and run it. You can run it without the viewer by just repeatedly calling yout scenario::loop() method (don't forget to init() first).
+Now for the main.cpp:
+```c++
+#include <mecacell/mecacell.h>
+#include <mecacell/viewer/viewer.h>
+#include "myscenario.h"
+#include "mycell.h"
+
+int main(int argc, char **argv) {
+	MecacellViewer::Viewer<MyScenario<MyCell>> v;
+	return v.exec(argc, argv);
+}
+
+```
+That's it for our extremely basic example. Now you can compile your project (don't forget to link to mecacell library and mecacellviewer + Qt) and run it. You can run it without the viewer by just repeatedly calling yout scenario::loop() method (don't forget to init() first) instead of creating a viewer instance.
