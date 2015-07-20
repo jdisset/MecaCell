@@ -8,9 +8,9 @@ It comes in the form of two libraries :
 
 ##Installation
 You will need cmake 2.8+, a recent C++ compiler (C++11 support is required) and Qt 5.2+
-1. Clone this repository
-2. cd in it and create a build directory
-3. cmake .. && make && make install
+- Clone this repository
+- cd in it and create a build directory
+- cmake .. && make && make install
 
 ##Basic usage, simple example
 
