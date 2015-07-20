@@ -43,7 +43,7 @@ Let's now create a scenario:
 ```c++
 class MyScenario {
 ```
-A scenario needs to contain a MecaCell::BasicWorld<cell_type,integration_mode> and let the viewer acces to it:
+A scenario needs to contain a MecaCell::BasicWorld\<cell_type,integration_mode\> and let the viewer acces to it:
 ```c++
 	using World = MecaCell::BasicWorld<MyCell, MecaCell::Euler>;
 private:
