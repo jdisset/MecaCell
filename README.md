@@ -64,8 +64,8 @@ It should also contain at least these 2 methods:
 ```c++
 	void loop(){
 		// this code is called before every frame by the viewer
-		// here we just call the world update method, which will handle all the physics and call
-		// our cells behavior method
+		// here we just call the world update method, which will handle all the physics
+    // and call our MyCell::updateBehavior() method
 		w.update();
 		// handle events, plug your own methods call, whatever you want goes in this method...
 	}
