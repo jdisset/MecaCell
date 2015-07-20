@@ -71,3 +71,4 @@ It should also contain at least these 2 methods:
 	}
 };
 ```
+That's it for our extremely basic example. Now compile your project (don't forget to link to mecacell library and mecacellviewer + Qt) and run it. You can run it without the viewer by just repeatedly calling yout scenario::loop() method (don't forget to init() first).
