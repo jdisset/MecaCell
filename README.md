@@ -3,7 +3,7 @@ MecaCell is an open-source cellular physics agent-based simulation platform. It 
 It comes in the form of two libraries :
 - **MecaCell** is the _core_ library which contains everything you need to run simulations in console or with your own viewer. It is written in C++11 and has no dependencies other than the C++ standard library.
 	- **MecaCellViewer** is a _viewer_ library. It is written in C++, uses OpenGL and depends on Qt5.
-![screenshots](raw.githubusercontent.com/jdisset/MecaCell/screens/poulpe.png)
+![screenshots](http://raw.githubusercontent.com/jdisset/MecaCell/screens/poulpe.png)
 
 
 ##Installation
