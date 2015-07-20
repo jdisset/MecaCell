@@ -8,7 +8,7 @@ It comes in the form of two libraries :
 ![screenshots](https://github.com/jdisset/MecaCell/blob/screens/githubmecacell.jpg)
 
 
-##Installation
+##Install
 You will need cmake 2.8+, a relatively recent C++ compiler (C++11 support is required) and Qt 5.2+
 - Clone this repository
 - cd in it and create a build directory
