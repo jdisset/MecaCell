@@ -27,11 +27,11 @@ a cell is required to have at least 2 methods:
 	double getAdhesionWith(const MyCell *c) { return 0.9; }
 ```
 ```c++
-  // update routine, called at every loop iteration
+	// update routine, called at every loop iteration
 	// returns a pointer to a new cell if division
 	// returns nullptr if not
 	MyCell* updateBehavior(double deltaTime) {
-// access inputs here
+		// access inputs here
 		return nullptr;
 	}
 };
@@ -55,19 +55,19 @@ public:
 It should also contains at least these 2 methods:
 ```c++
 	// called at initialisation
-void init(int argc, char** argv) {
-// here we just add a cell at (0,0,0);
-					w.addCell(new Cell(MecaCell::Vec::zero()));
-}
+	void init(int argc, char** argv) {
+		// here we just add a cell at (0,0,0);
+		w.addCell(new Cell(MecaCell::Vec::zero()));
+	}
 ```
 ```c++
-void loop(){
-// this code is called before every frame by the viewer
-// here we just call the world update method, which will handle all the physics and call
-// our cells behavior method
-w.update();
-// handle events, plug your own methods call, whatever you want goes in this method...
-}
+	void loop(){
+		// this code is called before every frame by the viewer
+		// here we just call the world update method, which will handle all the physics and call
+		// our cells behavior method
+		w.update();
+		// handle events, plug your own methods call, whatever you want goes in this method...
+	}
 };
 	```
 
