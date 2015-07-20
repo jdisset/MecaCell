@@ -53,7 +53,7 @@ public:
 	World &getWorld() { return w; }
 ```
 
-It should also contains at least these 2 methods:
+It should also contain at least these 2 methods:
 ```c++
 	// called at initialisation
 	void init(int argc, char** argv) {
