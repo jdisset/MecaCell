@@ -15,7 +15,10 @@ You will need cmake 2.8+, a relatively recent C++ compiler (C++11 support is req
 - cmake .. && make && make install
 
 ##Basic usage, simple example
-
+You need two things: a **cell type** and a **scenario**. Your cell type must inherit from the MecaCell::ConnectableCell (it uses the curriously reccuring template for performances reason, so the inherit line is a little bit more verbose):
+```c++
+class MyCell : public MecaCell::ConnectableCell<MyCell>
+```
 
 
 
