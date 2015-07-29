@@ -60,11 +60,11 @@ public:
 							model.scale(QVector3D(2.0, 2.0, 2.0));
 						}
 						QVector3D color(c->getColor(0), c->getColor(1), c->getColor(2));
-						if (cm == pressure) {
+						//if (cm == pressure) {
 							QColor co;
 							co.setHsvF(mix(0.0, 0.7, 1.0 - c->getNormalizedPressure()), 0.8, 0.8);
 							color = QVector3D(co.redF(), co.greenF(), co.blueF());
-						}
+						//}
 						if (c == selected) color = QVector3D(1.0, 1.0, 1.0);
 						QMatrix4x4 nmatrix = (model).inverted().transposed();
 						shader.setUniformValue(shader.uniformLocation("model"), model);

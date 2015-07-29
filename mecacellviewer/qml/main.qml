@@ -15,6 +15,13 @@ Item {
 		renderer.setGuiCtrl(guictrl);
 	}
 
+	function removeCtrl(k) {
+		if (guictrl[k] != undefined) {
+			delete guictrl[k];
+			renderer.setGuiCtrl(guictrl);
+		}
+	}
+
 	function setCtrl(k, v) {
 		guictrl[k] = v;
 		renderer.setGuiCtrl(guictrl);

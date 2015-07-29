@@ -59,10 +59,12 @@ public:
 		return 0;
 	}
 	const std::vector<Derived *> &getConnectedCells() const { return connectedCells; }
+
 	double getPressure() const {
 		double surface = 4.0f * M_PI * radius * radius;
 		return totalForce / surface;
 	}
+
 	double getNormalizedPressure() const {
 		double p = getPressure();
 		double sign = p >= 0 ? 1 : -1;
@@ -76,6 +78,7 @@ public:
 	 * main setters & getters
 	 *****************************/
 
+	void setBaseRadius(double r) { baseRadius = r; }
 	void setStiffness(double s) { stiffness = s; }
 	void setAngularStiffness(double s) { angularStiffness = s; }
 	void setRadius(double r) { radius = r; }
@@ -149,6 +152,9 @@ public:
 						}
 					}
 					if (ok) {
+						// TODO: store adhesion with each connection. Each call to getAdhesionWith should only be for
+						// a new connection. For the old connection, user should be able to tweak the coefficien through a
+						// updateConnectionParams(ConnectionType*) method.
 						double minAdh = (getAdhesionWith(c) + c->getAdhesionWith(selfptr())) * 0.5;
 						double l = getConnectionLength(c, minAdh);
 						double k = (stiffness * radius + c->stiffness * c->radius) / (radius + c->radius);

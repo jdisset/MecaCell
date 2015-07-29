@@ -78,6 +78,25 @@ Item {
 					}
 				}
 			}
+			VerticalSpacer {}
+			SubTitle {
+				txt: "GUI OPTIONS"
+			}
+			Column {
+				id: viewMenu2
+				anchors.left: parent.left
+				anchors.leftMargin: 25
+				spacing: 10
+				CheckableButton {
+					checked: false
+					id: takeScreen
+					legend: "Screen captures"
+					onToggled: {
+						if (checked) setCtrl("takeScreen", true);
+						else removeCtrl("takeScreen");
+					}
+				}
+			}
 		}
 	}
 }
