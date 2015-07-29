@@ -100,7 +100,6 @@ Item {
 						if (chk) {
 							setCtrl("colorMode", "owncolor");
 							checked = true
-							console.log("ownMode");
 						} else {
 							checked = false
 						}
@@ -114,7 +113,6 @@ Item {
 					onCheck: {
 						if (chk) {
 							setCtrl("colorMode", "pressure");
-							console.log("pressureMode");
 							checked = true
 						} else {
 							checked = false
