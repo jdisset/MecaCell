@@ -10,6 +10,7 @@ Rectangle {
 	property color notselecColor: "#FFFFFFFF";
 	property color notselecIconColor: "#40000000";
 	signal toggled()
+	signal check(bool chk)
 	height: 25
 	width: 70
 	color: "transparent"

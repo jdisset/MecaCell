@@ -17,7 +17,7 @@ using namespace std;
 namespace MecacellViewer {
 class SignalSlotBase;
 
-enum colorMode { normalColor, pressure };
+enum colorMode { owncolor, pressure };
 class SignalSlotRenderer : public QObject {
 
 	Q_OBJECT

@@ -189,6 +189,11 @@ public:
 		if (window) window->update();
 	}
 
+	colorMode strToColorMode(const QString &cm) {
+		if (cm == "pressure") return owncolor;
+		if (cm == "owncolor") return pressure;
+	}
+
 	/***********************************
 	 *         INITIALIZATION          *
 	 ***********************************/
@@ -271,6 +276,7 @@ public:
 			stats.remove("selectedCell");
 		b->setStats(stats);
 		b->statsChanged();
+		cMode = guiCtrl.contains("colorMode") ? strToColorMode(guiCtrl["colorMode"].toString()) : owncolor;
 		// mouse
 		mouseClickedButtons = b->mouseClickedButtons;
 		b->mouseClickedButtons &= Qt::NoButton;
