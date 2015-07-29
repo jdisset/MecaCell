@@ -96,6 +96,7 @@ public:
 			}
 			updateBehavior();
 			destroyCells();
+			updateStats();
 			resetForces();
 		}
 		++frame;
@@ -109,6 +110,11 @@ public:
 	 *           FORCES           *
 	 ******************************/
 
+	void updateStats() {
+		for (auto &c : cells) {
+			c->updateStats();
+		}
+	}
 	void setDt(double d) { dt = d; }
 	void computeForces() {
 		// connections

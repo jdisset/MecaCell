@@ -100,6 +100,7 @@ Item {
 						if (chk) {
 							setCtrl("colorMode", "owncolor");
 							checked = true
+							console.log("ownMode");
 						} else {
 							checked = false
 						}
@@ -113,29 +114,30 @@ Item {
 					onCheck: {
 						if (chk) {
 							setCtrl("colorMode", "pressure");
+							console.log("pressureMode");
 							checked = true
 						} else {
 							checked = false
 						}
 					}
 				}
-				VerticalSpacer {}
-				SubTitle {
-					txt: "GUI OPTIONS"
-				}
-				Column {
-					id: viewMenu3
-					anchors.left: parent.left
-					anchors.leftMargin: 25
-					spacing: 10
-					CheckableButton {
-						checked: false
-						id: takeScreen
-						legend: "Screen captures"
-						onToggled: {
-							if (checked) setCtrl("takeScreen", true);
-							else removeCtrl("takeScreen");
-						}
+			}
+			VerticalSpacer {}
+			SubTitle {
+				txt: "GUI OPTIONS"
+			}
+			Column {
+				id: viewMenu3
+				anchors.left: parent.left
+				anchors.leftMargin: 25
+				spacing: 10
+				CheckableButton {
+					checked: false
+					id: takeScreen
+					legend: "Screen captures"
+					onToggled: {
+						if (checked) setCtrl("takeScreen", true);
+						else removeCtrl("takeScreen");
 					}
 				}
 			}

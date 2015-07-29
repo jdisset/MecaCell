@@ -190,8 +190,8 @@ public:
 	}
 
 	colorMode strToColorMode(const QString &cm) {
-		if (cm == "pressure") return owncolor;
-		if (cm == "owncolor") return pressure;
+		if (cm == "pressure") return pressure;
+		if (cm == "owncolor") return owncolor;
 	}
 
 	/***********************************

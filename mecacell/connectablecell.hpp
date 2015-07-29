@@ -36,6 +36,7 @@ protected:
 	vector<ConnectionType *> connections;
 	vector<ModelConnectionType *> modelConnections;
 	vector<Derived *> connectedCells;
+	double pressure = 1.0;
 
 public:
 	ConnectableCell(Vec pos) : Movable(pos) { randomColor(); }
@@ -60,16 +61,18 @@ public:
 	}
 	const std::vector<Derived *> &getConnectedCells() const { return connectedCells; }
 
-	double getPressure() const {
-		double surface = 4.0f * M_PI * radius * radius;
-		return totalForce / surface;
+	double getPressure() const { return pressure; }
+
+	void computePressure() {
+		double surface = 4.0 * M_PI * radius * radius;
+		pressure = totalForce / surface;
 	}
 
 	double getNormalizedPressure() const {
-		double p = getPressure();
-		double sign = p >= 0 ? 1 : -1;
-		return 0.5 + sign * 0.5 * (1.0 - exp(-abs(14.0 * p)));
+		double sign = pressure >= 0 ? 1 : -1;
+		return 0.5 + sign * 0.5 * (1.0 - exp(-abs(10.0 * pressure)));
 	}
+
 	double getSqradius() const { return radius * radius; }
 	bool alreadyTested() const { return tested; }
 	int getNbConnections() const { return connections.size(); }
@@ -285,6 +288,7 @@ public:
 	/******************************
 	 * division and control
 	 *****************************/
+	void updateStats() { computePressure(); }
 
 	Derived *updateBehavior(double dt) { return self().updateBehavior(dt); }
 
