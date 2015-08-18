@@ -103,6 +103,7 @@ public slots:
 		renderer->setWindow(window());
 		renderer->setViewportSize(QSize(width(), height()));
 		renderer->sync(this);
+		update();
 	};
 
 	void init(unique_ptr<SignalSlotRenderer> &r) { renderer = move(r); }

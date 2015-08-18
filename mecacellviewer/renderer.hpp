@@ -183,8 +183,7 @@ public:
 		chrono::duration<double> dv = t1 - t0;
 		viewDt = dv.count();
 		t0 = chrono::high_resolution_clock::now();
-		// camera.updatePosition(viewDt);
-		camera.updatePosition(0.02);
+		camera.updatePosition(viewDt);
 		++frame;
 		if (window) window->update();
 	}

@@ -36,6 +36,7 @@ protected:
 	// physics parameters
 	Vec g = Vec::zero();
 	double viscosityCoef = 0.001;
+	int caca = 0;
 
 public:
 	using cell_type = Cell;
@@ -78,7 +79,6 @@ public:
 	 *             MAIN UPDATE ROUTINE            *
 	 *********************************************/
 	void update() {
-
 		if (cells.size() > 0) {
 			computeForces();
 			updatePositionsAndOrientations();
