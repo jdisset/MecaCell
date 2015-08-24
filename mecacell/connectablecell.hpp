@@ -8,6 +8,7 @@
 #include <cstdlib>
 #include <iostream>
 #include <memory>
+#include <functional>
 #include "rotation.h"
 #include "movable.h"
 #include "orientable.h"
@@ -320,7 +321,9 @@ public:
 		color[1] = 0.3 * r1;
 		color[2] = 0.05 + (0.2 * r0);
 	}
+	
+	// only useful when using mecacellViewer
+	unordered_map<string, function<void(int)>> interfaceAdditions;
 };
 }
-
 #endif

@@ -9,6 +9,7 @@
 #include "renderquad.hpp"
 #include "blurquad.hpp"
 #include "gridviewer.hpp"
+#include "macros.h"
 #include <type_traits>
 #include <QThread>
 #include <cmath>
@@ -20,6 +21,9 @@
 #include <sstream>
 
 namespace MecacellViewer {
+
+DEFINE_MEMBER_CHECKER(MCV_buttonMap);
+
 template <typename Scenario> class Renderer : public SignalSlotRenderer {
 
 private:
@@ -29,6 +33,16 @@ private:
 	using ConnectType = typename World::connect_type;
 	using ModelType = typename World::model_type;
 	using modelConn_ptr = typename World::modelConn_ptr;
+
+	template <typename T = Scenario>
+	void initInterface(
+	    const typename std::enable_if<HAS_MEMBER(Scenario, MCV_buttonMap), T>::type *dummy = nullptr) {
+		scenario.MCV_InitializeInterfaceAdditions();
+		MCV_buttonMap = scenario.MCV_buttonMap;
+	}
+	template <typename T = Scenario>
+	void initInterface(
+	    const typename std::enable_if<!HAS_MEMBER(Scenario, MCV_buttonMap), T>::type *dummy = nullptr) {}
 
 	// Scenario
 	int argc;
@@ -48,6 +62,7 @@ private:
 	BlurQuad blurTarget;
 	GridViewer gridViewer;
 	unordered_map<std::string, ModelViewer<ModelType>> modelViewers;
+	std::unordered_map<std::string, std::unordered_map<std::string, std::function<void()>>> MCV_buttonMap;
 
 	// Events
 	int mouseWheel = 0;
@@ -199,6 +214,14 @@ public:
 	// called once just after the openGL context is created
 	virtual void initialize() {
 		scenario.init(argc, argv);
+		initInterface();
+		cerr << "interface additions :" << endl;
+		for (auto &b : MCV_buttonMap) {
+			cerr << "  [" << b.first << "]" << endl;
+			for (auto &b2 : b.second) {
+				cerr << "  -- " << b2.first << "" << endl;
+			}
+		}
 		// gl functions
 		GL = QOpenGLContext::currentContext()->functions();
 		GL->initializeOpenGLFunctions();
@@ -242,6 +265,7 @@ public:
 		GL->glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		GL->glEnable(GL_DEPTH_TEST);
 	}
+
 	// depth texture initialisation
 	void genDepthTexture(QSize s, GLuint &t) {
 		GL->glGenTextures(1, &t);
