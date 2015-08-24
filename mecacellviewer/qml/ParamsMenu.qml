@@ -73,16 +73,6 @@ Item {
 				SubTitle {
 					txt: "SELECTED CELL ACTIONS"
 				}
-				LegendButton {
-					checked: true
-					selecColor: mecaBlue
-					label: "\uf0a6"
-					legend: "SELECT"
-					anchors.horizontalCenter: parent.horizontalCenter
-					onCheck: {
-						if (chk) setCtrl("tool", "select");
-					}
-				}
 			}
 		}
 	}
