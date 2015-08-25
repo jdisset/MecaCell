@@ -26,6 +26,8 @@ DEFINE_MEMBER_CHECKER(MCV_buttonMap);
 
 template <typename Scenario> class Renderer : public SignalSlotRenderer {
 
+	friend class SignalSlotBase;
+
 private:
 	using World = typename remove_reference<decltype(((Scenario *)nullptr)->getWorld())>::type;
 	using Cell = typename World::cell_type;
@@ -38,7 +40,7 @@ private:
 	void initInterface(
 	    const typename std::enable_if<HAS_MEMBER(Scenario, MCV_buttonMap), T>::type *dummy = nullptr) {
 		scenario.MCV_InitializeInterfaceAdditions();
-		MCV_buttonMap = scenario.MCV_buttonMap;
+		buttonMap = scenario.MCV_buttonMap;
 	}
 	template <typename T = Scenario>
 	void initInterface(
@@ -62,7 +64,6 @@ private:
 	BlurQuad blurTarget;
 	GridViewer gridViewer;
 	unordered_map<std::string, ModelViewer<ModelType>> modelViewers;
-	std::unordered_map<std::string, std::unordered_map<std::string, std::function<void()>>> MCV_buttonMap;
 
 	// Events
 	int mouseWheel = 0;
@@ -71,6 +72,7 @@ private:
 	QMap<QVariant, std::function<void()>> clickMethods;
 	set<int> pressedKeys;
 	set<int> inputKeys; // same as pressedKeys but true only once per press
+	std::map<QString, std::set<QString>> clickedButtons;
 
 	// Stats
 	chrono::time_point<chrono::high_resolution_clock> t0, tfps;
@@ -215,13 +217,6 @@ public:
 	virtual void initialize() {
 		scenario.init(argc, argv);
 		initInterface();
-		cerr << "interface additions :" << endl;
-		for (auto &b : MCV_buttonMap) {
-			cerr << "  [" << b.first << "]" << endl;
-			for (auto &b2 : b.second) {
-				cerr << "  -- " << b2.first << "" << endl;
-			}
-		}
 		// gl functions
 		GL = QOpenGLContext::currentContext()->functions();
 		GL->initializeOpenGLFunctions();
@@ -292,6 +287,8 @@ public:
 		worldUpdate = b->worldUpdate;
 		loopStep = b->loopStep;
 		b->loopStep = false;
+		clickedButtons = b->clickedButtons;
+		b->clickedButtons.clear();
 		// stats
 		if (selectedCell)
 			stats["selectedCell"] = cellToQVMap(selectedCell);
@@ -378,11 +375,19 @@ public:
 		if (inputKeys.count(Qt::Key_C)) {
 			cut = !cut;
 		}
-		if (pressedKeys.count(Qt::Key_Space)) {
-			Cell *c = new Cell(QV3D2Vec(camera.getPosition()) - QV3D2Vec(camera.getUpVector() * 50.0));
-			c->setVelocity(QV3D2Vec(camera.getViewVector() * 3000.0));
-			scenario.getWorld().addCell(c);
+
+		for (auto &menu : clickedButtons) {
+			for (auto &label : menu.second) {
+				if (buttonMap.count(menu.first) && buttonMap.at(menu.first).count(label)) {
+					buttonMap[menu.first][label]();
+				}
+			}
 		}
+		// if (pressedKeys.count(Qt::Key_Space)) {
+		// Cell *c = new Cell(QV3D2Vec(camera.getPosition()) - QV3D2Vec(camera.getUpVector() * 50.0));
+		// c->setVelocity(QV3D2Vec(camera.getViewVector() * 3000.0));
+		// scenario.getWorld().addCell(c);
+		//}
 		// if (selectedCell && pressedKeys.count(Qt::Key_M)) {
 		// selectedCell->startDivision();
 		//}

@@ -2,17 +2,39 @@ import SceneGraphRendering 1.0
 import QtQuick 2.0
 import QtGraphicalEffects 1.0
 import QtQuick.Controls 1.3
-
 Item {
 	property
 	var guictrl: renderer.getGuiCtrl();
-	width: 1000
-	height: 900
+	width: 1200
+	height: 800
 	id: main
 	Component.onCompleted: {
 		guictrl["visibleElements"] = new Array();
 		guictrl["visibleElements"].push("cells");
 		renderer.setGuiCtrl(guictrl);
+	}
+
+	function addButton(menu, label) {
+		var container = controlsMenu.selectedCellActions;
+		if (menu == "SELECTEDCELL_MENU") {
+			container = controlsMenu.selectedCellActions;
+		}
+		var component;
+		var finishCreation = function() {
+			if (component.status == Component.Ready) {
+				var btn = component.createObject(container, {
+					"text": label,
+					"menu": menu
+				});
+			} else if (component.status == Component.Error) {
+				console.log("Error loading component:", component.errorString());
+			}
+		};
+		component = Qt.createComponent("MVButton.qml");
+		if (component.status == Component.Ready)
+			finishCreation();
+		else
+			component.statusChanged.connect(finishCreation);
 	}
 
 	function removeCtrl(k) {
@@ -69,7 +91,7 @@ Item {
 	property color mecaBlue: "#A42DB2D6"
 	property color lightMecaBlue: "#302DB2D6"
 	property color mecaRed: "#B4E3343A"
-	property color bitDarker: "#40000000"
+	property color bitDarker: "#50000000"
 	property color background: "#80000000"
 	FontLoader {
 		id: fontawesome;source: "fonts/fontawesome.ttf"
@@ -86,18 +108,25 @@ Item {
 		anchors.left: parent.left
 		anchors.top: parent.top
 		height: parent.height
+		objectName: "bglol"
 		color: background
 			//color:"transparent" 
 		width: 200
-		Image {
+		Rectangle {
 			id: logo
-			anchors.top: parent.top
-			anchors.left: parent.left
-			anchors.leftMargin: 60
-			source: "images/logo.png"
-			fillMode: Image.PreserveAspectFit
-			horizontalAlignment: Image.AlignLeft
-			width: 80
+			width: parent.width
+			height: 75
+			color: bitDarker
+			Image {
+				anchors.top: parent.top
+				anchors.left: parent.left
+				anchors.leftMargin: 60
+				anchors.topMargin: 15
+				source: "images/logo.png"
+				fillMode: Image.PreserveAspectFit
+				horizontalAlignment: Image.AlignLeft
+				width: 80
+			}
 		}
 		Row {
 			id: menuChooser
@@ -136,18 +165,16 @@ Item {
 			}
 		}
 
-		Loader {
-			id: paramsLoader
+		ParamsMenu {
+			id: controlsMenu
 			width: parent.width
-			source: "ParamsMenu.qml"
 			anchors.top: menuChooser.bottom
 			anchors.bottom: player.top
 			visible: paramsButton.checked
 		}
-		Loader {
+		DisplayMenu {
 			id: displayLoader
 			width: parent.width
-			source: "DisplayMenu.qml"
 			anchors.top: menuChooser.bottom
 			anchors.bottom: player.top
 			visible: displayButton.checked
@@ -156,7 +183,7 @@ Item {
 			id: player
 			anchors.bottom: mainStats.top
 			anchors.bottomMargin: 15
-			height: 30
+			height: 35
 			width: parent.width
 			color: bitDarker
 			property int fontSize: 19

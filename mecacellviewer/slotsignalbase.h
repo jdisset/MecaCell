@@ -8,9 +8,12 @@
 #include <QString>
 #include <iostream>
 #include <map>
+#include <set>
 #include <QThread>
 #include "viewtools.h"
 #include <set>
+#include <unordered_map>
+#include <functional>
 
 using namespace std;
 
@@ -27,6 +30,8 @@ protected:
 	QQuickWindow *window = nullptr;
 
 public:
+	bool waitingForInterfaceAdditions = true;
+	std::map<QString, std::map<QString, std::function<void()>>> buttonMap;
 	explicit SignalSlotRenderer() {}
 	virtual void sync(SignalSlotBase *){};
 	virtual void paint(){};
@@ -66,6 +71,7 @@ public:
 	QMouseEvent lastMouseEvent =
 	    QMouseEvent(QEvent::None, QPointF(0, 0), Qt::NoButton, Qt::NoButton, Qt::NoModifier);
 	QFlags<Qt::MouseButtons> mouseClickedButtons, mouseDblClickedButtons;
+	std::map<QString, std::set<QString>> clickedButtons;
 
 	virtual void mouseMoveEvent(QMouseEvent *event) { lastMouseEvent = *event; }
 	virtual void mousePressEvent(QMouseEvent *event) {
@@ -91,6 +97,16 @@ public slots:
 	/**************************
 	 *      Qt events
 	 *************************/
+	void applyInterfaceAdditions() {
+		QObject *root = parentItem();
+		for (auto &menu : renderer->buttonMap) {
+			for (auto &label : menu.second) {
+				QMetaObject::invokeMethod(root, "addButton", Q_ARG(QVariant, menu.first),
+				                          Q_ARG(QVariant, label.first));
+			}
+		}
+	}
+
 	virtual void sync() {
 		if (!initialized) {
 			initialized = true;
@@ -99,6 +115,10 @@ public slots:
 			connect(window(), SIGNAL(sceneGraphInvalidated()), renderer.get(), SLOT(cleanupSlot()),
 			        Qt::DirectConnection);
 			renderer->initialize();
+		}
+		if (renderer->waitingForInterfaceAdditions) {
+			applyInterfaceAdditions();
+			renderer->waitingForInterfaceAdditions = false;
 		}
 		renderer->setWindow(window());
 		renderer->setViewportSize(QSize(width(), height()));
@@ -119,6 +139,11 @@ public slots:
 			connect(win, SIGNAL(beforeSynchronizing()), this, SLOT(sync()), Qt::DirectConnection);
 			win->setClearBeforeRendering(false);
 		}
+	}
+
+	void buttonClick(QString menu, QString label) {
+		qDebug() << menu << " , " << label << " clicked" << endl;
+		clickedButtons[menu].insert(label);
 	}
 
 	/**************************

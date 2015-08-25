@@ -1,6 +1,8 @@
 import QtQuick 2.0
 import QtQuick.Controls 1.3
 Item {
+	property alias toolMenu: toolMenu
+	property alias selectedCellActions: selectedCellActions
 	width: parent.width
 	height: parent.height
 	Title {
