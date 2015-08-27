@@ -28,13 +28,11 @@ class SignalSlotRenderer : public QObject {
 protected:
 	QSize viewportSize;
 	QQuickWindow *window = nullptr;
+	virtual void paint(){};
 
 public:
-	bool waitingForInterfaceAdditions = true;
-	std::map<QString, std::map<QString, std::function<void()>>> buttonMap;
 	explicit SignalSlotRenderer() {}
 	virtual void sync(SignalSlotBase *){};
-	virtual void paint(){};
 	virtual void initialize(){};
 	void setWindow(QQuickWindow *w) { window = w; }
 public slots:
@@ -97,16 +95,6 @@ public slots:
 	/**************************
 	 *      Qt events
 	 *************************/
-	void applyInterfaceAdditions() {
-		QObject *root = parentItem();
-		for (auto &menu : renderer->buttonMap) {
-			for (auto &label : menu.second) {
-				QMetaObject::invokeMethod(root, "addButton", Q_ARG(QVariant, menu.first),
-				                          Q_ARG(QVariant, label.first));
-			}
-		}
-	}
-
 	virtual void sync() {
 		if (!initialized) {
 			initialized = true;
@@ -115,10 +103,6 @@ public slots:
 			connect(window(), SIGNAL(sceneGraphInvalidated()), renderer.get(), SLOT(cleanupSlot()),
 			        Qt::DirectConnection);
 			renderer->initialize();
-		}
-		if (renderer->waitingForInterfaceAdditions) {
-			applyInterfaceAdditions();
-			renderer->waitingForInterfaceAdditions = false;
 		}
 		renderer->setWindow(window());
 		renderer->setViewportSize(QSize(width(), height()));
@@ -131,7 +115,9 @@ public slots:
 	void callUpdate() {
 		if (window()) window()->update();
 	}
+
 	void step() { loopStep = true; }
+
 	void setWorldUpdate(bool u) { worldUpdate = u; }
 
 	virtual void handleWindowChanged(QQuickWindow *win) {
@@ -141,10 +127,7 @@ public slots:
 		}
 	}
 
-	void buttonClick(QString menu, QString label) {
-		qDebug() << menu << " , " << label << " clicked" << endl;
-		clickedButtons[menu].insert(label);
-	}
+	void buttonClick(QString menu, QString label) { clickedButtons[menu].insert(label); }
 
 	/**************************
 	 *      basic stats

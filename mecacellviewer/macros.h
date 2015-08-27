@@ -4,8 +4,7 @@
 #include <functional>
 #include <QString>
 
-#define MECACELL_VIEWER_ADDITIONS                                                                            \
-	std::map<QString, std::map<QString, std::function<void()>>> MCV_buttonMap;                                 \
+#define MECACELL_VIEWER_ADDITIONS(scenarClass)	std::map<QString, std::map<QString, std::function<void(MecacellViewer::Renderer<scenarClass> *)>>> MCV_buttonMap;        \
 	void MCV_InitializeInterfaceAdditions()
 
 #define ADD_BUTTON(label, menu, callback) MCV_buttonMap[#menu][label] = callback;

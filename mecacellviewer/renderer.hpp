@@ -64,6 +64,8 @@ private:
 	BlurQuad blurTarget;
 	GridViewer gridViewer;
 	unordered_map<std::string, ModelViewer<ModelType>> modelViewers;
+	bool waitingForInterfaceAdditions = true;
+	std::map<QString, std::map<QString, std::function<void(Renderer<Scenario> *)>>> buttonMap;
 
 	// Events
 	int mouseWheel = 0;
@@ -90,11 +92,26 @@ private:
 	bool loopStep = true;
 	bool cut = false;
 	bool takeScreen = false;
+	string screenName;
 	colorMode cMode;
 
-public:
-	explicit Renderer(int c, char **v) : SignalSlotRenderer(), argc(c), argv(v) {
-		clickMethods["select"] = bind(&Renderer<Scenario>::pickCell, this);
+	void clear() {
+		GL->glDepthMask(true);
+		GL->glClearColor(1.0, 1.0, 1.0, 1.0);
+		GL->glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		GL->glEnable(GL_DEPTH_TEST);
+	}
+
+	// depth texture initialisation
+	void genDepthTexture(QSize s, GLuint &t) {
+		GL->glGenTextures(1, &t);
+		GL->glBindTexture(GL_TEXTURE_2D, t);
+		GL->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		GL->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+		GL->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+		GL->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+		GL->glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT32, s.width(), s.height(), 0, GL_DEPTH_COMPONENT,
+		                 GL_UNSIGNED_INT, NULL);
 	}
 
 	/***********************************
@@ -104,6 +121,7 @@ public:
 	virtual void paint() {
 		if (loopStep || worldUpdate) {
 			scenario.loop();
+			if (!selectedCellStillExists()) selectedCell = nullptr;
 			loopStep = false;
 		}
 
@@ -174,10 +192,13 @@ public:
 		    QRect(QPoint(0, 0), viewportSize * FSAA_COEF * screenCoef), GL_COLOR_BUFFER_BIT, GL_LINEAR);
 
 		if (guiCtrl.count("takeScreen")) {
-			cerr << "screen" << endl;
 			stringstream screenshotName;
 			screenshotName << "screen" << frame << ".jpg";
 			fsaaFBO->toImage().save(QString::fromStdString(screenshotName.str()), 0, 97);
+		}
+		if (takeScreen) {
+			fsaaFBO->toImage().save(QString::fromStdString(screenName), 0, 97);
+			takeScreen = false;
 		}
 		GL->glViewport(0, 0, viewportSize.width() * screenCoef, viewportSize.height() * screenCoef);
 		blurTarget.draw(fsaaFBO->texture(), 5, viewportSize * screenCoef,
@@ -208,6 +229,11 @@ public:
 	colorMode strToColorMode(const QString &cm) {
 		if (cm == "pressure") return pressure;
 		if (cm == "owncolor") return owncolor;
+	}
+
+	bool selectedCellStillExists() {
+		return (std::find(scenario.getWorld().cells.begin(), scenario.getWorld().cells.end(), selectedCell) !=
+		        scenario.getWorld().cells.end());
 	}
 
 	/***********************************
@@ -254,25 +280,6 @@ public:
 	/***********************************
 	 *           UTILS & SYNC          *
 	 ***********************************/
-	void clear() {
-		GL->glDepthMask(true);
-		GL->glClearColor(1.0, 1.0, 1.0, 1.0);
-		GL->glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-		GL->glEnable(GL_DEPTH_TEST);
-	}
-
-	// depth texture initialisation
-	void genDepthTexture(QSize s, GLuint &t) {
-		GL->glGenTextures(1, &t);
-		GL->glBindTexture(GL_TEXTURE_2D, t);
-		GL->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-		GL->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-		GL->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-		GL->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-		GL->glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT32, s.width(), s.height(), 0, GL_DEPTH_COMPONENT,
-		                 GL_UNSIGNED_INT, NULL);
-	}
-
 	// called when the openGL context is invalidated
 	virtual void cleanupSlot() {}
 
@@ -282,6 +289,10 @@ public:
 
 	// called after every frame, thread safe
 	virtual void sync(SignalSlotBase *b) {
+		if (waitingForInterfaceAdditions) {
+			applyInterfaceAdditions(b);
+			waitingForInterfaceAdditions = false;
+		}
 		// interface comm
 		guiCtrl = b->getGuiCtrl();
 		worldUpdate = b->worldUpdate;
@@ -379,7 +390,7 @@ public:
 		for (auto &menu : clickedButtons) {
 			for (auto &label : menu.second) {
 				if (buttonMap.count(menu.first) && buttonMap.at(menu.first).count(label)) {
-					buttonMap[menu.first][label]();
+					buttonMap[menu.first][label](this);
 				}
 			}
 		}
@@ -449,6 +460,27 @@ public:
 			}
 		}
 		selectedCell = res;
+	}
+
+	void applyInterfaceAdditions(SignalSlotBase *b) {
+		QObject *root = b->parentItem();
+		for (auto &menu : buttonMap) {
+			for (auto &label : menu.second) {
+				QMetaObject::invokeMethod(root, "addButton", Q_ARG(QVariant, menu.first),
+				                          Q_ARG(QVariant, label.first));
+			}
+		}
+	}
+
+public:
+	explicit Renderer(int c, char **v) : SignalSlotRenderer(), argc(c), argv(v) {
+		clickMethods["select"] = bind(&Renderer<Scenario>::pickCell, this);
+	}
+	Cell *getSelectedCell() { return selectedCell; }
+	Camera &getCameraRef() { return camera; }
+	void screenCapture(std::string name) {
+		takeScreen = true;
+		screenName = name;
 	}
 };
 }
