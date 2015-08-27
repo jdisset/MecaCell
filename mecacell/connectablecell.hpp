@@ -206,13 +206,13 @@ public:
 		}
 	}
 
-	Derived *divide() { return divide(Vec::randomUnit()); }
+	template <typename C = Derived> C *divide() { return divide<C>(Vec::randomUnit()); }
 
-	Derived *divide(const Vec &direction) {
+	template <typename C = Derived> C *divide(const Vec &direction) {
 		setRadius(getBaseRadius());
 		setMass(getBaseMass());
 		updateAllConnections();
-		Derived *newC = new Derived(selfconst(), direction.normalized() * radius * 0.8);
+		C *newC = new C(selfconst(), direction.normalized() * radius * 0.8);
 		return newC;
 	}
 
@@ -321,7 +321,7 @@ public:
 		color[1] = 0.3 * r1;
 		color[2] = 0.05 + (0.2 * r0);
 	}
-	
+
 	// only useful when using mecacellViewer
 	unordered_map<string, function<void(int)>> interfaceAdditions;
 };
