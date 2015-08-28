@@ -45,8 +45,8 @@ struct ModelConnectionPoint {
 	Vec position;
 	size_t face;
 	// TODO : toggle movable / orientable in connection
-	Vec setPosition(const Vec &){};
-	Vec setVelocity(const Vec &){};
+	void setPosition(const Vec &){};
+	void setVelocity(const Vec &){};
 	Vec getPosition() { return position; }
 	Vec getVelocity() { return Vec::zero(); }
 	Vec getAngularVelocity() { return Vec::zero(); }

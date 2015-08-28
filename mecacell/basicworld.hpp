@@ -57,10 +57,10 @@ public:
 	vector<Cell *> cells;
 
 	// cellModelConnections :
-	// modelName -> [ {Cell_ptr, faceId} -> pair<FTconnection,Sconnection> ]
+	// modelName -> Cell_ptr -> faceId -> pair<FTconnection,Sconnection> ]
 	// A cell / model connection is composed of two sub connections : one for flexion and torsion,
 	// and one for compression and elongation, which is always perpendicular to the surface
-	unordered_map<string, map<pair<Cell *, size_t>, modelConn_ptr>> cellModelConnections;
+	unordered_map<string, unordered_map<Cell *, unordered_map<size_t, modelConn_ptr>>> cellModelConnections;
 
 	// all models are stored in this map, using their name as the key
 	unordered_map<string, Model> models;
@@ -138,42 +138,55 @@ public:
 		// we need to check for connections needing to be removed or translated
 		// first, do we need to remove them ?
 		for (auto &m : cellModelConnections) {
-			for (auto it = m.second.begin(); it != m.second.end();) {
-				auto &p = (*it);
-				// we first need to update all springs so that they always are perpendicular to the surface
-				Cell *c = p.second->second.getNode1();
-				ModelConnectionPoint &springMCP = p.second->second.getNode0();
-				const Triangle &t = springMCP.model->faces[springMCP.face];
-				auto projec = projectionIntriangle(springMCP.model->vertices[t.indices[0]],
-				                                   springMCP.model->vertices[t.indices[1]],
-				                                   springMCP.model->vertices[t.indices[2]], c->getPosition());
-				if (projec.first) {
-					// still above the same triangle
-					springMCP.position = projec.second;
-				}
-				// normalement, dans le cas où teta du flexJoint coté model est > à maxTeta,
-				// il faut faire glisser le point d'accroche vers la projection de la cell
-				// (le comportement par défaut est de faire pivoter l'angle de référence).
-				// TODO : plus joli, mieux intégré, moins couteux...
-				// Joint &flex = p.second->first.getFlex().first;
-				// double MTETA = 0.01;
-				// if (flex.delta.teta > MTETA) {
-				// ModelConnectionPoint &fjMCP = p.second->first.getNode0();
-				// const Triangle &ft = fjMCP.model->faces[fjMCP.face];
-				// auto projecfj =
-				// projectionIntriangle(fjMCP.model->vertices[ft.indices[0]], fjMCP.model->vertices[ft.indices[1]],
-				// fjMCP.model->vertices[ft.indices[2]], c->getPosition());
-				// double mvLength =
-				//(projecfj.second - c->getPosition()).length() * (tan(flex.delta.teta) - tan(MTETA));
-				// fjMCP.position += mvLength * (projecfj.second - fjMCP.position).normalized();
-				//}
+			// foreach {modelName, connexionMap} m
+			for (auto &c : m.second) {
+				// foreach {cellPtr, face -> connexion} c
+				for (auto it = c.second.begin(); it != c.second.end();) {
+					auto &p = (*it); // p = {faceId, connexion} pair
+					// we first need to update all simple springs so that they always are perpendicular to the surface
+					ModelConnectionPoint &springMCP = p.second.getNode0();
+					const Triangle &t = springMCP.model->faces[springMCP.face];
+					auto projec = projectionIntriangle(springMCP.model->vertices[t.indices[0]],
+					                                   springMCP.model->vertices[t.indices[1]],
+					                                   springMCP.model->vertices[t.indices[2]], c->getPosition());
+					if (projec.first) {
+						// still above the same triangle
+						springMCP.position = projec.second;
+					}
+					// normalement, dans le cas où teta du flexJoint coté model est > à maxTeta,
+					// il faut faire glisser le point d'accroche vers la projection de la cell
+					// (le comportement par défaut est de faire pivoter l'angle de référence).
+					// TODO : plus joli, mieux intégré, moins couteux...
+					// Joint &flex = p.second->first.getFlex().first;
+					// double MTETA = 0.01;
+					// if (flex.delta.teta > MTETA) {
+					// ModelConnectionPoint &fjMCP = p.second->first.getNode0();
+					// const Triangle &ft = fjMCP.model->faces[fjMCP.face];
+					// auto projecfj =
+					// projectionIntriangle(fjMCP.model->vertices[ft.indices[0]], fjMCP.model->vertices[ft.indices[1]],
+					// fjMCP.model->vertices[ft.indices[2]], c->getPosition());
+					// double mvLength =
+					//(projecfj.second - c->getPosition()).length() * (tan(flex.delta.teta) - tan(MTETA));
+					// fjMCP.position += mvLength * (projecfj.second - fjMCP.position).normalized();
+					//}
 
-				// we need to remove a connection if its length is longer than the cell radius
-				if (!projec.first || p.second->second.getSc().length > c->getRadius()) {
-					p.second->second.getNode1()->removeModelConnection(p.second.get());
+					// we need to remove a connection if its length is longer than the cell radius
+					if (!projec.first || p.second.getSc().length > c->getRadius()) {
+						p.second.getNode1()->removeModelConnection(p.second.get());
+						it = c.second.erase(it);
+					} else {
+						++it;
+					}
+				}
+			}
+		}
+		// cleanup : we remove entries where a cell is listed but is not actually connected to a face
+		for (auto &m : cellModelConnections) {
+			for (auto it = m.second.begin(); it != m.second.end();) {
+				if (it->second.size() == 0) {
 					it = m.second.erase(it);
 				} else {
-					++it;
+					it++;
 				}
 			}
 		}
@@ -424,6 +437,7 @@ public:
 			if ((*i)->isDead()) {
 				auto c = *i;
 				c->eraseAndDeleteAllConnections(connections);
+				c->eraseAndDeleteAllModelConnections(cellModelConnections);
 				i = cells.erase(i);
 				delete c;
 			} else {
