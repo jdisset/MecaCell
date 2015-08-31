@@ -394,14 +394,6 @@ private:
 				}
 			}
 		}
-		// if (pressedKeys.count(Qt::Key_Space)) {
-		// Cell *c = new Cell(QV3D2Vec(camera.getPosition()) - QV3D2Vec(camera.getUpVector() * 50.0));
-		// c->setVelocity(QV3D2Vec(camera.getViewVector() * 3000.0));
-		// scenario.getWorld().addCell(c);
-		//}
-		// if (selectedCell && pressedKeys.count(Qt::Key_M)) {
-		// selectedCell->startDivision();
-		//}
 	}
 	Vec QV3D2Vec(const QVector3D &v) { return Vec(v.x(), v.y(), v.z()); }
 

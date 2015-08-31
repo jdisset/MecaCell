@@ -3,6 +3,7 @@ import QtQuick.Controls 1.3
 Item {
 	property alias toolMenu: toolMenu
 	property alias selectedCellActions: selectedCellActions
+	property alias generalActions: generalActions
 	width: parent.width
 	height: parent.height
 	Title {
@@ -65,13 +66,20 @@ Item {
 					}
 				}
 			}
-			VerticalSpacer {}
+			Column {
+				width: parent.width
+				anchors.horizontalCenter: parent.horizontalCenter
+				spacing: 5
+				id: generalActions
+				VerticalSpacer {}
+			}
 			Column {
 				width: parent.width
 				anchors.horizontalCenter: parent.horizontalCenter
 				spacing: 5
 				id: selectedCellActions
 				visible: statAvail("selectedCell")
+				VerticalSpacer {}
 				SubTitle {
 					txt: "SELECTED CELL ACTIONS"
 				}

@@ -78,6 +78,19 @@ public:
 	bool alreadyTested() const { return tested; }
 	int getNbConnections() const { return connections.size(); }
 
+	string toString() {
+		stringstream s;
+		s << "Cell " << this << " :" << endl;
+		s << " position = " << position << ", orientation = " << orientation << endl;
+		s << " velocity = " << velocity << ", angular velocity = " << angularVelocity << endl;
+		s << " radius = " << radius << " (base = " << baseRadius << ")" << endl;
+		s << " stiffness = " << stiffness << " (angular = " << angularStiffness << ")" << endl;
+		s << " damp ratio = " << dampRatio << endl;
+		s << " pressure = " << pressure << endl;
+		s << " " << connections.size() << " cell connections" << endl;
+		s << " " << modelConnections.size() << " model connections" << endl;
+		return s.str();
+	}
 	/******************************
 	 * main setters & getters
 	 *****************************/
@@ -321,9 +334,6 @@ public:
 		color[1] = 0.3 * r1;
 		color[2] = 0.05 + (0.2 * r0);
 	}
-
-	// only useful when using mecacellViewer
-	unordered_map<string, function<void(int)>> interfaceAdditions;
 };
 }
 #endif

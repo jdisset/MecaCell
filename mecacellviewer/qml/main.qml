@@ -19,6 +19,9 @@ Item {
 		if (menu == "SELECTEDCELL_MENU") {
 			container = controlsMenu.selectedCellActions;
 		}
+		if (menu == "GENERALACTIONS_MENU") {
+			container = controlsMenu.generalActions;
+		}
 		var component;
 		var finishCreation = function() {
 			if (component.status == Component.Ready) {
