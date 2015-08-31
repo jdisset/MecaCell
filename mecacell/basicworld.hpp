@@ -115,15 +115,19 @@ public:
 			c->updateStats();
 		}
 	}
+
 	void setDt(double d) { dt = d; }
+
 	void computeForces() {
 		// connections
 		for (auto &con : connections)
 			con->computeForces(dt);
 		for (auto &n : cellModelConnections) {
-			for (auto &p : n.second) {
-				// p.second->first.computeForces(dt);
-				p.second->second.computeForces(dt);
+			// name -> cell* -> faceId -> connection
+			for (auto &c : n.second) {
+				for (auto &f : c.second) {
+					f.second->second.computeForces(dt);
+				}
 			}
 		}
 
@@ -134,6 +138,7 @@ public:
 			c->receiveForce(g);
 		}
 	}
+
 	void updateModelConnections() {
 		// we need to check for connections needing to be removed or translated
 		// first, do we need to remove them ?
@@ -142,13 +147,13 @@ public:
 			for (auto &c : m.second) {
 				// foreach {cellPtr, face -> connexion} c
 				for (auto it = c.second.begin(); it != c.second.end();) {
-					auto &p = (*it); // p = {faceId, connexion} pair
+					auto &p = (*it); // p =  pair<faceId,unique_ptr<pair<connexion>>>
 					// we first need to update all simple springs so that they always are perpendicular to the surface
-					ModelConnectionPoint &springMCP = p.second.getNode0();
+					ModelConnectionPoint &springMCP = p.second->second.getNode0();
 					const Triangle &t = springMCP.model->faces[springMCP.face];
 					auto projec = projectionIntriangle(springMCP.model->vertices[t.indices[0]],
 					                                   springMCP.model->vertices[t.indices[1]],
-					                                   springMCP.model->vertices[t.indices[2]], c->getPosition());
+					                                   springMCP.model->vertices[t.indices[2]], c.first->getPosition());
 					if (projec.first) {
 						// still above the same triangle
 						springMCP.position = projec.second;
@@ -171,8 +176,8 @@ public:
 					//}
 
 					// we need to remove a connection if its length is longer than the cell radius
-					if (!projec.first || p.second.getSc().length > c->getRadius()) {
-						p.second.getNode1()->removeModelConnection(p.second.get());
+					if (!projec.first || p.second->second.getSc().length > c.first->getRadius()) {
+						p.second->second.getNode1()->removeModelConnection(p.second.get());
 						it = c.second.erase(it);
 					} else {
 						++it;
@@ -244,6 +249,7 @@ public:
 	 *         COLLISIONS         *
 	 ******************************/
 	void performCellModelCollisions() {
+		// first we update the models collision grids
 		bool modelChange = false;
 		for (auto &m : models) {
 			if (m.second.changedSinceLastCheck()) {
@@ -256,20 +262,22 @@ public:
 				insertInGrid(m.second);
 			}
 		}
+		// then, for each cell, we find if a cell - model collision is possible.
 		for (auto &c : cells) {
 			vector<pair<Model *, size_t>> toTest = modelGrid.retrieve(c->getPosition(), c->getRadius());
-			for (const auto &mf : toTest) {
+			for (const auto &mf : toTest) { // for each pair <model*, faceId> mf potentially colliding with c
 				if (!cellModelConnections.count(mf.first->name) ||
-				    !cellModelConnections.at(mf.first->name).count({c, mf.second})) {
+				    !cellModelConnections.at(mf.first->name).count(c) ||
+				    !cellModelConnections.at(mf.first->name).at(c).count(mf.second)) {
 					const Vec &p0 = mf.first->vertices[mf.first->faces[mf.second].indices[0]];
 					const Vec &p1 = mf.first->vertices[mf.first->faces[mf.second].indices[1]];
 					const Vec &p2 = mf.first->vertices[mf.first->faces[mf.second].indices[2]];
-					// checking if cell c is in contact with model face mf
+					// checking if cell c is in contact with model face mf (triangle p0, p1, p2)
 					pair<bool, Vec> projec = projectionIntriangle(p0, p1, p2, c->getPosition());
+					// projec.second = projection coordinates, projec.first = projection inside triangle
 					if (projec.first && (c->getPosition() - projec.second).sqlength() < pow(c->getRadius(), 2)) {
 						// new collision
-						double adh = 0;
-						// c->getAdhesionWithModel(mf.first->name);
+						double adh = 0; // TODO: ask cell for its adhesion with surface
 						double l = Cell::getConnectionLength(c->getRadius(), adh);
 						double maxTeta = mix(0.0, M_PI / 2.0, adh);
 						modelConn_ptr p(new modelConnPair(
@@ -301,7 +309,7 @@ public:
 						    // end value pair & end emplace
 						    ));
 						c->addModelConnection(p.get());
-						cellModelConnections[mf.first->name][{c, mf.second}] = move(p);
+						cellModelConnections[mf.first->name][c][mf.second] = move(p);
 					}
 				}
 			}
@@ -437,7 +445,11 @@ public:
 			if ((*i)->isDead()) {
 				auto c = *i;
 				c->eraseAndDeleteAllConnections(connections);
-				c->eraseAndDeleteAllModelConnections(cellModelConnections);
+				for (auto &m : models) {
+					if (cellModelConnections.count(m.first) && cellModelConnections.at(m.first).count(c)) {
+						cellModelConnections.at(m.first).erase(c);
+					}
+				}
 				i = cells.erase(i);
 				delete c;
 			} else {
