@@ -441,14 +441,16 @@ private:
 		Cell *res = nullptr;
 		double minEyeDist = 1e20;
 		for (auto &c : scenario.getWorld().cells) {
-			double sqRad = pow(c->getRadius(), 2);
-			QVector3D EC = toQV3D(c->getPosition()) - camera.getPosition();
-			QVector3D EV = vray * QVector3D::dotProduct(EC, vray);
-			double eyeDist = EC.lengthSquared();
-			double rayDist = eyeDist - EV.lengthSquared();
-			if (rayDist <= sqRad && eyeDist < minEyeDist) {
-				minEyeDist = eyeDist;
-				res = c;
+			if (c->getVisible()) {
+				double sqRad = pow(c->getRadius(), 2);
+				QVector3D EC = toQV3D(c->getPosition()) - camera.getPosition();
+				QVector3D EV = vray * QVector3D::dotProduct(EC, vray);
+				double eyeDist = EC.lengthSquared();
+				double rayDist = eyeDist - EV.lengthSquared();
+				if (rayDist <= sqRad && eyeDist < minEyeDist) {
+					minEyeDist = eyeDist;
+					res = c;
+				}
 			}
 		}
 		selectedCell = res;

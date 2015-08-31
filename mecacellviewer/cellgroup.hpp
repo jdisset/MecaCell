@@ -46,7 +46,7 @@ public:
 				return (a->getPosition() - camVec).sqlength() > (b->getPosition() - camVec).sqlength();
 			});
 			for (auto &c : sortedCells) {
-				if (!culling || c->getConnectedCells().size() < 8) {
+				if (c->getVisible()) {
 					QMatrix4x4 model;
 					double radius = c->getRadius();
 					QVector3D center = toQV3D(c->getPosition());

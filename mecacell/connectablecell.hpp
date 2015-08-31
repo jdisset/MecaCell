@@ -38,6 +38,7 @@ protected:
 	vector<ModelConnectionType *> modelConnections;
 	vector<Derived *> connectedCells;
 	double pressure = 1.0;
+	bool visible = true;
 
 public:
 	ConnectableCell(Vec pos) : Movable(pos) { randomColor(); }
@@ -78,6 +79,8 @@ public:
 	bool alreadyTested() const { return tested; }
 	int getNbConnections() const { return connections.size(); }
 
+	void setVisible(bool v) { visible = v; }
+	bool getVisible() { return visible; }
 	string toString() {
 		stringstream s;
 		s << "Cell " << this << " :" << endl;
