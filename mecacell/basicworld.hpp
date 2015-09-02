@@ -27,7 +27,7 @@ protected:
 	Grid<Cell *> grid = Grid<Cell *>(5.0 * DEFAULT_CELL_RADIUS);
 
 	// model grid containting pair<model_ptr, face_id>
-	Grid<pair<Model *, size_t>> modelGrid = Grid<pair<Model *, size_t>>(100);
+	Grid<pair<Model *, size_t>> modelGrid = Grid<pair<Model *, unsigned int>>(100);
 
 	// enabled collisions
 	bool cellCellCollisions = true;
