@@ -165,14 +165,14 @@ public:
 		rotate(tilt(tiltAngle) * pan(panAngle) * roll(rollAngle));
 	}
 
-	void right(float dt) {
+	void right(float) {
 		QVector3D v = QVector3D::crossProduct(viewVector, upVector).normalized();
 		force += v * forceIntensity;
 		if (mode == centered) {
 			viewVector = (target - position).normalized();
 		}
 	}
-	void left(float dt) {
+	void left(float) {
 		QVector3D v = QVector3D::crossProduct(upVector, viewVector).normalized();
 		force += v * forceIntensity;
 		if (mode == centered) {

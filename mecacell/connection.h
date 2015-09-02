@@ -40,11 +40,13 @@ struct Joint {
 	Rotation<Vec> r;              // rotation from node to joint
 	Rotation<Vec> delta;          // current rotation
 	Rotation<Vec> prevDelta;
-	Vec direction; // current direction
-	Vec target;    // targeted direction
+	Vec direction;                  // current direction
+	Vec target;                     // targeted direction
+	bool maxTetaAutoCorrect = true; // do we need to handle maxTeta?
 	Joint(){};
 
-	Joint(const double &K, const double &C, const double &MTETA) : k(K), c(C), maxTeta(MTETA) {}
+	Joint(const double &K, const double &C, const double &MTETA, bool handleMteta = true)
+	    : k(K), c(C), maxTeta(MTETA), maxTetaAutoCorrect(handleMteta) {}
 
 	// current direction is computed using a reference Vector v rotated with rotation rot
 	void updateDirection(const Vec &v, const Rotation<Vec> &rot) { direction = v.rotated(r.rotated(rot)); }
@@ -198,7 +200,7 @@ public:
 		if (fjEnabled) {
 			fjNode.target = sc.direction * sign;
 			fjNode.updateDelta();
-			if (fjNode.delta.teta > fjNode.maxTeta) { // if we passed flex break angle
+			if (fjNode.maxTetaAutoCorrect && fjNode.delta.teta > fjNode.maxTeta) { // if we passed flex break angle
 				float dif = fjNode.delta.teta - fjNode.maxTeta;
 				fjNode.r = fjNode.r + Rotation<Vec>(fjNode.delta.n, dif);
 				fjNode.direction = fjNode.direction.rotated(Rotation<Vec>(fjNode.delta.n, dif));
