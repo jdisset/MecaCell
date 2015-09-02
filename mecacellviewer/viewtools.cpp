@@ -9,10 +9,12 @@ QOpenGLFunctions *GL = nullptr;
 QString shaderWithHeader(QString filename) {
 	int majorV = QOpenGLContext::currentContext()->format().majorVersion();
 	int minorV = QOpenGLContext::currentContext()->format().minorVersion();
+	bool needCore = true;
 	QString version;
 	if ((majorV == 3 && minorV >= 3) || majorV > 3) {
 		version = QString::number(majorV) + QString::number(minorV) + "0";
 	} else if (majorV == 3) {
+		needCore = false;
 		switch (minorV) {
 			case 2:
 				version = "150";
@@ -30,10 +32,11 @@ QString shaderWithHeader(QString filename) {
 		version = "110";
 	}
 
+	QString core = needCore ? " core" : "";
 	QFile f(filename);
 	if (!f.open(QIODevice::ReadOnly | QIODevice::Text)) qDebug() << "unable to open " << filename << endl;
 	QTextStream in(&f);
-	QString res = QString("#version ") + version + QString(" core\n") + in.readAll();
+	QString res = QString("#version ") + version + core + QString("\n") + in.readAll();
 	return res;
 }
 void initResources() { Q_INIT_RESOURCE(resourcesLibMecacellViewer); }
