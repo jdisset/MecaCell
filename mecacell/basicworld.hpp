@@ -93,7 +93,7 @@ public:
 					grid.insert(c);
 				updateConnectionsLengthAndDirection();
 				cellCollisions();
-				// deleteImpossibleConnections();
+				 deleteImpossibleConnections();
 			}
 			updateBehavior();
 			destroyCells();
