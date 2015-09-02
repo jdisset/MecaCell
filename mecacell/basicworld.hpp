@@ -71,7 +71,7 @@ public:
 	Vec getG() const { return g; }
 	void setG(const Vec &v) { g = v; }
 	const Grid<Cell *> &getCellGrid() { return grid; }
-	const Grid<pair<Model *, size_t>> &getModelGrid() { return modelGrid; }
+	const Grid<pair<Model *, unsigned int>> &getModelGrid() { return modelGrid; }
 	double getViscosityCoef() const { return viscosityCoef; }
 	void setViscosityCoef(const double d) { viscosityCoef = d; }
 
@@ -93,7 +93,7 @@ public:
 					grid.insert(c);
 				updateConnectionsLengthAndDirection();
 				cellCollisions();
-				 deleteImpossibleConnections();
+				deleteImpossibleConnections();
 			}
 			updateBehavior();
 			destroyCells();
