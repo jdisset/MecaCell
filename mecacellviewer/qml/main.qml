@@ -1,18 +1,43 @@
 import SceneGraphRendering 1.0
 import QtQuick 2.0
 import QtGraphicalEffects 1.0
-import QtQuick.Controls 1.3
-
+import QtQuick.Controls 1.2
 Item {
 	property
 	var guictrl: renderer.getGuiCtrl();
-	width: 1000
-	height: 900
+	width: 1200
+	height: 800
 	id: main
 	Component.onCompleted: {
 		guictrl["visibleElements"] = new Array();
 		guictrl["visibleElements"].push("cells");
 		renderer.setGuiCtrl(guictrl);
+	}
+
+	function addButton(menu, label) {
+		var container = controlsMenu.selectedCellActions;
+		if (menu == "SELECTEDCELL_MENU") {
+			container = controlsMenu.selectedCellActions;
+		}
+		if (menu == "GENERALACTIONS_MENU") {
+			container = controlsMenu.generalActions;
+		}
+		var component;
+		var finishCreation = function() {
+			if (component.status == Component.Ready) {
+				var btn = component.createObject(container, {
+					"text": label,
+					"menu": menu
+				});
+			} else if (component.status == Component.Error) {
+				console.log("Error loading component:", component.errorString());
+			}
+		};
+		component = Qt.createComponent("MVButton.qml");
+		if (component.status == Component.Ready)
+			finishCreation();
+		else
+			component.statusChanged.connect(finishCreation);
 	}
 
 	function removeCtrl(k) {
@@ -64,12 +89,14 @@ Item {
 		return renderer.stats[k] ? renderer.stats[k] : 0;
 	}
 
-	property color mecaYellow: "#A4DED48A"
-	property color lightMecaYellow: "#30DED48A"
-	property color mecaBlue: "#A42DB2D6"
+	property color mecaYellow: "#F2DC83"
+	property color lightMecaYellow: "#30F5ECA6"
+	property color mecaBlue: "#2DB2D6"
 	property color lightMecaBlue: "#302DB2D6"
-	property color mecaRed: "#B4E3343A"
-	property color bitDarker: "#40000000"
+	property color mecaRed: "#D33035"
+	property color lightMecaRed: "#30D33035"
+	property color bitDarker: "#20000000"
+	property color darker: "#60000000"
 	property color background: "#80000000"
 	FontLoader {
 		id: fontawesome;source: "fonts/fontawesome.ttf"
@@ -89,80 +116,99 @@ Item {
 		color: background
 			//color:"transparent" 
 		width: 200
-		Image {
+		Rectangle {
 			id: logo
-			anchors.top: parent.top
-			anchors.left: parent.left
-			anchors.leftMargin: 60
-			source: "images/logo.png"
-			fillMode: Image.PreserveAspectFit
-			horizontalAlignment: Image.AlignLeft
-			width: 80
+			width: parent.width
+			height: 75
+			color: darker
+			Image {
+				anchors.top: parent.top
+				anchors.left: parent.left
+				anchors.leftMargin: 57
+				anchors.topMargin: 13
+				source: "images/logo.png"
+				fillMode: Image.PreserveAspectFit
+				horizontalAlignment: Image.AlignLeft
+				width: 85
+			}
 		}
-		Row {
+		Rectangle {
 			id: menuChooser
 			anchors.top: logo.bottom
-			anchors.topMargin: 10
 			height: 50
-			spacing: 38
-			anchors.horizontalCenter: parent.horizontalCenter
+			width: parent.width
+			color: "#25000000"
+			Row {
+				anchors.top: parent.top
+				anchors.topMargin: 10
+				spacing: 38
+				anchors.horizontalCenter: parent.horizontalCenter
 
 				ExclusiveStuff {
-				id: menuGroup
-				objectsInGroup: [displayButton, paramsButton, statsButton]
-			}
+					id: menuGroup
+					objectsInGroup: [displayButton, controlsButton, statsButton]
+				}
 
 				CircleButton {
-				group: menuGroup
-				id: displayButton
-				selecColor: mecaBlue
-				label: "\uf108"
-				anchors.verticalCenter: parent.verticalCenter
-			}
-			CircleButton {
-				id: paramsButton
-				checked: true
-				group: menuGroup
-				selecColor: mecaYellow
-				label: "\uf1de"
-				anchors.verticalCenter: parent.verticalCenter
-			}
-			CircleButton {
-				id: statsButton
-				group: menuGroup
-				selecColor: mecaRed
-				label: "\uf080"
-				anchors.verticalCenter: parent.verticalCenter
+					group: menuGroup
+					id: displayButton
+					selecColor: mecaBlue
+					label: "\uf108"
+					anchors.verticalCenter: parent.verticalCenter
+				}
+				CircleButton {
+					id: controlsButton
+					checked: true
+					group: menuGroup
+					selecColor: mecaYellow
+					label: "\uf00a"
+					anchors.verticalCenter: parent.verticalCenter
+				}
+				CircleButton {
+					id: statsButton
+					group: menuGroup
+					selecColor: mecaRed
+					label: "\uf080"
+					anchors.verticalCenter: parent.verticalCenter
+				}
 			}
 		}
 
-		Loader {
-			id: paramsLoader
+		ParamsMenu {
+			id: controlsMenu
 			width: parent.width
-			source: "ParamsMenu.qml"
 			anchors.top: menuChooser.bottom
 			anchors.bottom: player.top
-			visible: paramsButton.checked
+			visible: controlsButton.checked
+			anchors.topMargin: 10
 		}
-		Loader {
+		DisplayMenu {
 			id: displayLoader
 			width: parent.width
-			source: "DisplayMenu.qml"
 			anchors.top: menuChooser.bottom
 			anchors.bottom: player.top
 			visible: displayButton.checked
+			anchors.topMargin: 10
+		}
+		StatsMenu {
+			id: statsMenu
+			width: parent.width
+			anchors.top: menuChooser.bottom
+			anchors.bottom: player.top
+			visible: statsButton.checked
+			anchors.topMargin: 10
 		}
 		Rectangle {
 			id: player
 			anchors.bottom: mainStats.top
-			anchors.bottomMargin: 15
-			height: 30
+			anchors.bottomMargin: 5
+			height: 42
 			width: parent.width
 			color: bitDarker
-			property int fontSize: 19
+			property int fontSize: 16
 			Row {
 				height: parent.height
-				spacing: 38
+				spacing: 50
 				anchors.horizontalCenter: parent.horizontalCenter
 				Text {
 					id: resetButton
@@ -224,8 +270,8 @@ Item {
 			width: parent.width
 			color: "transparent"
 			anchors.bottom: parent.bottom
-			anchors.bottomMargin: 5
-			anchors.leftMargin: 7
+			anchors.bottomMargin: 3
+				//anchors.leftMargin: 7
 			Row {
 				height: parent.height
 				width: parent.width - parent.anchors.leftMargin
@@ -234,15 +280,17 @@ Item {
 					label: "FPS"
 					value: getStat("fps").toFixed(0)
 				}
-				HorizontalSpacer {
-					color: Qt.lighter(mainStats.color, 1.5)
+				RowSpacer {
+					color: "#20FFFFFF"
+					coef: 1
 				}
 				ValueWatcher {
 					label: "CELLS"
 					value: getStat("nbCells")
 				}
-				HorizontalSpacer {
-					color: Qt.lighter(mainStats.color, 1.5)
+				RowSpacer {
+					color: "#20FFFFFF"
+					coef: 1
 				}
 				ValueWatcher {
 					label: "UPDATE"

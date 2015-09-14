@@ -19,7 +19,7 @@ const float screenGamma = 2.2;
 
 void main(){
 	/*vec4 modelDiffuseColor = color;*/
-	vec4 modelDiffuseColor = vec4(1.0);
+	vec4 modelDiffuseColor = vec4(0.9);
 	vec4 modelAmbientColor = vec4(modelDiffuseColor.xyz * 0.07, modelDiffuseColor.a); 
 
 	DirectionalLight lights[nbLights];
@@ -45,7 +45,7 @@ void main(){
 		vec3 lightDir = normalize(lights[i].direction);	
 		/*vec3 lightDir = lights[i].direction;*/
 
-		float lambertian = max(dot(lightDir,normal), 0.0);
+		float lambertian = abs(dot(lightDir,normal));
 		float specular = 0.0;
 
 		if(lambertian > 0.0) {
@@ -57,7 +57,8 @@ void main(){
 
 
 		vec4 specColor = vec4(1.0);
-		colorLinear += modelAmbientColor + lambertian * modelDiffuseColor * vec4(lights[i].color,1.0) * lights[i].intensity +	specular * specColor * lights[i].intensity;
+		colorLinear += modelAmbientColor + lambertian * modelDiffuseColor * vec4(lights[i].color,1.0) * lights[i].intensity;// +	specular * specColor * lights[i].intensity;
 	}
 	fragColor = vec4(pow(colorLinear.rgb, vec3(1.0/screenGamma)),colorLinear.a);
+	/*fragColor = vec4(normal,1.0);//colorLinear;*/
 }

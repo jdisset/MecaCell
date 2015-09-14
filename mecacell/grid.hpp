@@ -2,6 +2,7 @@
 #define GRID_HPP
 
 #include <vector>
+#include <set>
 #include <iostream>
 #include <unordered_map>
 #include "tools.h"
@@ -27,10 +28,12 @@ public:
 		minCorner.iterateTo(maxCorner, [&](Vec v) { um[v].push_back(obj); });
 	}
 
-	void insert(const O &obj, const Vec &p0, const Vec &p1, const Vec &p2) { // insert triangles
-		Vec n = p0.cross(p1).normalized();
-		Vec blf(min(p0.x, min(p1.x, p2.x)), min(p0.y, min(p1.y, p2.y)), min(p0.z, min(p1.z, p2.z)));
-		Vec trb(max(p0.x, max(p1.x, p2.x)), max(p0.y, max(p1.y, p2.y)), max(p0.z, max(p1.z, p2.z)));
+	void insert(const O &obj, const Vec &p0, const Vec &p1,
+	            const Vec &p2) { // insert triangles
+		Vec blf(min(p0.x, min(p1.x, p2.x)), min(p0.y, min(p1.y, p2.y)),
+		        min(p0.z, min(p1.z, p2.z)));
+		Vec trb(max(p0.x, max(p1.x, p2.x)), max(p0.y, max(p1.y, p2.y)),
+		        max(p0.z, max(p1.z, p2.z)));
 		double cs = 1.0 / cellSize;
 		getIndexFromPosition(blf).iterateTo(getIndexFromPosition(trb) + 1, [&](const Vec &v) {
 			Vec center = cs * v;
@@ -46,6 +49,23 @@ public:
 	Vec getIndexFromPosition(const Vec &v) {
 		Vec res = v * cellSize;
 		return Vec(floor(res.x), floor(res.y), floor(res.z));
+	}
+
+	set<O> retrieveUnique(const Vec &coord, double r) const {
+		set<O> res;
+		Vec center = coord * cellSize;
+		double radius = r * cellSize;
+		Vec minCorner = center - radius;
+		Vec maxCorner = center + radius;
+		// TODO check if faster with a set (uniques...) and by removing  selfcollision
+		minCorner.iterateTo(maxCorner, [&](const Vec &v) {
+			if (um.count(v)) {
+				for (auto &e : um.at(v)) {
+					res.insert(e);
+				}
+			}
+		});
+		return res;
 	}
 
 	vector<O> retrieve(const Vec &coord, double r) const {
@@ -86,7 +106,8 @@ public:
 	}
 
 	double getVolume() const {
-		if (Vec::dimension == 3) return pow(1.0 / cellSize, 3) * static_cast<double>(um.size());
+		if (Vec::dimension == 3)
+			return pow(1.0 / cellSize, 3) * static_cast<double>(um.size());
 		return 0.0;
 	}
 

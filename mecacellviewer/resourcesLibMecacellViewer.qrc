@@ -13,6 +13,8 @@
 		<file alias="/LegendButton.qml">qml/LegendButton.qml</file>
 		<file alias="/Title.qml">qml/Title.qml</file>
 		<file alias="/SubTitle.qml">qml/SubTitle.qml</file>
+		<file alias="/MVButton.qml">qml/MVButton.qml</file>
+		<file alias="/RowSpacer.qml">qml/RowSpacer.qml</file>
 		<file>qml/app.js</file>
 		<file>shaders/cell.frag</file>
 		<file>shaders/cell.vert</file>

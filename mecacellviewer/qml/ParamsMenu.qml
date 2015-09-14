@@ -1,6 +1,9 @@
 import QtQuick 2.0
-import QtQuick.Controls 1.3
+import QtQuick.Controls 1.2
 Item {
+	property alias toolMenu: toolMenu
+	property alias selectedCellActions: selectedCellActions
+	property alias generalActions: generalActions
 	width: parent.width
 	height: parent.height
 	Title {
@@ -63,25 +66,22 @@ Item {
 					}
 				}
 			}
-			VerticalSpacer {}
+			Column {
+				width: parent.width
+				anchors.horizontalCenter: parent.horizontalCenter
+				spacing: 5
+				id: generalActions
+				VerticalSpacer {}
+			}
 			Column {
 				width: parent.width
 				anchors.horizontalCenter: parent.horizontalCenter
 				spacing: 5
 				id: selectedCellActions
 				visible: statAvail("selectedCell")
+				VerticalSpacer {}
 				SubTitle {
 					txt: "SELECTED CELL ACTIONS"
-				}
-				LegendButton {
-					checked: true
-					selecColor: mecaBlue
-					label: "\uf0a6"
-					legend: "SELECT"
-					anchors.horizontalCenter: parent.horizontalCenter
-					onCheck: {
-						if (chk) setCtrl("tool", "select");
-					}
 				}
 			}
 		}

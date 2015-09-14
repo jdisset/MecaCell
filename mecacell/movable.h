@@ -28,11 +28,13 @@ public:
 	void disableMovement() { movementEnabled = false; }
 	void enableMovement() { movementEnabled = true; }
 	Vec getPosition() const { return position; }
+	Vec getPrevposition() const { return prevposition; }
 	Vec getVelocity() const { return velocity; }
 	Vec getForce() const { return force; }
 	double getMass() const { return mass; }
 	double getBaseMass() const { return baseMass; }
 	void setPosition(const Vec &p) { position = p; }
+	void setPrevposition(const Vec &p) { prevposition = p; }
 	void setVelocity(const Vec &v) { velocity = v; }
 	void setForce(const Vec &f) { force = f; }
 	void setMass(const double m) { mass = m; }

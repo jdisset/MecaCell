@@ -4,9 +4,11 @@
 #include <vector>
 #include <algorithm>
 #include <map>
+#include <cstdlib>
 #include "connection.h"
 #include "grid.hpp"
 #include "model.h"
+#include "modelconnection.hpp"
 
 using namespace std;
 namespace MecaCell {
@@ -27,7 +29,8 @@ protected:
 	Grid<Cell *> grid = Grid<Cell *>(5.0 * DEFAULT_CELL_RADIUS);
 
 	// model grid containting pair<model_ptr, face_id>
-	Grid<pair<Model *, unsigned int>> modelGrid = Grid<pair<Model *, unsigned int>>(100);
+	Grid<std::pair<Model *, unsigned int>> modelGrid =
+	    Grid<std::pair<Model *, unsigned int>>(100);
 
 	// enabled collisions
 	bool cellCellCollisions = true;
@@ -36,34 +39,30 @@ protected:
 	// physics parameters
 	Vec g = Vec::zero();
 	double viscosityCoef = 0.001;
-	int caca = 0;
+
+	// threshold (dot product) above which we consider two connections to be merged
+	const double MIN_CONNECTION_SIMILARITY = 0.8;
 
 public:
 	using cell_type = Cell;
 	using integrator_type = Integrator;
 	using connect_type = Connection<Cell *>;
 	using model_type = Model;
-	using modelConnPair =
-	    pair<Connection<ModelConnectionPoint, Cell *>, Connection<ModelConnectionPoint, Cell *>>;
-	using modelConn_ptr = unique_ptr<modelConnPair>;
+	using modelConnect_type = CellModelConnection<Cell>;
 
-	// Raw pointers! Why?
-	// because it is impossible to use unique_ptr here
-	// because shared_ptr would slow down the app
-	// because it is not a difficult case of memory management
+	// OMG raw pointers! :o
 	vector<connect_type *> connections;
 
 	// all the cells are in this container
 	vector<Cell *> cells;
 
-	// cellModelConnections :
-	// modelName -> [ {Cell_ptr, faceId} -> pair<FTconnection,Sconnection> ]
-	// A cell / model connection is composed of two sub connections : one for flexion and torsion,
-	// and one for compression and elongation, which is always perpendicular to the surface
-	unordered_map<string, map<pair<Cell *, size_t>, modelConn_ptr>> cellModelConnections;
-
 	// all models are stored in this map, using their name as the key
 	unordered_map<string, Model> models;
+
+	// cells to models connections are stored in a double map model* -> cell*
+	unordered_map<Model *,
+	              unordered_map<Cell *, vector<unique_ptr<CellModelConnection<Cell>>>>>
+	    cellModelConnections;
 
 	/**********************************************
 	 *                 GET & SET                  *
@@ -71,7 +70,7 @@ public:
 	Vec getG() const { return g; }
 	void setG(const Vec &v) { g = v; }
 	const Grid<Cell *> &getCellGrid() { return grid; }
-	const Grid<pair<Model *, size_t>> &getModelGrid() { return modelGrid; }
+	const Grid<pair<Model *, unsigned int>> &getModelGrid() { return modelGrid; }
 	double getViscosityCoef() const { return viscosityCoef; }
 	void setViscosityCoef(const double d) { viscosityCoef = d; }
 
@@ -83,8 +82,8 @@ public:
 			computeForces();
 			updatePositionsAndOrientations();
 			if (cellModelCollisions) {
-				updateModelConnections();
-				performCellModelCollisions();
+				updateModelGrid();
+				checkForCellModellCollisions();
 			}
 			if (cellCellCollisions) {
 				grid.clear();
@@ -115,15 +114,19 @@ public:
 			c->updateStats();
 		}
 	}
+
 	void setDt(double d) { dt = d; }
+
 	void computeForces() {
 		// connections
 		for (auto &con : connections)
 			con->computeForces(dt);
-		for (auto &n : cellModelConnections) {
-			for (auto &p : n.second) {
-				// p.second->first.computeForces(dt);
-				p.second->second.computeForces(dt);
+		for (auto &m : cellModelConnections) {
+			// model* -> cell* -> vec<connection>
+			for (auto &c : m.second) {
+				for (auto &cmc : c.second) {
+					cmc->computeForces(dt);
+				}
 			}
 		}
 
@@ -132,50 +135,6 @@ public:
 			c->receiveForce(-6.0 * M_PI * viscosityCoef * c->getRadius() * c->getVelocity());
 			// gravity
 			c->receiveForce(g);
-		}
-	}
-	void updateModelConnections() {
-		// we need to check for connections needing to be removed or translated
-		// first, do we need to remove them ?
-		for (auto &m : cellModelConnections) {
-			for (auto it = m.second.begin(); it != m.second.end();) {
-				auto &p = (*it);
-				// we first need to update all springs so that they always are perpendicular to the surface
-				Cell *c = p.second->second.getNode1();
-				ModelConnectionPoint &springMCP = p.second->second.getNode0();
-				const Triangle &t = springMCP.model->faces[springMCP.face];
-				auto projec = projectionIntriangle(springMCP.model->vertices[t.indices[0]],
-				                                   springMCP.model->vertices[t.indices[1]],
-				                                   springMCP.model->vertices[t.indices[2]], c->getPosition());
-				if (projec.first) {
-					// still above the same triangle
-					springMCP.position = projec.second;
-				}
-				// normalement, dans le cas où teta du flexJoint coté model est > à maxTeta,
-				// il faut faire glisser le point d'accroche vers la projection de la cell
-				// (le comportement par défaut est de faire pivoter l'angle de référence).
-				// TODO : plus joli, mieux intégré, moins couteux...
-				// Joint &flex = p.second->first.getFlex().first;
-				// double MTETA = 0.01;
-				// if (flex.delta.teta > MTETA) {
-				// ModelConnectionPoint &fjMCP = p.second->first.getNode0();
-				// const Triangle &ft = fjMCP.model->faces[fjMCP.face];
-				// auto projecfj =
-				// projectionIntriangle(fjMCP.model->vertices[ft.indices[0]], fjMCP.model->vertices[ft.indices[1]],
-				// fjMCP.model->vertices[ft.indices[2]], c->getPosition());
-				// double mvLength =
-				//(projecfj.second - c->getPosition()).length() * (tan(flex.delta.teta) - tan(MTETA));
-				// fjMCP.position += mvLength * (projecfj.second - fjMCP.position).normalized();
-				//}
-
-				// we need to remove a connection if its length is longer than the cell radius
-				if (!projec.first || p.second->second.getSc().length > c->getRadius()) {
-					p.second->second.getNode1()->removeModelConnection(p.second.get());
-					it = m.second.erase(it);
-				} else {
-					++it;
-				}
-			}
 		}
 	}
 
@@ -194,8 +153,9 @@ public:
 	void updateConnectionsLengthAndDirection() {
 		for (auto &c : connections) {
 			double contactSurface =
-			    M_PI * (pow(c->getSc().length, 2) +
-			            pow((c->getNode0()->getRadius() + c->getNode1()->getRadius()) / 2.0, 2));
+			    M_PI *
+			    (pow(c->getSc().length, 2) +
+			     pow((c->getNode0()->getRadius() + c->getNode1()->getRadius()) / 2.0, 2));
 			c->getFlex().first.setCurrentKCoef(contactSurface);
 			c->getFlex().second.setCurrentKCoef(contactSurface);
 			c->getTorsion().first.setCurrentKCoef(contactSurface);
@@ -219,18 +179,38 @@ public:
 		models.emplace(name, path);
 		models.at(name).name = name;
 	}
+	void removeModel(const string &name) {
+		if (models.count(name)) {
+			models.erase(name);
+		}
+		if (cellModelConnections.count(name)) {
+			cerr << "deleting stuff" << endl;
+			for (auto &c : cellModelConnections.at(name)) {
+				for (auto &conn : c.second) {
+					c.first->removeModelConnection(conn.second.get());
+				}
+			}
+			cerr << "ok" << endl;
+			cellModelConnections.erase(name);
+		}
+		modelGrid.clear();
+		for (auto &m : models) {
+			insertInGrid(m.second);
+		}
+	}
 
 	void insertInGrid(Model &m) {
 		for (size_t i = 0; i < m.faces.size(); ++i) {
 			auto &f = m.faces[i];
-			modelGrid.insert({&m, i}, m.vertices[f.indices[0]], m.vertices[f.indices[1]], m.vertices[f.indices[2]]);
+			modelGrid.insert({&m, i}, m.vertices[f.indices[0]], m.vertices[f.indices[1]],
+			                 m.vertices[f.indices[2]]);
 		}
 	}
 
 	/******************************
 	 *         COLLISIONS         *
 	 ******************************/
-	void performCellModelCollisions() {
+	void updateModelGrid() {
 		bool modelChange = false;
 		for (auto &m : models) {
 			if (m.second.changedSinceLastCheck()) {
@@ -243,54 +223,147 @@ public:
 				insertInGrid(m.second);
 			}
 		}
+	}
+
+	void checkForCellModellCollisions() {
+		// first, we set all connections to dirty
+		for (auto &m : cellModelConnections) {
+			for (auto &c : m.second) {
+				for (auto &conn : c.second) {
+					conn->dirty = true;
+				}
+			}
+		}
 		for (auto &c : cells) {
-			vector<pair<Model *, size_t>> toTest = modelGrid.retrieve(c->getPosition(), c->getRadius());
+			// for each cell, we find if a cell - model collision is possible.
+			auto toTest = modelGrid.retrieveUnique(c->getPosition(), c->getRadius());
 			for (const auto &mf : toTest) {
-				if (!cellModelConnections.count(mf.first->name) ||
-				    !cellModelConnections.at(mf.first->name).count({c, mf.second})) {
-					const Vec &p0 = mf.first->vertices[mf.first->faces[mf.second].indices[0]];
-					const Vec &p1 = mf.first->vertices[mf.first->faces[mf.second].indices[1]];
-					const Vec &p2 = mf.first->vertices[mf.first->faces[mf.second].indices[2]];
-					// checking if cell c is in contact with model face mf
-					pair<bool, Vec> projec = projectionIntriangle(p0, p1, p2, c->getPosition());
-					if (projec.first && (c->getPosition() - projec.second).sqlength() < pow(c->getRadius(), 2)) {
-						// new collision
-						double adh = 0;
-						// c->getAdhesionWithModel(mf.first->name);
-						double l = Cell::getConnectionLength(c->getRadius(), adh);
-						double maxTeta = mix(0.0, M_PI / 2.0, adh);
-						modelConn_ptr p(new modelConnPair(
-						    // {connection, connection} (one w flexion/torsion, the other w compression)
+				cerr << GREY << "+----------------------------------------------------+" << NORMAL
+				     << endl;
+				cerr << " potential collision between cell " << c << " and model "
+				     << mf.first->name << endl;
+				// for each pair <model*, faceId> mf potentially colliding with c
+				const Vec &p0 = mf.first->vertices[mf.first->faces[mf.second].indices[0]];
+				const Vec &p1 = mf.first->vertices[mf.first->faces[mf.second].indices[1]];
+				const Vec &p2 = mf.first->vertices[mf.first->faces[mf.second].indices[2]];
+				// checking if cell c is in contact with triangle p0, p1, p2
+				pair<bool, Vec> projec = projectionIntriangle(p0, p1, p2, c->getPosition());
+				// projec = {projection inside triangle, projection coordinates}
+				// TODO: we also need to check if the connection should be on a vertice
+
+				Vec currentDirection = projec.second - c->getPosition();
+				cerr << " projec = {" << projec.first << ", " << projec.second << "}" << endl;
+				if (projec.first && currentDirection.sqlength() < pow(c->getRadius(), 2)) {
+					// we have a potential connection. Now we consider 2 cases:
+					// 1 - brand new connection (easy)
+					// 2 - older connection	(we need to update it)
+					//  => same cell/model pair + similar bounce angle (same face or similar normal)
+					currentDirection.normalize();
+					bool alreadyExist = false;
+					cerr << CYAN << " collision !" << NORMAL << endl;
+					if (cellModelConnections.count(mf.first) &&
+					    cellModelConnections[mf.first].count(c)) {
+						cerr << " there already is a connection between this cell and this model. "
+						     << endl;
+						for (auto &otherconn : cellModelConnections[mf.first][c]) {
+							Vec prevDirection =
+							    (otherconn->bounce.getNode0().getPosition() - c->getPrevposition())
+							        .normalized();
+							cerr << " prevDir.dot(currentDir) = " << prevDirection.dot(currentDirection)
+							     << endl;
+							if (prevDirection.dot(currentDirection) > MIN_CONNECTION_SIMILARITY) {
+								alreadyExist = true;
+								cerr << GREEN << " Yep, it's an old connection (" << otherconn.get()
+								     << ")" << endl;
+								otherconn->dirty = false;
+								// case n° 2, we want to update otherconn
+								// first, the bounce spring
+								otherconn->bounce.getNode0().position = projec.second;
+								otherconn->bounce.getNode0().face = mf.second;
+								cerr << " bounce spring updated" << endl;
+								// then the anchor. It's just another simple spring that is always at the
+								// same height as the cell (orthogonal to the bounce spring)
+								// it has a restlength of 0 and follows the cell when its length is more
+								// than the cell's radius;
+								if (otherconn->anchor.getSc().length > 0) {
+									cerr << " putting anchor at cell level" << endl;
+									// first we keep the anchor at cell height
+									const Vec &anchorDirection = otherconn->anchor.getSc().direction;
+									Vec crossp =
+									    currentDirection.cross(currentDirection.cross(anchorDirection));
+									if (crossp.sqlength() > c->getRadius() * 0.02) {
+										crossp.normalize();
+										cerr << " projection axis = " << crossp << endl;
+										double projLength = min(
+										    (otherconn->anchor.getNode0().getPosition() - c->getPosition())
+										        .dot(crossp),
+										    c->getRadius());
+										otherconn->anchor.getNode0().position =
+										    c->getPosition() + projLength * crossp;
+									}
+								}
+								break;
+							}
+						}
+					}
+					if (!alreadyExist) {
+						// new connection
+						cerr << BLUE << " it's a new connection" << endl;
+						double adh = c->getAdhesionWithModel(mf.first->name);
+						double l = mix(MAX_CELL_ADH_LENGTH * c->getRadius(),
+						               MIN_CELL_ADH_LENGTH * c->getRadius(), adh);
+						unique_ptr<CellModelConnection<Cell>> cmc(new CellModelConnection<Cell>(
+						    Connection<SpaceConnectionPoint, Cell *>(
+						        {SpaceConnectionPoint(c->getPosition()), c}, // N0, N1
+						        Spring(100, dampingFromRatio(0.9, c->getMass(), 100),
+						               0)), // anchor
 						    Connection<ModelConnectionPoint, Cell *>(
-						        {ModelConnectionPoint(mf.first, projec.second, mf.second), c}, // N0, N1
-						        {Joint(c->getAngularStiffness(),
-						               dampingFromRatio(c->getDampRatio(), c->getMomentOfInertia(),
-						                                c->getAngularStiffness()),
-						               0.1),
-						         Joint(c->getAngularStiffness(),
-						               dampingFromRatio(c->getDampRatio(), c->getMomentOfInertia(),
-						                                c->getAngularStiffness()),
-						               maxTeta)} // Flex Joint
-						        ,
-						        {Joint(c->getAngularStiffness(),
-						               dampingFromRatio(c->getDampRatio(), c->getMomentOfInertia(),
-						                                c->getAngularStiffness()),
-						               maxTeta),
-						         Joint(c->getAngularStiffness(),
-						               dampingFromRatio(c->getDampRatio(), c->getMomentOfInertia(),
-						                                c->getAngularStiffness()),
-						               maxTeta)} // Torsion Joint
-						        ),
-						    Connection<ModelConnectionPoint, Cell *>(
-						        {ModelConnectionPoint(mf.first, projec.second, mf.second), c}, // N0, N1
+						        {ModelConnectionPoint(mf.first, projec.second, mf.second),
+						         c}, // N0, N1
 						        Spring(c->getStiffness(),
-						               dampingFromRatio(c->getDampRatio(), c->getMass(), c->getStiffness() * 1.0), l))
-						    // end value pair & end emplace
-						    ));
-						c->addModelConnection(p.get());
-						cellModelConnections[mf.first->name][{c, mf.second}] = move(p);
+						               dampingFromRatio(c->getDampRatio(), c->getMass(),
+						                                c->getStiffness() * 1.0),
+						               l) // bounce
+						        )));
+						cmc->anchor.tjEnabled = false;
+						// cmc->anchor.getFlex().first.targetUpdateEnabled = false;
+						// cmc->anchor.getFlex().first.target = -currentDirection;
+						c->addModelConnection(cmc.get());
+						cellModelConnections[mf.first][c].push_back(move(cmc));
 					}
 				}
+				cerr << PURPLE << "|___________________________________________|" << NORMAL
+				     << endl
+				     << endl;
+			}
+		}
+		// clean up: dirty connections
+		for (auto &m : cellModelConnections) {
+			for (auto &c : m.second) {
+				for (auto it = c.second.begin(); it != c.second.end();) {
+					if ((*it)->dirty) {
+						cerr << " deleting dirty connection " << endl;
+						c.first->removeModelConnection(it->get());
+						it = c.second.erase(it);
+					} else {
+						++it;
+					}
+				}
+			}
+		}
+		// clean up: empty entries
+		for (auto itM = cellModelConnections.begin(); itM != cellModelConnections.end();) {
+			if (itM->second.empty()) {
+				itM = cellModelConnections.erase(itM);
+			} else {
+				for (auto itC = itM->second.begin(); itC != itM->second.end();) {
+					if (itC->second.empty()) {
+						itC = itM->second.erase(itC);
+					} else {
+						++itC;
+					}
+				}
+				++itM;
 			}
 		}
 	}
@@ -310,18 +383,19 @@ public:
 
 	void deleteImpossibleConnections() {
 		// erase and delete connections longer than their max length
-		connections.erase(remove_if(connections.begin(), connections.end(), [&](connect_type *c) {
-			                  double maxL = c->getNode0()->getRadius() + c->getNode1()->getRadius();
-			                  if (c->getLength() > maxL) {
-				                  c->getNode0()->removeConnection(c->getNode1(), c);
-				                  delete c;
-				                  return true;
-			                  }
-			                  return false;
-			                }), connections.end());
-		for (auto &c : cells) {
-			deleteOverlapingConnections(c);
-		}
+		connections.erase(
+		    remove_if(connections.begin(), connections.end(), [&](connect_type *c) {
+			    double maxL = c->getNode0()->getRadius() + c->getNode1()->getRadius();
+			    if (c->getLength() > maxL) {
+				    c->getNode0()->removeConnection(c->getNode1(), c);
+				    delete c;
+				    return true;
+			    }
+			    return false;
+			  }), connections.end());
+		// for (auto &c : cells) {
+		// deleteOverlapingConnections(c);
+		//}
 	}
 
 	// deleteOverlapingConnections
@@ -373,7 +447,8 @@ public:
 							other1->eraseConnection(c1);
 							cell->eraseCell(other1);
 							other1->eraseCell(cell);
-							connections.erase(remove(connections.begin(), connections.end(), c1), connections.end());
+							connections.erase(remove(connections.begin(), connections.end(), c1),
+							                  connections.end());
 							delete c1;
 						} else if (scal10 > 0 && c1SqLength < c0SqLength &&
 						           (c1SqLength - scal10 * scal10) < r1 * r1 * overlapCoef) {
@@ -381,10 +456,12 @@ public:
 							other0->eraseConnection(c0);
 							cell->eraseCell(other0);
 							other0->eraseCell(cell);
-							connections.erase(remove(connections.begin(), connections.end(), c0), connections.end());
+							connections.erase(remove(connections.begin(), connections.end(), c0),
+							                  connections.end());
 							deleted = true;
 							delete c0;
-							break; // we need to exit the inner loop, c0 doesn't exist anymore.
+							break; // we need to exit the inner loop, c0 doesn't exist
+							       // anymore.
 						} else {
 							++c1It;
 						}
@@ -424,6 +501,12 @@ public:
 			if ((*i)->isDead()) {
 				auto c = *i;
 				c->eraseAndDeleteAllConnections(connections);
+				for (auto &m : models) {
+					if (cellModelConnections.count(&m.second) &&
+					    cellModelConnections.at(&m.second).count(c)) {
+						cellModelConnections.at(&m.second).erase(c);
+					}
+				}
 				i = cells.erase(i);
 				delete c;
 			} else {

@@ -12,6 +12,9 @@
 #include <iostream>
 #include <QThread>
 
+#define MECACELL_VIEWER
+#include "macros.h"
+
 using namespace std;
 namespace MecacellViewer {
 template <typename Scenario> class Viewer {
@@ -22,7 +25,7 @@ public:
 #if __APPLE__
 #include "TargetConditionals.h"
 #if TARGET_OS_MAC
-		// compatibility profile is not available on mac os...
+		// compatibility profile (Qt's default) is not available on mac os...
 		// we have to use a core profile
 		QSurfaceFormat f;
 		f.setProfile(QSurfaceFormat::CoreProfile);

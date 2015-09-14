@@ -8,9 +8,12 @@
 #include <QString>
 #include <iostream>
 #include <map>
+#include <set>
 #include <QThread>
 #include "viewtools.h"
 #include <set>
+#include <unordered_map>
+#include <functional>
 
 using namespace std;
 
@@ -25,11 +28,11 @@ class SignalSlotRenderer : public QObject {
 protected:
 	QSize viewportSize;
 	QQuickWindow *window = nullptr;
+	virtual void paint(){};
 
 public:
 	explicit SignalSlotRenderer() {}
 	virtual void sync(SignalSlotBase *){};
-	virtual void paint(){};
 	virtual void initialize(){};
 	void setWindow(QQuickWindow *w) { window = w; }
 public slots:
@@ -66,6 +69,7 @@ public:
 	QMouseEvent lastMouseEvent =
 	    QMouseEvent(QEvent::None, QPointF(0, 0), Qt::NoButton, Qt::NoButton, Qt::NoModifier);
 	QFlags<Qt::MouseButtons> mouseClickedButtons, mouseDblClickedButtons;
+	std::map<QString, std::set<QString>> clickedButtons;
 
 	virtual void mouseMoveEvent(QMouseEvent *event) { lastMouseEvent = *event; }
 	virtual void mousePressEvent(QMouseEvent *event) {
@@ -111,7 +115,9 @@ public slots:
 	void callUpdate() {
 		if (window()) window()->update();
 	}
+
 	void step() { loopStep = true; }
+
 	void setWorldUpdate(bool u) { worldUpdate = u; }
 
 	virtual void handleWindowChanged(QQuickWindow *win) {
@@ -120,6 +126,8 @@ public slots:
 			win->setClearBeforeRendering(false);
 		}
 	}
+
+	void buttonClick(QString menu, QString label) { clickedButtons[menu].insert(label); }
 
 	/**************************
 	 *      basic stats

@@ -9,6 +9,7 @@
 #include "renderquad.hpp"
 #include "blurquad.hpp"
 #include "gridviewer.hpp"
+#include "macros.h"
 #include <type_traits>
 #include <QThread>
 #include <cmath>
@@ -20,15 +21,31 @@
 #include <sstream>
 
 namespace MecacellViewer {
+
+DEFINE_MEMBER_CHECKER(MCV_buttonMap);
+
 template <typename Scenario> class Renderer : public SignalSlotRenderer {
 
+	friend class SignalSlotBase;
+
 private:
-	using World = typename remove_reference<decltype(((Scenario *)nullptr)->getWorld())>::type;
+	using World =
+	    typename remove_reference<decltype(((Scenario *)nullptr)->getWorld())>::type;
 	using Cell = typename World::cell_type;
 	using Vec = decltype(((Cell *)nullptr)->getPosition());
 	using ConnectType = typename World::connect_type;
 	using ModelType = typename World::model_type;
-	using modelConn_ptr = typename World::modelConn_ptr;
+	using modelConn_ptr = unique_ptr<typename World::modelConnect_type>;
+
+	template <typename T = Scenario>
+	void initInterface(const typename std::enable_if<HAS_MEMBER(Scenario, MCV_buttonMap),
+	                                                 T>::type *dummy = nullptr) {
+		scenario.MCV_InitializeInterfaceAdditions();
+		buttonMap = scenario.MCV_buttonMap;
+	}
+	template <typename T = Scenario>
+	void initInterface(const typename std::enable_if<!HAS_MEMBER(Scenario, MCV_buttonMap),
+	                                                 T>::type *dummy = nullptr) {}
 
 	// Scenario
 	int argc;
@@ -48,14 +65,19 @@ private:
 	BlurQuad blurTarget;
 	GridViewer gridViewer;
 	unordered_map<std::string, ModelViewer<ModelType>> modelViewers;
+	bool waitingForInterfaceAdditions = true;
+	std::map<QString, std::map<QString, std::function<void(Renderer<Scenario> *)>>>
+	    buttonMap;
 
 	// Events
 	int mouseWheel = 0;
 	QPointF mousePosition, mousePrevPosition;
-	QFlags<Qt::MouseButtons> mouseClickedButtons, mouseDblClickedButtons, mousePressedButtons;
+	QFlags<Qt::MouseButtons> mouseClickedButtons, mouseDblClickedButtons,
+	    mousePressedButtons;
 	QMap<QVariant, std::function<void()>> clickMethods;
 	set<int> pressedKeys;
 	set<int> inputKeys; // same as pressedKeys but true only once per press
+	std::map<QString, std::set<QString>> clickedButtons;
 
 	// Stats
 	chrono::time_point<chrono::high_resolution_clock> t0, tfps;
@@ -73,11 +95,26 @@ private:
 	bool loopStep = true;
 	bool cut = false;
 	bool takeScreen = false;
+	string screenName;
 	colorMode cMode;
 
-public:
-	explicit Renderer(int c, char **v) : SignalSlotRenderer(), argc(c), argv(v) {
-		clickMethods["select"] = bind(&Renderer<Scenario>::pickCell, this);
+	void clear() {
+		GL->glDepthMask(true);
+		GL->glClearColor(1.0, 1.0, 1.0, 1.0);
+		GL->glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		GL->glEnable(GL_DEPTH_TEST);
+	}
+
+	// depth texture initialisation
+	void genDepthTexture(QSize s, GLuint &t) {
+		GL->glGenTextures(1, &t);
+		GL->glBindTexture(GL_TEXTURE_2D, t);
+		GL->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		GL->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+		GL->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+		GL->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+		GL->glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT32, s.width(), s.height(), 0,
+		                 GL_DEPTH_COMPONENT, GL_UNSIGNED_INT, NULL);
 	}
 
 	/***********************************
@@ -87,6 +124,7 @@ public:
 	virtual void paint() {
 		if (loopStep || worldUpdate) {
 			scenario.loop();
+			if (!selectedCellStillExists()) selectedCell = nullptr;
 			loopStep = false;
 		}
 
@@ -100,8 +138,8 @@ public:
 		clear();
 
 		QMatrix4x4 view(camera.getViewMatrix());
-		QMatrix4x4 projection(
-		    camera.getProjectionMatrix((float)viewportSize.width() / (float)viewportSize.height()));
+		QMatrix4x4 projection(camera.getProjectionMatrix((float)viewportSize.width() /
+		                                                 (float)viewportSize.height()));
 
 		// background
 		skybox.draw(view, projection, camera);
@@ -112,14 +150,16 @@ public:
 		}
 		if (gc.contains("cells")) {
 			cells.drawMode = plain;
-			cells.draw(scenario.getWorld().cells, view, projection, camera.getViewVector(), camera.getPosition(),
-			           cMode, selectedCell);
+			cells.draw(scenario.getWorld().cells, view, projection, camera.getViewVector(),
+			           camera.getPosition(), cMode, selectedCell);
 		}
 		if (gc.contains("cellGrid")) {
-			gridViewer.draw(scenario.getWorld().getCellGrid(), view, projection, QVector4D(0.99, 0.9, 0.4, 1.0));
+			gridViewer.draw(scenario.getWorld().getCellGrid(), view, projection,
+			                QVector4D(0.99, 0.9, 0.4, 1.0));
 		}
 		if (gc.contains("modelGrid")) {
-			gridViewer.draw(scenario.getWorld().getModelGrid(), view, projection, QVector4D(0.6, 0.1, 0.1, 1.0));
+			gridViewer.draw(scenario.getWorld().getModelGrid(), view, projection,
+			                QVector4D(0.6, 0.1, 0.1, 1.0));
 		}
 
 		for (auto &m : scenario.getWorld().models) {
@@ -138,33 +178,40 @@ public:
 		QOpenGLFramebufferObject::blitFramebuffer(ssaoFBO.get(), msaaFBO.get(),
 		                                          GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		finalFBO->bind();
-		ssaoTarget.draw(ssaoFBO->texture(), depthTex, camera.getNearPlane(), camera.getFarPlane());
+		ssaoTarget.draw(ssaoFBO->texture(), depthTex, camera.getNearPlane(),
+		                camera.getFarPlane());
 
 		// no ssao from here
 		if (gc.contains("centers")) {
 			cells.drawMode = centers;
-			cells.draw(scenario.getWorld().cells, view, projection, camera.getViewVector(), camera.getPosition(),
-			           cMode, selectedCell);
+			cells.draw(scenario.getWorld().cells, view, projection, camera.getViewVector(),
+			           camera.getPosition(), cMode, selectedCell);
 		}
 		if (gc.contains("connections")) {
 			connections.draw<ConnectType>(scenario.getWorld().connections, view, projection);
-			connections.drawModelConnections<Cell, modelConn_ptr>(scenario.getWorld().cellModelConnections, view,
-			                                                      projection);
+			connections.drawModelConnections<Cell>(
+			    scenario.getWorld().cells, view, projection);
 		}
 
 		QOpenGLFramebufferObject::blitFramebuffer(
 		    fsaaFBO.get(), QRect(QPoint(0, 0), viewportSize * screenCoef), finalFBO.get(),
-		    QRect(QPoint(0, 0), viewportSize * FSAA_COEF * screenCoef), GL_COLOR_BUFFER_BIT, GL_LINEAR);
+		    QRect(QPoint(0, 0), viewportSize * FSAA_COEF * screenCoef), GL_COLOR_BUFFER_BIT,
+		    GL_LINEAR);
 
 		if (guiCtrl.count("takeScreen")) {
-			cerr << "screen" << endl;
 			stringstream screenshotName;
 			screenshotName << "screen" << frame << ".jpg";
 			fsaaFBO->toImage().save(QString::fromStdString(screenshotName.str()), 0, 97);
 		}
-		GL->glViewport(0, 0, viewportSize.width() * screenCoef, viewportSize.height() * screenCoef);
+		if (takeScreen) {
+			fsaaFBO->toImage().save(QString::fromStdString(screenName), 0, 97);
+			takeScreen = false;
+		}
+		GL->glViewport(0, 0, viewportSize.width() * screenCoef,
+		               viewportSize.height() * screenCoef);
 		blurTarget.draw(fsaaFBO->texture(), 5, viewportSize * screenCoef,
-		                QRect(QPoint(0, 0), QSize(menuSize * screenCoef, viewportSize.height() * screenCoef)));
+		                QRect(QPoint(0, 0), QSize(menuSize * screenCoef,
+		                                          viewportSize.height() * screenCoef)));
 
 		// refresh stats
 		auto t1 = chrono::high_resolution_clock::now();
@@ -193,12 +240,18 @@ public:
 		if (cm == "owncolor") return owncolor;
 	}
 
+	bool selectedCellStillExists() {
+		return (std::find(scenario.getWorld().cells.begin(), scenario.getWorld().cells.end(),
+		                  selectedCell) != scenario.getWorld().cells.end());
+	}
+
 	/***********************************
 	 *         INITIALIZATION          *
 	 ***********************************/
 	// called once just after the openGL context is created
 	virtual void initialize() {
 		scenario.init(argc, argv);
+		initInterface();
 		// gl functions
 		GL = QOpenGLContext::currentContext()->functions();
 		GL->initializeOpenGLFunctions();
@@ -208,7 +261,8 @@ public:
 		connections.load();
 		skybox.load();
 		ssaoTarget.load(":/shaders/dumb.vert", ":/shaders/ssao.frag");
-		blurTarget.load(":/shaders/dumb.vert", ":/shaders/blur.frag", viewportSize * screenCoef);
+		blurTarget.load(":/shaders/dumb.vert", ":/shaders/blur.frag",
+		                viewportSize * screenCoef);
 		gridViewer.load(":/shaders/mvp.vert", ":/shaders/flat.frag");
 
 		// fbos
@@ -218,16 +272,21 @@ public:
 		finalFormat.setAttachment(QOpenGLFramebufferObject::NoAttachment);
 		msaaFormat.setAttachment(QOpenGLFramebufferObject::Depth);
 		msaaFormat.setSamples(MSAA_COEF);
-		fsaaFBO = unique_ptr<QOpenGLFramebufferObject>(new QOpenGLFramebufferObject(viewportSize, finalFormat));
-		finalFBO = unique_ptr<QOpenGLFramebufferObject>(new QOpenGLFramebufferObject(viewportSize, finalFormat));
-		ssaoFBO = unique_ptr<QOpenGLFramebufferObject>(new QOpenGLFramebufferObject(viewportSize, ssaoFormat));
-		msaaFBO = unique_ptr<QOpenGLFramebufferObject>(new QOpenGLFramebufferObject(viewportSize, msaaFormat));
+		fsaaFBO = unique_ptr<QOpenGLFramebufferObject>(
+		    new QOpenGLFramebufferObject(viewportSize, finalFormat));
+		finalFBO = unique_ptr<QOpenGLFramebufferObject>(
+		    new QOpenGLFramebufferObject(viewportSize, finalFormat));
+		ssaoFBO = unique_ptr<QOpenGLFramebufferObject>(
+		    new QOpenGLFramebufferObject(viewportSize, ssaoFormat));
+		msaaFBO = unique_ptr<QOpenGLFramebufferObject>(
+		    new QOpenGLFramebufferObject(viewportSize, msaaFormat));
 		fsaaFBO->setAttachment(QOpenGLFramebufferObject::NoAttachment);
 		finalFBO->setAttachment(QOpenGLFramebufferObject::NoAttachment);
 		ssaoFBO->setAttachment(QOpenGLFramebufferObject::Depth);
 		msaaFBO->setAttachment(QOpenGLFramebufferObject::Depth);
 		ssaoFBO->bind();
-		GL->glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, depthTex, 0);
+		GL->glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D,
+		                           depthTex, 0);
 		ssaoFBO->release();
 
 		// scenario
@@ -236,24 +295,6 @@ public:
 	/***********************************
 	 *           UTILS & SYNC          *
 	 ***********************************/
-	void clear() {
-		GL->glDepthMask(true);
-		GL->glClearColor(1.0, 1.0, 1.0, 1.0);
-		GL->glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-		GL->glEnable(GL_DEPTH_TEST);
-	}
-	// depth texture initialisation
-	void genDepthTexture(QSize s, GLuint &t) {
-		GL->glGenTextures(1, &t);
-		GL->glBindTexture(GL_TEXTURE_2D, t);
-		GL->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-		GL->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-		GL->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-		GL->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-		GL->glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT32, s.width(), s.height(), 0, GL_DEPTH_COMPONENT,
-		                 GL_UNSIGNED_INT, NULL);
-	}
-
 	// called when the openGL context is invalidated
 	virtual void cleanupSlot() {}
 
@@ -263,11 +304,17 @@ public:
 
 	// called after every frame, thread safe
 	virtual void sync(SignalSlotBase *b) {
+		if (waitingForInterfaceAdditions) {
+			applyInterfaceAdditions(b);
+			waitingForInterfaceAdditions = false;
+		}
 		// interface comm
 		guiCtrl = b->getGuiCtrl();
 		worldUpdate = b->worldUpdate;
 		loopStep = b->loopStep;
 		b->loopStep = false;
+		clickedButtons = b->clickedButtons;
+		b->clickedButtons.clear();
 		// stats
 		if (selectedCell)
 			stats["selectedCell"] = cellToQVMap(selectedCell);
@@ -275,7 +322,9 @@ public:
 			stats.remove("selectedCell");
 		b->setStats(stats);
 		b->statsChanged();
-		cMode = guiCtrl.contains("colorMode") ? strToColorMode(guiCtrl["colorMode"].toString()) : owncolor;
+		cMode = guiCtrl.contains("colorMode") ?
+		            strToColorMode(guiCtrl["colorMode"].toString()) :
+		            owncolor;
 		// mouse
 		mouseClickedButtons = b->mouseClickedButtons;
 		b->mouseClickedButtons &= Qt::NoButton;
@@ -310,12 +359,13 @@ public:
 		// cell dragging
 		if (mousePressedButtons.testFlag(Qt::RightButton)) {
 			if (selectedCell) {
-				QVector2D mouseNDC(2.0 * mousePosition.x() / (float)viewportSize.width() - 1.0,
-				                   -((2.0 * (float)mousePosition.y()) / (float)viewportSize.height() - 1.0));
-				QVector4D rayEye =
-				    camera.getProjectionMatrix((float)viewportSize.width() / (float)viewportSize.height())
-				        .inverted() *
-				    QVector4D(mouseNDC, -1.0, 1.0);
+				QVector2D mouseNDC(
+				    2.0 * mousePosition.x() / (float)viewportSize.width() - 1.0,
+				    -((2.0 * (float)mousePosition.y()) / (float)viewportSize.height() - 1.0));
+				QVector4D rayEye = camera.getProjectionMatrix((float)viewportSize.width() /
+				                                              (float)viewportSize.height())
+				                       .inverted() *
+				                   QVector4D(mouseNDC, -1.0, 1.0);
 				rayEye = QVector4D(rayEye.x(), rayEye.y(), -1.0, 0.0);
 				QVector4D ray = camera.getViewMatrix().inverted() * rayEye;
 				QVector3D l(ray.x(), ray.y(), ray.z());
@@ -325,7 +375,8 @@ public:
 				if (QVector3D::dotProduct(l, n) != 0) {
 					float d = (QVector3D::dotProduct((p0 - l0), n)) / QVector3D::dotProduct(l, n);
 					QVector3D projectedPos = l0 + d * l;
-					decltype(selectedCell->getPosition()) newPos(projectedPos.x(), projectedPos.y(), projectedPos.z());
+					decltype(selectedCell->getPosition()) newPos(projectedPos.x(), projectedPos.y(),
+					                                             projectedPos.z());
 					selectedCell->setPosition(newPos);
 					selectedCell->resetVelocity();
 				}
@@ -354,14 +405,14 @@ public:
 		if (inputKeys.count(Qt::Key_C)) {
 			cut = !cut;
 		}
-		if (pressedKeys.count(Qt::Key_Space)) {
-			Cell *c = new Cell(QV3D2Vec(camera.getPosition()) - QV3D2Vec(camera.getUpVector() * 50.0));
-			c->setVelocity(QV3D2Vec(camera.getViewVector() * 3000.0));
-			scenario.getWorld().addCell(c);
+
+		for (auto &menu : clickedButtons) {
+			for (auto &label : menu.second) {
+				if (buttonMap.count(menu.first) && buttonMap.at(menu.first).count(label)) {
+					buttonMap[menu.first][label](this);
+				}
+			}
 		}
-		// if (selectedCell && pressedKeys.count(Qt::Key_M)) {
-		// selectedCell->startDivision();
-		//}
 	}
 	Vec QV3D2Vec(const QVector3D &v) { return Vec(v.x(), v.y(), v.z()); }
 
@@ -371,15 +422,19 @@ public:
 		GL->glDeleteTextures(1, &depthTex);
 		genDepthTexture(FSAA_COEF * viewportSize * screenCoef, depthTex);
 		fsaaFBO.reset(new QOpenGLFramebufferObject(viewportSize * screenCoef, ssaoFormat));
-		finalFBO.reset(new QOpenGLFramebufferObject(FSAA_COEF * viewportSize * screenCoef, ssaoFormat));
-		ssaoFBO.reset(new QOpenGLFramebufferObject(FSAA_COEF * viewportSize * screenCoef, ssaoFormat));
-		msaaFBO.reset(new QOpenGLFramebufferObject(FSAA_COEF * viewportSize * screenCoef, msaaFormat));
+		finalFBO.reset(
+		    new QOpenGLFramebufferObject(FSAA_COEF * viewportSize * screenCoef, ssaoFormat));
+		ssaoFBO.reset(
+		    new QOpenGLFramebufferObject(FSAA_COEF * viewportSize * screenCoef, ssaoFormat));
+		msaaFBO.reset(
+		    new QOpenGLFramebufferObject(FSAA_COEF * viewportSize * screenCoef, msaaFormat));
 		fsaaFBO->setAttachment(QOpenGLFramebufferObject::NoAttachment);
 		finalFBO->setAttachment(QOpenGLFramebufferObject::NoAttachment);
 		ssaoFBO->setAttachment(QOpenGLFramebufferObject::Depth);
 		msaaFBO->setAttachment(QOpenGLFramebufferObject::Depth);
 		ssaoFBO->bind();
-		GL->glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, depthTex, 0);
+		GL->glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D,
+		                           depthTex, 0);
 		ssaoFBO->release();
 	}
 
@@ -397,11 +452,13 @@ public:
 	}
 	void addCuttingPlane() {}
 	void pickCell() {
-		QVector2D mouseNDC(2.0 * mousePosition.x() / (float)viewportSize.width() - 1.0,
-		                   -((2.0 * (float)mousePosition.y()) / (float)viewportSize.height() - 1.0));
-		QVector4D rayEye =
-		    camera.getProjectionMatrix((float)viewportSize.width() / (float)viewportSize.height()).inverted() *
-		    QVector4D(mouseNDC, -1.0, 1.0);
+		QVector2D mouseNDC(
+		    2.0 * mousePosition.x() / (float)viewportSize.width() - 1.0,
+		    -((2.0 * (float)mousePosition.y()) / (float)viewportSize.height() - 1.0));
+		QVector4D rayEye = camera.getProjectionMatrix((float)viewportSize.width() /
+		                                              (float)viewportSize.height())
+		                       .inverted() *
+		                   QVector4D(mouseNDC, -1.0, 1.0);
 		rayEye = QVector4D(rayEye.x(), rayEye.y(), -1.0, 0.0);
 		QVector4D ray = camera.getViewMatrix().inverted() * rayEye;
 		QVector3D vray(ray.x(), ray.y(), ray.z());
@@ -409,17 +466,40 @@ public:
 		Cell *res = nullptr;
 		double minEyeDist = 1e20;
 		for (auto &c : scenario.getWorld().cells) {
-			double sqRad = pow(c->getRadius(), 2);
-			QVector3D EC = toQV3D(c->getPosition()) - camera.getPosition();
-			QVector3D EV = vray * QVector3D::dotProduct(EC, vray);
-			double eyeDist = EC.lengthSquared();
-			double rayDist = eyeDist - EV.lengthSquared();
-			if (rayDist <= sqRad && eyeDist < minEyeDist) {
-				minEyeDist = eyeDist;
-				res = c;
+			if (c->getVisible()) {
+				double sqRad = pow(c->getRadius(), 2);
+				QVector3D EC = toQV3D(c->getPosition()) - camera.getPosition();
+				QVector3D EV = vray * QVector3D::dotProduct(EC, vray);
+				double eyeDist = EC.lengthSquared();
+				double rayDist = eyeDist - EV.lengthSquared();
+				if (rayDist <= sqRad && eyeDist < minEyeDist) {
+					minEyeDist = eyeDist;
+					res = c;
+				}
 			}
 		}
 		selectedCell = res;
+	}
+
+	void applyInterfaceAdditions(SignalSlotBase *b) {
+		QObject *root = b->parentItem();
+		for (auto &menu : buttonMap) {
+			for (auto &label : menu.second) {
+				QMetaObject::invokeMethod(root, "addButton", Q_ARG(QVariant, menu.first),
+				                          Q_ARG(QVariant, label.first));
+			}
+		}
+	}
+
+public:
+	explicit Renderer(int c, char **v) : SignalSlotRenderer(), argc(c), argv(v) {
+		clickMethods["select"] = bind(&Renderer<Scenario>::pickCell, this);
+	}
+	Cell *getSelectedCell() { return selectedCell; }
+	Camera &getCameraRef() { return camera; }
+	void screenCapture(std::string name) {
+		takeScreen = true;
+		screenName = name;
 	}
 };
 }

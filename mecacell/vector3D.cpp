@@ -184,6 +184,7 @@ void Vector3D::addAsAngularVelocity(const Vector3D &v, Rotation<Vector3D> &r) {
 	r = addRotations(r, Rotation<Vector3D>(n0, dTeta));
 }
 
+
 double Vector3D::rayCast(const Vector3D &o, const Vector3D &n, const Vector3D &p, const Vector3D &r) {
 	// returns l such that p + l.r lies on the plane defined by its normal n and an offset o
 	// l > 0 means that the ray hits the plane, l < 0 means that the ray dos not face the plane
