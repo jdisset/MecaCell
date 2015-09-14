@@ -13,6 +13,7 @@
 #include "movable.h"
 #include "orientable.h"
 #include "connection.h"
+#include "modelconnection.hpp"
 #include "model.h"
 
 #define CUBICROOT2 1.25992104989
@@ -24,8 +25,7 @@ namespace MecaCell {
 template <typename Derived> class ConnectableCell : public Movable, public Orientable {
 protected:
 	using ConnectionType = Connection<Derived *>;
-	using ModelConnectionType =
-	    pair<Connection<ModelConnectionPoint, Derived *>, Connection<ModelConnectionPoint, Derived *>>;
+	using ModelConnectionType = CellModelConnection<Derived>;
 	bool dead = false; // is the cell dead or alive ?
 	array<double, 3> color = {{0.75, 0.12, 0.07}};
 	double radius = DEFAULT_CELL_RADIUS;
@@ -36,7 +36,8 @@ protected:
 	bool tested = false; // has already been tested for collision
 	vector<ConnectionType *> connections;
 	vector<ModelConnectionType *> modelConnections;
-	vector<Derived *> connectedCells;
+	vector<Derived *> connectedCells; // TODO: try with an unordered_set (easier check for
+	                                  // already connected)
 	double pressure = 1.0;
 	bool visible = true;
 
@@ -87,7 +88,8 @@ public:
 		s << " position = " << position << ", orientation = " << orientation << endl;
 		s << " velocity = " << velocity << ", angular velocity = " << angularVelocity << endl;
 		s << " radius = " << radius << " (base = " << baseRadius << ")" << endl;
-		s << " stiffness = " << stiffness << " (angular = " << angularStiffness << ")" << endl;
+		s << " stiffness = " << stiffness << " (angular = " << angularStiffness << ")"
+		  << endl;
 		s << " damp ratio = " << dampRatio << endl;
 		s << " pressure = " << pressure << endl;
 		s << " " << connections.size() << " cell connections" << endl;
@@ -104,7 +106,9 @@ public:
 	void setRadius(double r) { radius = r; }
 	void markAsTested() { tested = true; }
 	void markAsNotTested() { tested = false; }
-	double getBaseVolume() const { return (4.0 / 3.0) * M_PI * baseRadius * baseRadius * baseRadius; }
+	double getBaseVolume() const {
+		return (4.0 / 3.0) * M_PI * baseRadius * baseRadius * baseRadius;
+	}
 	double getVolume() const { return (4.0 / 3.0) * M_PI * radius * radius * radius; }
 	double getRelativeVolume() const { return getVolume() / getBaseVolume(); }
 	double getDampRatio() const { return dampRatio; }
@@ -117,7 +121,8 @@ public:
 	}
 
 	static double getConnectionLength(const double l, const double adh) {
-		if (adh > ADH_THRESHOLD) return mix(MAX_CELL_ADH_LENGTH * l, MIN_CELL_ADH_LENGTH * l, adh);
+		if (adh > ADH_THRESHOLD)
+			return mix(MAX_CELL_ADH_LENGTH * l, MIN_CELL_ADH_LENGTH * l, adh);
 		return l;
 	}
 
@@ -151,12 +156,14 @@ public:
 			sql *= sql;
 			// interpenetration
 			if (sqdist <= sql) {
-				if (find(connectedCells.begin(), connectedCells.end(), c) == connectedCells.end()) {
+				if (find(connectedCells.begin(), connectedCells.end(), c) ==
+				    connectedCells.end()) {
 					// if those cells aren't already connected
 					// we check if this connection would not go through an already connected cell
 					bool ok = true;
 					for (auto &con : connections) {
-						Derived *otherCell = con->getNode0() == selfptr() ? con->getNode1() : con->getNode0();
+						Derived *otherCell =
+						    con->getNode0() == selfptr() ? con->getNode1() : con->getNode0();
 						Vec AO = otherCell->getPosition() - position;
 						double AOdotAB = AO.dot(AB);
 						if (AOdotAB > 0) {
@@ -172,27 +179,37 @@ public:
 						}
 					}
 					if (ok) {
-						// TODO: store adhesion with each connection. Each call to getAdhesionWith should only be for
-						// a new connection. For the old connection, user should be able to tweak the coefficien through a
+						// TODO: store adhesion with each connection. Each call to getAdhesionWith
+						// should only be for
+						// a new connection. For the old connection, user should be able to tweak the
+						// coefficien through a
 						// updateConnectionParams(ConnectionType*) method.
 						double minAdh = (getAdhesionWith(c) + c->getAdhesionWith(selfptr())) * 0.5;
 						double l = getConnectionLength(c, minAdh);
-						double k = (stiffness * radius + c->stiffness * c->radius) / (radius + c->radius);
-						double dr = (dampRatio * radius + c->dampRatio * c->radius) / (radius + c->radius);
+						double k =
+						    (stiffness * radius + c->stiffness * c->radius) / (radius + c->radius);
+						double dr =
+						    (dampRatio * radius + c->dampRatio * c->radius) / (radius + c->radius);
 						// double maxTeta = mix(0.0, M_PI / 2.0, minAdh);
 						double maxTeta = M_PI / 12.0;
 						ConnectionType *s = new ConnectionType(
 						    pair<Derived *, Derived *>(selfptr(), c),
 						    Spring(k, dampingFromRatio(dr, mass + c->mass, k), l),
 						    make_pair(Joint(getAngularStiffness(),
-						                    dampingFromRatio(dr, getMomentOfInertia() * 2.0, angularStiffness), maxTeta),
+						                    dampingFromRatio(dr, getMomentOfInertia() * 2.0,
+						                                     angularStiffness),
+						                    maxTeta),
 						              Joint(getAngularStiffness(),
-						                    dampingFromRatio(dr, c->getMomentOfInertia() * 2.0, c->angularStiffness),
+						                    dampingFromRatio(dr, c->getMomentOfInertia() * 2.0,
+						                                     c->angularStiffness),
 						                    maxTeta)),
 						    make_pair(Joint(getAngularStiffness(),
-						                    dampingFromRatio(dr, getMomentOfInertia() * 2.0, angularStiffness), maxTeta),
+						                    dampingFromRatio(dr, getMomentOfInertia() * 2.0,
+						                                     angularStiffness),
+						                    maxTeta),
 						              Joint(getAngularStiffness(),
-						                    dampingFromRatio(dr, c->getMomentOfInertia() * 2.0, c->angularStiffness),
+						                    dampingFromRatio(dr, c->getMomentOfInertia() * 2.0,
+						                                     c->angularStiffness),
 						                    maxTeta)));
 						double contactSurface = M_PI * (sqdist + pow((radius + c->radius) / 2, 2));
 						s->getFlex().first.setCurrentKCoef(contactSurface);
@@ -212,12 +229,15 @@ public:
 	double getAngularStiffness() const { return angularStiffness; }
 
 	// recomputes all connections sizes according to the the current size of the cell
-	// TODO : also change the stiffness / strength of a connection according to the adhesion area
+	// TODO : also change the stiffness / strength of a connection according to the adhesion
+	// area
 	//  (maybe directly from World?)
 	void updateAllConnections() {
 		for (auto &con : connections) {
-			Derived *otherCell = con->getNode0() == selfptr() ? con->getNode1() : con->getNode0();
-			double adhCoef = (getAdhesionWith(otherCell) + otherCell->getAdhesionWith(selfptr())) * 0.5;
+			Derived *otherCell =
+			    con->getNode0() == selfptr() ? con->getNode1() : con->getNode0();
+			double adhCoef =
+			    (getAdhesionWith(otherCell) + otherCell->getAdhesionWith(selfptr())) * 0.5;
 			con->setBaseLength(getConnectionLength(otherCell, adhCoef));
 		}
 	}
@@ -249,7 +269,8 @@ public:
 	// erase cell from the connectedCells container
 	void eraseCell(Derived *cell) {
 		unsigned int prevC = connectedCells.size();
-		connectedCells.erase(remove(connectedCells.begin(), connectedCells.end(), cell), connectedCells.end());
+		connectedCells.erase(remove(connectedCells.begin(), connectedCells.end(), cell),
+		                     connectedCells.end());
 		assert(connectedCells.size() == prevC - 1 || prevC == 0);
 	}
 
@@ -279,7 +300,8 @@ public:
 
 	// erase connection s f the connections container
 	void eraseConnection(ConnectionType *s) {
-		connections.erase(remove(connections.begin(), connections.end(), s), connections.end());
+		connections.erase(remove(connections.begin(), connections.end(), s),
+		                  connections.end());
 	}
 
 	void eraseAndDeleteAllConnections(std::vector<ConnectionType *> &aux) {
@@ -288,11 +310,12 @@ public:
 			auto otherCell = sp->getNode0() == this ? sp->getNode1() : sp->getNode0();
 			if (otherCell != nullptr) {
 				aux.erase(remove(aux.begin(), aux.end(), sp), aux.end());
-				connectedCells.erase(remove(connectedCells.begin(), connectedCells.end(), otherCell),
-				                     connectedCells.end());
-				otherCell->connectedCells.erase(
-				    remove(otherCell->connectedCells.begin(), otherCell->connectedCells.end(), this),
-				    otherCell->connectedCells.end());
+				connectedCells.erase(
+				    remove(connectedCells.begin(), connectedCells.end(), otherCell),
+				    connectedCells.end());
+				otherCell->connectedCells.erase(remove(otherCell->connectedCells.begin(),
+				                                       otherCell->connectedCells.end(), this),
+				                                otherCell->connectedCells.end());
 				otherCell->eraseConnection(sp);
 				cIt = connections.erase(cIt);
 				delete sp;

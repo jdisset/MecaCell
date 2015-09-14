@@ -8,7 +8,8 @@ int double2int(double d) {
 	return reinterpret_cast<int &>(d);
 }
 
-double closestDistToTriangleEdge(const Vec &v0, const Vec &v1, const Vec &v2, const Vec &p) {
+double closestDistToTriangleEdge(const Vec &v0, const Vec &v1, const Vec &v2,
+                                 const Vec &p) {
 	Vec a = v1 - v0;
 	Vec b = v2 - v0;
 	Vec c = v2 - v1;
@@ -47,9 +48,30 @@ double closestDistToTriangleEdge(const Vec &v0, const Vec &v1, const Vec &v2, co
 	}
 	return sqrt(min(adist, min(bdist, cdist)));
 }
+std::pair<bool, Vec> rayInTriangle(const Vec &v0, const Vec &v1, const Vec &v2,
+                                   const Vec &o, const Vec &r, const double tolerance) {
+	Vec u = v1 - v0;
+	Vec v = v2 - v0;
+	Vec n = u.cross(v);
+	double l = Vec::rayCast(v0, n, o, r);
+	if (l > 0) {
+		Vec p = o + l * r;
+		Vec w = p - v0;
+		double nsq = n.sqlength();
+		double l = u.cross(w).dot(n) / nsq;
+		double b = w.cross(v).dot(n) / nsq;
+		double a = 1.0 - l - b;
+		return {0 - tolerance <= a && a <= 1.0 + tolerance && 0 - tolerance <= b &&
+		            b <= 1.0 + tolerance && 0 - tolerance <= l && l <= 1.0 + tolerance,
+		        a * v0 + b * v1 + l * v2};
+	} else {
+		cerr << "l = " << l << endl;
+		return {false, o};
+	}
+}
 
-std::pair<bool, Vec> projectionIntriangle(const Vec &v0, const Vec &v1, const Vec &v2, const Vec &p,
-                                          const double tolerance) {
+std::pair<bool, Vec> projectionIntriangle(const Vec &v0, const Vec &v1, const Vec &v2,
+                                          const Vec &p, const double tolerance) {
 	Vec u = v1 - v0;
 	Vec v = v2 - v0;
 	Vec n = u.cross(v);
@@ -58,8 +80,8 @@ std::pair<bool, Vec> projectionIntriangle(const Vec &v0, const Vec &v1, const Ve
 	double l = u.cross(w).dot(n) / nsq;
 	double b = w.cross(v).dot(n) / nsq;
 	double a = 1.0 - l - b;
-	return {0 - tolerance <= a && a <= 1.0 + tolerance && 0 - tolerance <= b && b <= 1.0 + tolerance &&
-	            0 - tolerance <= l && l <= 1.0 + tolerance,
+	return {0 - tolerance <= a && a <= 1.0 + tolerance && 0 - tolerance <= b &&
+	            b <= 1.0 + tolerance && 0 - tolerance <= l && l <= 1.0 + tolerance,
 	        a * v0 + b * v1 + l * v2};
 }
 

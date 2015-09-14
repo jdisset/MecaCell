@@ -2,7 +2,8 @@
 #define CONNECTION_H
 #include "tools.h"
 
-#define MAX_TS_INCL 0.1 // max angle before we need to reproject our torsion joint rotation
+#define MAX_TS_INCL                                                                      \
+	0.1 // max angle before we need to reproject our torsion joint rotation
 
 namespace MecaCell {
 ////////////////////////////////////////////////////////////////////
@@ -19,12 +20,13 @@ struct Spring {
 	Vec direction;               // current direction from node 0 to node 1
 
 	Spring(){};
-	Spring(const double &K, const double &C, const double &L) : k(K), c(C), l(L), length(L){};
+	Spring(const double &K, const double &C, const double &L)
+	    : k(K), c(C), l(L), length(L){};
 
 	void updateLengthDirection(const Vec &p0, const Vec &p1) {
 		direction = p1 - p0;
 		length = direction.length();
-		direction /= length;
+		if (length > 0) direction /= length;
 	}
 };
 
@@ -43,13 +45,16 @@ struct Joint {
 	Vec direction;                  // current direction
 	Vec target;                     // targeted direction
 	bool maxTetaAutoCorrect = true; // do we need to handle maxTeta?
+	bool targetUpdateEnabled = true;
 	Joint(){};
 
 	Joint(const double &K, const double &C, const double &MTETA, bool handleMteta = true)
 	    : k(K), c(C), maxTeta(MTETA), maxTetaAutoCorrect(handleMteta) {}
 
 	// current direction is computed using a reference Vector v rotated with rotation rot
-	void updateDirection(const Vec &v, const Rotation<Vec> &rot) { direction = v.rotated(r.rotated(rot)); }
+	void updateDirection(const Vec &v, const Rotation<Vec> &rot) {
+		direction = v.rotated(r.rotated(rot));
+	}
 	void updateDelta() { delta = Vec::getRotation(direction, target); }
 	void setCurrentKCoef(double kc) { currentK = k * kc; }
 };
@@ -74,12 +79,12 @@ struct Joint {
 // - void receiveTorque(Vec acc)
 template <typename N0, typename N1 = N0> class Connection {
 private:
-	bool scEnabled = true, fjEnabled = true, tjEnabled = false;
 	pair<N0, N1> connected;    // the two connected nodes
 	Spring sc;                 // basic spring
 	pair<Joint, Joint> fj, tj; // flexure and torsion joints (1 per node)
 
 public:
+	bool scEnabled = true, fjEnabled = true, tjEnabled = false;
 	/**********************************************
 	 *               CONSTRUCTOR
 	 **********************************************/
@@ -87,7 +92,8 @@ public:
 	    : connected{n}, sc(S), fjEnabled(false), tjEnabled(false) {
 		initS();
 	}
-	Connection(const pair<N0, N1> &n, const pair<Joint, Joint> &FJ, const pair<Joint, Joint> &TJ)
+	Connection(const pair<N0, N1> &n, const pair<Joint, Joint> &FJ,
+	           const pair<Joint, Joint> &TJ)
 	    : connected{n}, fj(FJ), tj(TJ), scEnabled(false) {
 		initS();
 		initFJ();
@@ -100,7 +106,8 @@ public:
 	}
 
 	void initS() {
-		sc.updateLengthDirection(ptr(connected.first)->getPosition(), ptr(connected.second)->getPosition());
+		sc.updateLengthDirection(ptr(connected.first)->getPosition(),
+		                         ptr(connected.second)->getPosition());
 		sc.prevLength = sc.length;
 	}
 	void initFJ() {
@@ -114,7 +121,7 @@ public:
 		tj.first.r = fj.first.r;
 		tj.second.r = fj.second.r;
 
-		// joint current direction
+		// joint's current direction
 		fj.first.updateDirection(ptr(connected.first)->getOrientation().X,
 		                         ptr(connected.first)->getOrientationRotation());
 		fj.second.updateDirection(ptr(connected.second)->getOrientation().X,
@@ -143,22 +150,28 @@ public:
 	 *              UPDATES
 	 **********************************************/
 	void updateLengthDirection() {
-		sc.updateLengthDirection(ptr(connected.first)->getPosition(), ptr(connected.second)->getPosition());
+		sc.updateLengthDirection(ptr(connected.first)->getPosition(),
+		                         ptr(connected.second)->getPosition());
 	}
 	void computeForces(double dt) {
 		// BASIC SPRING
+		sc.updateLengthDirection(ptr(connected.first)->getPosition(),
+		                         ptr(connected.second)->getPosition());
 		if (scEnabled) {
-			sc.updateLengthDirection(ptr(connected.first)->getPosition(), ptr(connected.second)->getPosition());
 			double x = sc.length - sc.l; // actual compression / elongation
 			double minlength = sc.minLengthRatio * sc.l;
 			if (sc.length < minlength) {
 				double d = minlength - sc.length;
-				Vec component0 = ptr(connected.first)->getVelocity().dot(sc.direction) * sc.direction;
+				Vec component0 =
+				    ptr(connected.first)->getVelocity().dot(sc.direction) * sc.direction;
 				Vec tangent0 = ptr(connected.first)->getVelocity() - component0;
-				Vec component1 = ptr(connected.second)->getVelocity().dot(sc.direction) * sc.direction;
+				Vec component1 =
+				    ptr(connected.second)->getVelocity().dot(sc.direction) * sc.direction;
 				Vec tangent1 = ptr(connected.second)->getVelocity() - component1;
-				ptr(connected.first)->setPosition(ptr(connected.first)->getPosition() - sc.direction * d / 2.0);
-				ptr(connected.second)->setPosition(ptr(connected.second)->getPosition() + sc.direction * d / 2.0);
+				ptr(connected.first)
+				    ->setPosition(ptr(connected.first)->getPosition() - sc.direction * d / 2.0);
+				ptr(connected.second)
+				    ->setPosition(ptr(connected.second)->getPosition() + sc.direction * d / 2.0);
 				ptr(connected.first)->setVelocity(tangent0 + component1);
 				ptr(connected.second)->setVelocity(tangent1 + component0);
 				sc.length = minlength;
@@ -189,6 +202,7 @@ public:
 			updateFT<1>();
 		}
 	}
+
 	template <int n> void updateFT() {
 		Joint &tjNode = n == 0 ? tj.first : tj.second;
 		Joint &tjOther = n == 0 ? tj.second : tj.first;
@@ -198,24 +212,26 @@ public:
 		const double sign = n == 0 ? 1 : -1;
 
 		if (fjEnabled) {
-			fjNode.target = sc.direction * sign;
+			if (fjNode.targetUpdateEnabled) fjNode.target = sc.direction * sign;
 			fjNode.updateDelta();
-			if (fjNode.maxTetaAutoCorrect && fjNode.delta.teta > fjNode.maxTeta) { // if we passed flex break angle
+			if (fjNode.maxTetaAutoCorrect &&
+			    fjNode.delta.teta > fjNode.maxTeta) { // if we passed flex break angle
 				float dif = fjNode.delta.teta - fjNode.maxTeta;
 				fjNode.r = fjNode.r + Rotation<Vec>(fjNode.delta.n, dif);
 				fjNode.direction = fjNode.direction.rotated(Rotation<Vec>(fjNode.delta.n, dif));
 				fjNode.r = node->getOrientationRotation().inverted() +
-				           Vec::getRotation(Basis<Vec>(), Basis<Vec>(fjNode.direction, fjNode.direction.ortho()));
+				           Vec::getRotation(Basis<Vec>(), Basis<Vec>(fjNode.direction,
+				                                                     fjNode.direction.ortho()));
 			}
 			// flex torque and force
 			fjNode.delta.n.normalize();
-			double d = scEnabled ?
-			               sc.length :
-			               (ptr(connected.first)->getPosition() - ptr(connected.second)->getPosition()).length();
+			double d = scEnabled ? sc.length : (ptr(connected.first)->getPosition() -
+			                                    ptr(connected.second)->getPosition())
+			                                       .length();
 			double torque = fjNode.currentK * fjNode.delta.teta +
 			                fjNode.c * (fjNode.delta.teta - fjNode.prevDelta.teta); // -kx - cv
 			Vec vFlex = fjNode.delta.n * torque;                                    // torque
-			Vec ortho = sc.direction.ortho(fjNode.delta.n).normalized();            // force direction
+			Vec ortho = sc.direction.ortho(fjNode.delta.n).normalized(); // force direction
 			Vec force = sign * ortho * torque / d;
 
 			node->receiveForce(-force);
@@ -237,12 +253,15 @@ public:
 				tjNode.direction = tjNode.direction.normalized() - scalar * sc.direction;
 			}
 			// updating targets
-			tjNode.target = tjOther.direction; // we want torsion springs to stay aligned with each other
+			tjNode.target =
+			    tjOther.direction; // we want torsion springs to stay aligned with each other
 			tjNode.updateDelta();
 			// torsion torque
 			tjNode.delta.n.normalize();
-			double torque = tjNode.currentK *
-			                tjNode.delta.teta; // - tjNode.c * node->getAngularVelocity().dot(tjNode.delta.teta.n)
+			double torque =
+			    tjNode.currentK *
+			    tjNode.delta
+			        .teta; // - tjNode.c * node->getAngularVelocity().dot(tjNode.delta.teta.n)
 			Vec vTorsion = torque * tjNode.delta.n;
 			node->receiveTorque(vTorsion);
 		}

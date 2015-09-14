@@ -180,6 +180,7 @@ public:
 		}
 	}
 	void backward(float dt) {
+		if (dt > 1.0 / 20.0) dt = 1.0 / 20.0;
 		if (mode == fps) {
 			force += -viewVector.normalized() * forceIntensity;
 		} else if (mode == centered) {
@@ -188,6 +189,7 @@ public:
 		}
 	}
 	void forward(float dt) {
+		if (dt > 1.0 / 20.0) dt = 1.0 / 20.0;
 		if (mode == fps) {
 			force += viewVector.normalized() * forceIntensity;
 		} else if (mode == centered) {
@@ -197,6 +199,7 @@ public:
 	}
 
 	void updatePosition(float dt) {
+		if (dt > 1.0 / 20.0) dt = 1.0 / 20.0;
 		if (mode == fps) {
 			speed += force * dt - speed * friction * dt;
 			position += speed * dt;

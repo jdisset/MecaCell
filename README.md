@@ -79,7 +79,7 @@ Now for the main.cpp:
 #include "mycell.h"
 
 int main(int argc, char **argv) {
-	MecacellViewer::Viewer<MyScenario<MyCell>> v;
+	MecacellViewer::Viewer<MyScenario> v;
 	return v.exec(argc, argv);
 }
 

@@ -13,6 +13,7 @@ using std::string;
 using std::vector;
 using std::unordered_map;
 using std::unordered_set;
+using std::pair;
 
 namespace MecaCell {
 
@@ -37,25 +38,6 @@ struct Model {
 	vector<Triangle> faces;
 	unordered_map<size_t, unordered_set<size_t>> adjacency; // adjacent faces share at least one vertex
 	bool changed = true;
-};
-
-struct ModelConnectionPoint {
-	ModelConnectionPoint(Model *m, Vec p, size_t f) : model(m), position(p), face(f) {}
-	Model *model;
-	Vec position;
-	size_t face;
-	// TODO : toggle movable / orientable in connection
-	void setPosition(const Vec &){};
-	void setVelocity(const Vec &){};
-	Vec getPosition() { return position; }
-	Vec getVelocity() { return Vec::zero(); }
-	Vec getAngularVelocity() { return Vec::zero(); }
-	Basis<Vec> getOrientation() { return Basis<Vec>(); }
-	Rotation<Vec> getOrientationRotation() { return Rotation<Vec>(); }
-	double getInertia() { return 1; }
-	void receiveForce(double, const Vec &, bool) {}
-	void receiveForce(const Vec &) {}
-	void receiveTorque(const Vec &) {}
 };
 }
 #endif

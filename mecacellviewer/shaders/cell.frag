@@ -46,7 +46,7 @@ void main(){
 
 	vec3 surfaceColor =  color;
 
-	/*vec3 reducedColor = mixV3(surfaceColor,surfaceColor*surfaceColor - vec3(0.15),max(0.0,min(0.8,diffuseCoef))) ; // dégradé couleur clair sur les bords -> sombre au centre. Effet "translucide"*/
+	/*[>vec3 reducedColor = mixV3(surfaceColor,surfaceColor*surfaceColor - vec3(0.15),max(0.0,min(0.8,diffuseCoef))) ; // dégradé couleur clair sur les bords -> sombre au centre. Effet "translucide"<]*/
 	vec3 reducedColor = mix(surfaceColor,surfaceColor*surfaceColor - vec3(0.1),max(0.0,min(0.8,diffuseCoef))) ; // dégradé couleur clair sur les bords -> sombre au centre. Effet "translucide"
 
 	vec3 normalColor = mixV3(vec3(1.0),vec3(0.0),max(0.0,min(1.0, diffuseCoefMap*diffuseCoefMap))) ; // éclairage caméra n&b avec normales perturbées
@@ -59,7 +59,6 @@ void main(){
 	final = superpose(final,whiteHalo,0.08);
 	final = superpose(final,whiteHalo*vec4(normalColor,1.0),0.32);
 
-	/*FragColor =  vec4(final,0.0 + diffuseCoef*diffuseCoef) ;*/
+	/*[>FragColor =  vec4(final,0.0 + diffuseCoef*diffuseCoef) ;<]*/
 	FragColor =  vec4(final,1.0) ;
-	/*FragColor = vec4(vec3(gl_FragCoord.z),1.0);*/
 }

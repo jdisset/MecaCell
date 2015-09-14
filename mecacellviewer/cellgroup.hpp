@@ -42,9 +42,9 @@ public:
 			vector<C *> sortedCells = cells;
 			decltype((*cells.begin())->getPosition()) viewVec(viewV.x(), viewV.y(), viewV.z());
 			decltype((*cells.begin())->getPosition()) camVec(camPos.x(), camPos.y(), camPos.z());
-			std::sort(sortedCells.begin(), sortedCells.end(), [&](C *a, C *b) {
-				return (a->getPosition() - camVec).sqlength() > (b->getPosition() - camVec).sqlength();
-			});
+			// std::sort(sortedCells.begin(), sortedCells.end(), [&](C *a, C *b) {
+			// return (a->getPosition() - camVec).sqlength() > (b->getPosition() - camVec).sqlength();
+			//});
 			for (auto &c : sortedCells) {
 				if (c->getVisible()) {
 					QMatrix4x4 model;
