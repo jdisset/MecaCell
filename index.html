@@ -1,28 +1,34 @@
-<!DOCTYPE html>
-<html lang="en-us">
+<!doctype html>
+<html>
   <head>
-    <meta charset="UTF-8">
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="chrome=1">
     <title>Mecacell by jdisset</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="stylesheet" type="text/css" href="stylesheets/normalize.css" media="screen">
-    <link href='https://fonts.googleapis.com/css?family=Open+Sans:400,700' rel='stylesheet' type='text/css'>
-    <link rel="stylesheet" type="text/css" href="stylesheets/stylesheet.css" media="screen">
-    <link rel="stylesheet" type="text/css" href="stylesheets/github-light.css" media="screen">
+
+    <link rel="stylesheet" href="stylesheets/styles.css">
+    <link rel="stylesheet" href="stylesheets/github-light.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+    <!--[if lt IE 9]>
+    <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
   </head>
   <body>
-    <section class="page-header">
-      <h1 class="project-name">Mecacell</h1>
-      <h2 class="project-tagline">MecaCell: an Open-source Efficient Cellular Physics Engine</h2>
-      <a href="https://github.com/jdisset/MecaCell" class="btn">View on GitHub</a>
-      <a href="https://github.com/jdisset/MecaCell/zipball/master" class="btn">Download .zip</a>
-      <a href="https://github.com/jdisset/MecaCell/tarball/master" class="btn">Download .tar.gz</a>
-    </section>
+    <div class="wrapper">
+      <header>
+        <h1>Mecacell</h1>
+        <p>MecaCell: an Open-source Efficient Cellular Physics Engine</p>
 
-    <section class="main-content">
-      <h1>
-<a id="mecacell" class="anchor" href="#mecacell" aria-hidden="true"><span class="octicon octicon-link"></span></a>MecaCell</h1>
+        <p class="view"><a href="https://github.com/jdisset/MecaCell">View the Project on GitHub <small>jdisset/MecaCell</small></a></p>
 
-<p>MecaCell is an open-source cellular physics agent-based simulation platform. It is designed with artificial life and morphogenetic engineering in mind and tries to stay not too invasive, lightweight and easily extensible.
+
+        <ul>
+          <li><a href="https://github.com/jdisset/MecaCell/zipball/master">Download <strong>ZIP File</strong></a></li>
+          <li><a href="https://github.com/jdisset/MecaCell/tarball/master">Download <strong>TAR Ball</strong></a></li>
+          <li><a href="https://github.com/jdisset/MecaCell">View On <strong>GitHub</strong></a></li>
+        </ul>
+      </header>
+      <section>
+        <p>MecaCell is an open-source cellular physics agent-based simulation platform. It is designed with artificial life and morphogenetic engineering in mind and tries to stay not too invasive, lightweight and easily extensible.
 It comes in the form of two libraries :</p>
 
 <ul>
@@ -52,14 +58,14 @@ It comes in the form of two libraries :</p>
 
 <p>Your cell type must inherit from the MecaCell::ConnectableCell (it uses the curriously reccuring template for performances reason, so the inherit line is a little bit more verbose):</p>
 
-<div class="highlight highlight-c++"><pre><span class="pl-k">class</span> <span class="pl-en">MyCell</span> : <span class="pl-k">public</span> <span class="pl-en">MecaCell</span>::ConnectableCell&lt;MyCell&gt; {</pre></div>
+<div class="highlight highlight-source-c++"><pre><span class="pl-k">class</span> <span class="pl-en">MyCell</span> : <span class="pl-k">public</span> <span class="pl-en">MecaCell</span>::ConnectableCell&lt;MyCell&gt; {</pre></div>
 
 <p>a cell is required to have at least 2 methods:</p>
 
-<div class="highlight highlight-c++"><pre>    <span class="pl-c">// returns the adhesion coef (between 0 &amp; 1) with the cell *c</span>
+<div class="highlight highlight-source-c++"><pre>    <span class="pl-c">// returns the adhesion coef (between 0 &amp; 1) with the cell *c</span>
     <span class="pl-k">double</span> <span class="pl-en">getAdhesionWith</span>(<span class="pl-k">const</span> MyCell *c) { <span class="pl-k">return</span> <span class="pl-c1">0.9</span>; }</pre></div>
 
-<div class="highlight highlight-c++"><pre>    <span class="pl-c">// update routine, called at every loop iteration</span>
+<div class="highlight highlight-source-c++"><pre>    <span class="pl-c">// update routine, called at every loop iteration</span>
     <span class="pl-c">// returns a pointer to a new cell if division</span>
     <span class="pl-c">// returns nullptr if not</span>
     MyCell* <span class="pl-en">updateBehavior</span>(<span class="pl-k">double</span> deltaTime) {
@@ -70,11 +76,11 @@ It comes in the form of two libraries :</p>
 
 <p>Let's now create a scenario:</p>
 
-<div class="highlight highlight-c++"><pre><span class="pl-k">class</span> <span class="pl-en">MyScenario</span> {</pre></div>
+<div class="highlight highlight-source-c++"><pre><span class="pl-k">class</span> <span class="pl-en">MyScenario</span> {</pre></div>
 
 <p>A scenario needs to contain a MecaCell::BasicWorld&lt;cell_type,integration_mode&gt; and let the viewer acces to it:</p>
 
-<div class="highlight highlight-c++"><pre>    <span class="pl-k">using</span> World = MecaCell::BasicWorld&lt;MyCell, MecaCell::Euler&gt;;
+<div class="highlight highlight-source-c++"><pre>    <span class="pl-k">using</span> World = MecaCell::BasicWorld&lt;MyCell, MecaCell::Euler&gt;;
 <span class="pl-k">private:</span>
     World w;
 
@@ -83,13 +89,13 @@ It comes in the form of two libraries :</p>
 
 <p>It should also contain at least these 2 methods:</p>
 
-<div class="highlight highlight-c++"><pre>    <span class="pl-c">// called at initialisation</span>
+<div class="highlight highlight-source-c++"><pre>    <span class="pl-c">// called at initialisation</span>
     <span class="pl-k">void</span> <span class="pl-en">init</span>(<span class="pl-k">int</span> argc, <span class="pl-k">char</span>** argv) {
         <span class="pl-c">// here we just add a cell at (0,0,0);</span>
         w.<span class="pl-c1">addCell</span>(<span class="pl-k">new</span> <span class="pl-c1">Cell</span>(<span class="pl-c1">MecaCell::Vec::zero</span>()));
     }</pre></div>
 
-<div class="highlight highlight-c++"><pre>    <span class="pl-k">void</span> <span class="pl-en">loop</span>(){
+<div class="highlight highlight-source-c++"><pre>    <span class="pl-k">void</span> <span class="pl-en">loop</span>(){
         <span class="pl-c">// this code is called before every frame by the viewer</span>
         <span class="pl-c">// here we just call the world update method, which will handle all the physics</span>
     <span class="pl-c">// and call our MyCell::updateBehavior() method</span>
@@ -100,7 +106,7 @@ It comes in the form of two libraries :</p>
 
 <p>Now for the main.cpp:</p>
 
-<div class="highlight highlight-c++"><pre>#<span class="pl-k">include</span> <span class="pl-s"><span class="pl-pds">&lt;</span>mecacell/mecacell.h<span class="pl-pds">&gt;</span></span>
+<div class="highlight highlight-source-c++"><pre>#<span class="pl-k">include</span> <span class="pl-s"><span class="pl-pds">&lt;</span>mecacell/mecacell.h<span class="pl-pds">&gt;</span></span>
 #<span class="pl-k">include</span> <span class="pl-s"><span class="pl-pds">&lt;</span>mecacell/viewer/viewer.h<span class="pl-pds">&gt;</span></span>
 #<span class="pl-k">include</span> <span class="pl-s"><span class="pl-pds">"</span>myscenario.h<span class="pl-pds">"</span></span>
 #<span class="pl-k">include</span> <span class="pl-s"><span class="pl-pds">"</span>mycell.h<span class="pl-pds">"</span></span>
@@ -112,15 +118,13 @@ It comes in the form of two libraries :</p>
 </pre></div>
 
 <p>That's it for our extremely basic example. Now you can compile your project (don't forget to link to mecacell library and mecacellviewer + Qt) and run it. You can run it without the viewer by just repeatedly calling yout scenario::loop() method (don't forget to init() first) instead of creating a viewer instance.</p>
-
-      <footer class="site-footer">
-        <span class="site-footer-owner"><a href="https://github.com/jdisset/MecaCell">Mecacell</a> is maintained by <a href="https://github.com/jdisset">jdisset</a>.</span>
-
-        <span class="site-footer-credits">This page was generated by <a href="https://pages.github.com">GitHub Pages</a> using the <a href="https://github.com/jasonlong/cayman-theme">Cayman theme</a> by <a href="https://twitter.com/jasonlong">Jason Long</a>.</span>
+      </section>
+      <footer>
+        <p>This project is maintained by <a href="https://github.com/jdisset">jdisset</a></p>
+        <p><small>Hosted on GitHub Pages &mdash; Theme by <a href="https://github.com/orderedlist">orderedlist</a></small></p>
       </footer>
-
-    </section>
-
-  
+    </div>
+    <script src="javascripts/scale.fix.js"></script>
+    
   </body>
 </html>
