@@ -22,13 +22,13 @@
 
 namespace MecacellViewer {
 
-DEFINE_MEMBER_CHECKER(MCV_buttonMap);
+using std::vector;
 
-template <typename Scenario> class Renderer : public SignalSlotRenderer {
-
+template <typename Scenario, typename... Plugins>
+class Renderer : public SignalSlotRenderer {
 	friend class SignalSlotBase;
 
-private:
+ private:
 	using World =
 	    typename remove_reference<decltype(((Scenario *)nullptr)->getWorld())>::type;
 	using Cell = typename World::cell_type;
@@ -37,15 +37,9 @@ private:
 	using ModelType = typename World::model_type;
 	using modelConn_ptr = unique_ptr<typename World::modelConnect_type>;
 
-	template <typename T = Scenario>
-	void initInterface(const typename std::enable_if<HAS_MEMBER(Scenario, MCV_buttonMap),
-	                                                 T>::type *dummy = nullptr) {
-		scenario.MCV_InitializeInterfaceAdditions();
-		buttonMap = scenario.MCV_buttonMap;
-	}
-	template <typename T = Scenario>
-	void initInterface(const typename std::enable_if<!HAS_MEMBER(Scenario, MCV_buttonMap),
-	                                                 T>::type *dummy = nullptr) {}
+	std::tuple<Plugins...> plugins;
+
+	std::vector<std::function<void()>> onLoad;
 
 	// Scenario
 	int argc;
@@ -66,8 +60,8 @@ private:
 	GridViewer gridViewer;
 	unordered_map<std::string, ModelViewer<ModelType>> modelViewers;
 	bool waitingForInterfaceAdditions = true;
-	std::map<QString, std::map<QString, std::function<void(Renderer<Scenario> *)>>>
-	    buttonMap;
+	// std::map<QString, std::map<QString, std::function<void(Renderer<Scenario> *)>>>
+	// buttonMap;
 
 	// Events
 	int mouseWheel = 0;
@@ -76,7 +70,7 @@ private:
 	    mousePressedButtons;
 	QMap<QVariant, std::function<void()>> clickMethods;
 	set<int> pressedKeys;
-	set<int> inputKeys; // same as pressedKeys but true only once per press
+	set<int> inputKeys;  // same as pressedKeys but true only once per press
 	std::map<QString, std::set<QString>> clickedButtons;
 
 	// Stats
@@ -189,8 +183,7 @@ private:
 		}
 		if (gc.contains("connections")) {
 			connections.draw<ConnectType>(scenario.getWorld().connections, view, projection);
-			connections.drawModelConnections<Cell>(
-			    scenario.getWorld().cells, view, projection);
+			connections.drawModelConnections<Cell>(scenario.getWorld().cells, view, projection);
 		}
 
 		QOpenGLFramebufferObject::blitFramebuffer(
@@ -249,9 +242,22 @@ private:
 	 *         INITIALIZATION          *
 	 ***********************************/
 	// called once just after the openGL context is created
+
+	// alternative to generic lambdas...
+	CREATE_MEMBER_CHECK(onLoad);
+	struct PluginLoader {
+		template <typename T> void operator()(T &p) {
+			// struct HookChecker {
+			// void addOnLoad(const typename std::enable_if<has_member_onLoad<T>::value, bool>
+			//};
+			// p.load();
+			cerr << " hasOnLoad = " << has_member_onLoad<T>::value << endl;
+		}
+	};
+
 	virtual void initialize() {
 		scenario.init(argc, argv);
-		initInterface();
+		// initInterface();
 		// gl functions
 		GL = QOpenGLContext::currentContext()->functions();
 		GL->initializeOpenGLFunctions();
@@ -264,6 +270,7 @@ private:
 		blurTarget.load(":/shaders/dumb.vert", ":/shaders/blur.frag",
 		                viewportSize * screenCoef);
 		gridViewer.load(":/shaders/mvp.vert", ":/shaders/flat.frag");
+		forEach(plugins, PluginLoader());
 
 		// fbos
 		ssaoFormat.setAttachment(QOpenGLFramebufferObject::Depth);
@@ -300,7 +307,9 @@ private:
 
 	// useful for creating a new instance from QSGRenderThread
 	// ugly trick... but hey, it works!
-	virtual SignalSlotRenderer *clone() { return new Renderer<Scenario>(argc, argv); }
+	virtual SignalSlotRenderer *clone() {
+		return new Renderer<Scenario, Plugins...>(argc, argv);
+	}
 
 	// called after every frame, thread safe
 	virtual void sync(SignalSlotBase *b) {
@@ -385,7 +394,7 @@ private:
 		// click
 		if (mouseClickedButtons.testFlag(Qt::LeftButton)) {
 			if (clickMethods.count(guiCtrl.value("tool")))
-				clickMethods.value(guiCtrl.value("tool"))(); // we call the corresponding method
+				clickMethods.value(guiCtrl.value("tool"))();  // we call the corresponding method
 		}
 		if (mouseClickedButtons.testFlag(Qt::MiddleButton)) {
 			pickCell();
@@ -408,12 +417,13 @@ private:
 
 		for (auto &menu : clickedButtons) {
 			for (auto &label : menu.second) {
-				if (buttonMap.count(menu.first) && buttonMap.at(menu.first).count(label)) {
-					buttonMap[menu.first][label](this);
-				}
+				// if (buttonMap.count(menu.first) && buttonMap.at(menu.first).count(label)) {
+				// buttonMap[menu.first][label](this);
+				//}
 			}
 		}
 	}
+
 	Vec QV3D2Vec(const QVector3D &v) { return Vec(v.x(), v.y(), v.z()); }
 
 	void setViewportSize(const QSize &s) {
@@ -483,17 +493,17 @@ private:
 
 	void applyInterfaceAdditions(SignalSlotBase *b) {
 		QObject *root = b->parentItem();
-		for (auto &menu : buttonMap) {
-			for (auto &label : menu.second) {
-				QMetaObject::invokeMethod(root, "addButton", Q_ARG(QVariant, menu.first),
-				                          Q_ARG(QVariant, label.first));
-			}
-		}
+		// for (auto &menu : buttonMap) {
+		// for (auto &label : menu.second) {
+		// QMetaObject::invokeMethod(root, "addButton", Q_ARG(QVariant, menu.first),
+		// Q_ARG(QVariant, label.first));
+		//}
+		//}
 	}
 
-public:
+ public:
 	explicit Renderer(int c, char **v) : SignalSlotRenderer(), argc(c), argv(v) {
-		clickMethods["select"] = bind(&Renderer<Scenario>::pickCell, this);
+		clickMethods["select"] = bind(&Renderer<Scenario, Plugins...>::pickCell, this);
 	}
 	Cell *getSelectedCell() { return selectedCell; }
 	Camera &getCameraRef() { return camera; }

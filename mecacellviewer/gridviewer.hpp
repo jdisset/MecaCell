@@ -3,6 +3,7 @@
 #include "viewtools.h"
 #include "primitives/cube.hpp"
 
+namespace MecacellViewer{
 class GridViewer {
 	QOpenGLShaderProgram shader;
 	Cube cube;
@@ -38,4 +39,5 @@ public:
 		shader.release();
 	}
 };
+}
 #endif

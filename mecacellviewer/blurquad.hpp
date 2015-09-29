@@ -4,6 +4,7 @@
 #include "primitives/quad.hpp"
 #include <QOpenGLFramebufferObject>
 
+namespace MecacellViewer{
 class BlurQuad {
 	unique_ptr<QOpenGLFramebufferObject> fboA, fboB;
 	QOpenGLFramebufferObjectFormat format;
@@ -60,4 +61,5 @@ public:
 		render.draw(fboA->texture());
 	}
 };
+}
 #endif

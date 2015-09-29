@@ -5,6 +5,7 @@
 
 using std::vector;
 
+namespace MecacellViewer {
 template <typename Model> struct ModelViewer {
 	QOpenGLShaderProgram shader;
 	QOpenGLVertexArrayObject vao;
@@ -15,7 +16,6 @@ template <typename Model> struct ModelViewer {
 	QOpenGLBuffer vbuf, nbuf, tbuf, bitanbuf, ibuf;
 
 	void load(const Model &m) {
-
 		// extracting vertices, normals and uv (if available)
 		for (auto &v : m.vertices) {
 			vertices.push_back(v.x);
@@ -24,7 +24,6 @@ template <typename Model> struct ModelViewer {
 		}
 		normals.resize(vertices.size());
 		for (auto &f : m.obj.faces) {
-
 			assert(f.count("v") && f.count("n"));
 			for (auto &vid : f.at("v").indices) {
 				assert(vid < m.obj.vertices.size());
@@ -40,13 +39,16 @@ template <typename Model> struct ModelViewer {
 			}
 		}
 
-		cerr << vertices.size() << " vertices, " << normals.size() << "normals, " << uv.size() << " uv" << endl;
+		cerr << vertices.size() << " vertices, " << normals.size() << "normals, " << uv.size()
+		     << " uv" << endl;
 
 		// creating and binding shaders/vao/vbos
 		// TODO : directly use model's transformed vertices and normals
 
-		shader.addShaderFromSourceCode(QOpenGLShader::Vertex, shaderWithHeader(":/shaders/mvp.vert"));
-		shader.addShaderFromSourceCode(QOpenGLShader::Fragment, shaderWithHeader(":/shaders/model.frag"));
+		shader.addShaderFromSourceCode(QOpenGLShader::Vertex,
+		                               shaderWithHeader(":/shaders/mvp.vert"));
+		shader.addShaderFromSourceCode(QOpenGLShader::Fragment,
+		                               shaderWithHeader(":/shaders/model.frag"));
 		shader.link();
 		shader.bind();
 		vao.create();
@@ -96,4 +98,5 @@ template <typename Model> struct ModelViewer {
 		shader.release();
 	}
 };
+}
 #endif
