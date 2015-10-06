@@ -22,7 +22,10 @@ inline double radToDeg(double x) { return x / M_PI * 180.0; }
 
 template <typename T> T mix(T m, T M, double v) { return (1.0 - v) * m + v * M; }
 
+// foreach
+
 template <size_t> struct int_ {};
+
 template <class Tuple, class Func, size_t I> void forEach(Tuple&& t, Func&& f, int_<I>) {
 	const size_t Tsize = tuple_size<typename remove_reference<Tuple>::type>::value;
 	f(std::get<Tsize - I>(t));

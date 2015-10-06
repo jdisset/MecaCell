@@ -9,6 +9,7 @@
 #include "renderquad.hpp"
 #include "blurquad.hpp"
 #include "gridviewer.hpp"
+#include "plugins.hpp"
 #include "macros.h"
 #include <type_traits>
 #include <QThread>
@@ -28,7 +29,7 @@ template <typename Scenario, typename... Plugins>
 class Renderer : public SignalSlotRenderer {
 	friend class SignalSlotBase;
 
- private:
+ public:
 	using World =
 	    typename remove_reference<decltype(((Scenario *)nullptr)->getWorld())>::type;
 	using Cell = typename World::cell_type;
@@ -37,10 +38,7 @@ class Renderer : public SignalSlotRenderer {
 	using ModelType = typename World::model_type;
 	using modelConn_ptr = unique_ptr<typename World::modelConnect_type>;
 
-	std::tuple<Plugins...> plugins;
-
-	std::vector<std::function<void()>> onLoad;
-
+ private:
 	// Scenario
 	int argc;
 	char **argv;
@@ -48,6 +46,7 @@ class Renderer : public SignalSlotRenderer {
 	int frame = 0;
 
 	// Visual elements
+	bool fullscreenMode = false, fullscreenModeToggled = false, skyboxEnabled = true;
 	Camera camera;
 	CellGroup<Cell> cells;
 	ConnectionsGroup connections;
@@ -59,9 +58,6 @@ class Renderer : public SignalSlotRenderer {
 	BlurQuad blurTarget;
 	GridViewer gridViewer;
 	unordered_map<std::string, ModelViewer<ModelType>> modelViewers;
-	bool waitingForInterfaceAdditions = true;
-	// std::map<QString, std::map<QString, std::function<void(Renderer<Scenario> *)>>>
-	// buttonMap;
 
 	// Events
 	int mouseWheel = 0;
@@ -71,7 +67,7 @@ class Renderer : public SignalSlotRenderer {
 	QMap<QVariant, std::function<void()>> clickMethods;
 	set<int> pressedKeys;
 	set<int> inputKeys;  // same as pressedKeys but true only once per press
-	std::map<QString, std::set<QString>> clickedButtons;
+	std::set<QString> clickedButtons;
 
 	// Stats
 	chrono::time_point<chrono::high_resolution_clock> t0, tfps;
@@ -117,6 +113,7 @@ class Renderer : public SignalSlotRenderer {
 	// main paint method, called every frame
 	virtual void paint() {
 		if (loopStep || worldUpdate) {
+			for (auto &p : plugins_preLoop) p();
 			scenario.loop();
 			if (!selectedCellStillExists()) selectedCell = nullptr;
 			loopStep = false;
@@ -130,13 +127,16 @@ class Renderer : public SignalSlotRenderer {
 		GL->glViewport(0, 0, viewportSize.width() * screenCoef * FSAA_COEF,
 		               viewportSize.height() * screenCoef * FSAA_COEF);
 		clear();
+		for (auto &p : plugins_preDraw) p();
 
 		QMatrix4x4 view(camera.getViewMatrix());
 		QMatrix4x4 projection(camera.getProjectionMatrix((float)viewportSize.width() /
 		                                                 (float)viewportSize.height()));
 
-		// background
-		skybox.draw(view, projection, camera);
+		if (skyboxEnabled) {
+			// background
+			skybox.draw(view, projection, camera);
+		}
 
 		QStringList gc;
 		if (guiCtrl.count("visibleElements")) {
@@ -167,6 +167,8 @@ class Renderer : public SignalSlotRenderer {
 				m.second.draw(view, projection, scenario.getWorld().models.at(m.first));
 			}
 		}
+
+		for (auto &p : plugins_onDraw) p();
 
 		msaaFBO->release();
 		QOpenGLFramebufferObject::blitFramebuffer(ssaoFBO.get(), msaaFBO.get(),
@@ -203,7 +205,7 @@ class Renderer : public SignalSlotRenderer {
 		GL->glViewport(0, 0, viewportSize.width() * screenCoef,
 		               viewportSize.height() * screenCoef);
 		blurTarget.draw(fsaaFBO->texture(), 5, viewportSize * screenCoef,
-		                QRect(QPoint(0, 0), QSize(menuSize * screenCoef,
+		                QRect(QPoint(0, 0), QSize(fullscreenMode ? 0 : menuSize * screenCoef,
 		                                          viewportSize.height() * screenCoef)));
 
 		// refresh stats
@@ -226,6 +228,7 @@ class Renderer : public SignalSlotRenderer {
 		camera.updatePosition(viewDt);
 		++frame;
 		if (window) window->update();
+		for (auto &p : plugins_postDraw) p();
 	}
 
 	colorMode strToColorMode(const QString &cm) {
@@ -241,26 +244,30 @@ class Renderer : public SignalSlotRenderer {
 	/***********************************
 	 *         INITIALIZATION          *
 	 ***********************************/
-	// called once just after the openGL context is created
 
-	// alternative to generic lambdas...
-	CREATE_MEMBER_CHECK(onLoad);
-	struct PluginLoader {
-		template <typename T> void operator()(T &p) {
-			// struct HookChecker {
-			// void addOnLoad(const typename std::enable_if<has_member_onLoad<T>::value, bool>
-			//};
-			// p.load();
-			cerr << " hasOnLoad = " << has_member_onLoad<T>::value << endl;
-		}
-	};
+	// plugins
+	struct Dummy {};
+	std::tuple<Dummy, Plugins...> plugins;
 
+ public:
+	std::vector<std::function<void()>> plugins_onLoad;
+	std::vector<std::function<void()>> plugins_onDraw;
+	std::vector<std::function<void()>> plugins_preDraw;
+	std::vector<std::function<void()>> plugins_preLoop;
+	std::vector<std::function<void()>> plugins_postDraw;
+
+ private:
 	virtual void initialize() {
 		scenario.init(argc, argv);
 		// initInterface();
 		// gl functions
 		GL = QOpenGLContext::currentContext()->functions();
 		GL->initializeOpenGLFunctions();
+
+		// loading plugins
+		forEach(plugins, PluginLoader<Renderer<Scenario, Plugins...>>{this});
+
+		for (auto &p : plugins_onLoad) p();
 
 		// elements
 		cells.load();
@@ -270,7 +277,6 @@ class Renderer : public SignalSlotRenderer {
 		blurTarget.load(":/shaders/dumb.vert", ":/shaders/blur.frag",
 		                viewportSize * screenCoef);
 		gridViewer.load(":/shaders/mvp.vert", ":/shaders/flat.frag");
-		forEach(plugins, PluginLoader());
 
 		// fbos
 		ssaoFormat.setAttachment(QOpenGLFramebufferObject::Depth);
@@ -313,10 +319,7 @@ class Renderer : public SignalSlotRenderer {
 
 	// called after every frame, thread safe
 	virtual void sync(SignalSlotBase *b) {
-		if (waitingForInterfaceAdditions) {
-			applyInterfaceAdditions(b);
-			waitingForInterfaceAdditions = false;
-		}
+		applyInterfaceAdditions(b);
 		// interface comm
 		guiCtrl = b->getGuiCtrl();
 		worldUpdate = b->worldUpdate;
@@ -324,6 +327,12 @@ class Renderer : public SignalSlotRenderer {
 		b->loopStep = false;
 		clickedButtons = b->clickedButtons;
 		b->clickedButtons.clear();
+		if (fullscreenModeToggled) {
+			cerr << "fsmode toggled" << endl;
+			QObject *root = b->parentItem();
+			QMetaObject::invokeMethod(root, "fullscreenMode", Q_ARG(QVariant, fullscreenMode));
+			fullscreenModeToggled = false;
+		}
 		// stats
 		if (selectedCell)
 			stats["selectedCell"] = cellToQVMap(selectedCell);
@@ -361,7 +370,7 @@ class Renderer : public SignalSlotRenderer {
 		// move
 		QVector2D mouseMovement(mousePosition - mousePrevPosition);
 		if (mousePressedButtons.testFlag(Qt::LeftButton)) {
-			if (guiCtrl.value("tool") == "move") {
+			if (guiCtrl.value("tool") == "move" || fullscreenMode) {
 				camera.moveAroundTarget(-mouseMovement);
 			}
 		}
@@ -415,11 +424,9 @@ class Renderer : public SignalSlotRenderer {
 			cut = !cut;
 		}
 
-		for (auto &menu : clickedButtons) {
-			for (auto &label : menu.second) {
-				// if (buttonMap.count(menu.first) && buttonMap.at(menu.first).count(label)) {
-				// buttonMap[menu.first][label](this);
-				//}
+		for (auto &bName : clickedButtons) {
+			if (buttonMap.count(bName)) {
+				buttonMap[bName].onClicked(this);
 			}
 		}
 	}
@@ -493,23 +500,90 @@ class Renderer : public SignalSlotRenderer {
 
 	void applyInterfaceAdditions(SignalSlotBase *b) {
 		QObject *root = b->parentItem();
-		// for (auto &menu : buttonMap) {
-		// for (auto &label : menu.second) {
-		// QMetaObject::invokeMethod(root, "addButton", Q_ARG(QVariant, menu.first),
-		// Q_ARG(QVariant, label.first));
-		//}
-		//}
+		for (auto &b : buttonMap) {
+			if (b.second.updt) {
+				QMetaObject::invokeMethod(root, "addButton", Q_ARG(QVariant, b.second.name),
+				                          Q_ARG(QVariant, b.second.menu),
+				                          Q_ARG(QVariant, b.second.label),
+				                          Q_ARG(QVariant, b.second.color));
+				b.second.updt = false;
+			}
+		}
 	}
 
  public:
 	explicit Renderer(int c, char **v) : SignalSlotRenderer(), argc(c), argv(v) {
 		clickMethods["select"] = bind(&Renderer<Scenario, Plugins...>::pickCell, this);
 	}
+
 	Cell *getSelectedCell() { return selectedCell; }
-	Camera &getCameraRef() { return camera; }
+	Scenario &getScenario() { return scenario; }
+
+	Camera &getCamera() { return camera; }
+
 	void screenCapture(std::string name) {
 		takeScreen = true;
 		screenName = name;
+	}
+	void disableSkybox() { skyboxEnabled = false; }
+	void enableSkybox() { skyboxEnabled = true; }
+
+	void setFullScreenMode(bool f) {
+		fullscreenMode = f;
+		fullscreenModeToggled = true;
+		cerr << "setFsMode called" << endl;
+	}
+
+	class Button {
+		friend class Renderer<Scenario, Plugins...>;
+
+	 private:
+		QString name, menu, label;
+		std::function<void(Renderer<Scenario, Plugins...> *)> onClicked;
+		QColor color = QColor(255, 255, 255);
+
+	 public:
+		Button() {}
+		Button(QString n, QString m, QString l,
+		       std::function<void(Renderer<Scenario, Plugins...> *)> c)
+		    : name(n), menu(m), label(l), onClicked(c){};
+		bool updt = true;
+		void setLabel(const std::string &l) {
+			label = QString::fromStdString(l);
+			updt = true;
+		}
+		void setLabel(const QString &l) {
+			label = l;
+			updt = true;
+		}
+		void setOnClicked(std::function<void(Renderer<Scenario, Plugins...> *)> f) {
+			onClicked = f;
+			updt = true;
+		}
+		void setColor(const int r, const int g, const int b) {
+			color = QColor(r, g, b);
+			updt = true;
+		}
+		void setColor(const QColor &c) {
+			color = c;
+			updt = true;
+		}
+		void setColor(const double r, const double g, const double b) {
+			color = QColor::fromRgbF(r, g, b);
+			updt = true;
+		}
+	};
+
+	Button &getButton(const std::string &name) {
+		return buttonMap.at(QString::fromStdString(name));
+	}
+	std::map<QString, Button> buttonMap;
+	void addButton(std::string name, std::string menu, std::string label,
+	               std::function<void(Renderer<Scenario, Plugins...> *)> onClicked) {
+		Button b(QString::fromStdString(name), QString::fromStdString(menu),
+		         QString::fromStdString(label), onClicked);
+
+		buttonMap[QString::fromStdString(name)] = b;
 	}
 };
 }

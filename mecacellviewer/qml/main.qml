@@ -2,19 +2,28 @@ import SceneGraphRendering 1.0
 import QtQuick 2.0
 import QtGraphicalEffects 1.0
 import QtQuick.Controls 1.2
-Item {
-	property
-	var guictrl: renderer.getGuiCtrl();
+Item{
+
+	//flags: Qt.Window | Qt.MaximizeUsingFullscreenGeometryHint
+
+	property var guictrl: renderer.getGuiCtrl();
+	property var btnArray: new Object();
 	width: 1200
 	height: 800
 	id: main
+
 	Component.onCompleted: {
 		guictrl["visibleElements"] = new Array();
 		guictrl["visibleElements"].push("cells");
 		renderer.setGuiCtrl(guictrl);
 	}
 
-	function addButton(menu, label) {
+	function fullscreenMode(f){
+		console.log("fsMode called with f = "+f);
+		leftMenu.visible = !f;
+	}
+
+	function getContainer(menu){
 		var container = controlsMenu.selectedCellActions;
 		if (menu == "SELECTEDCELL_MENU") {
 			container = controlsMenu.selectedCellActions;
@@ -22,22 +31,35 @@ Item {
 		if (menu == "GENERALACTIONS_MENU") {
 			container = controlsMenu.generalActions;
 		}
-		var component;
-		var finishCreation = function() {
-			if (component.status == Component.Ready) {
-				var btn = component.createObject(container, {
-					"text": label,
-					"menu": menu
-				});
-			} else if (component.status == Component.Error) {
-				console.log("Error loading component:", component.errorString());
-			}
-		};
-		component = Qt.createComponent("MVButton.qml");
-		if (component.status == Component.Ready)
+		return container;
+	}
+	function addButton(id, menu, label, col) {
+		if (btnArray[id] != undefined){
+			// update, not creation
+			btnArray[id].text= label;
+			btnArray[id].notpressedColor = col;
+		} else {
+			var container = getContainer(menu);
+			var component;
+			var finishCreation = function() {
+				if (component.status == Component.Ready) {
+					var btn = component.createObject(container, {
+						"name":id,
+						"text": label,
+						"menu": menu,
+						"notpressedColor":col
+					});
+					btnArray[id] = btn;
+				} else if (component.status == Component.Error) {
+					console.log("Error loading component:", component.errorString());
+				}
+			};
+			component = Qt.createComponent("MVButton.qml");
+			if (component.status == Component.Ready)
 			finishCreation();
-		else
+			else
 			component.statusChanged.connect(finishCreation);
+		}
 	}
 
 	function removeCtrl(k) {
@@ -114,7 +136,7 @@ Item {
 		anchors.top: parent.top
 		height: parent.height
 		color: background
-			//color:"transparent" 
+		//color:"transparent" 
 		width: 200
 		Rectangle {
 			id: logo
@@ -271,7 +293,7 @@ Item {
 			color: "transparent"
 			anchors.bottom: parent.bottom
 			anchors.bottomMargin: 3
-				//anchors.leftMargin: 7
+			//anchors.leftMargin: 7
 			Row {
 				height: parent.height
 				width: parent.width - parent.anchors.leftMargin

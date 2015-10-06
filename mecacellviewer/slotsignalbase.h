@@ -69,10 +69,11 @@ class SignalSlotBase : public QQuickItem {
 	QMouseEvent lastMouseEvent = QMouseEvent(QEvent::None, QPointF(0, 0), Qt::NoButton,
 	                                         Qt::NoButton, Qt::NoModifier);
 	QFlags<Qt::MouseButtons> mouseClickedButtons, mouseDblClickedButtons;
-	std::map<QString, std::set<QString>> clickedButtons;
+	std::set<QString> clickedButtons;
 
 	virtual void mouseMoveEvent(QMouseEvent *event) { lastMouseEvent = *event; }
 	virtual void mousePressEvent(QMouseEvent *event) {
+		qDebug() << event;
 		lastMouseEvent = *event;
 		mouseClickedButtons |= event->button();
 	}
@@ -131,7 +132,7 @@ class SignalSlotBase : public QQuickItem {
 		}
 	}
 
-	void buttonClick(QString menu, QString label) { clickedButtons[menu].insert(label); }
+	void buttonClick(QString name) { clickedButtons.insert(name); }
 
 	/**************************
 	 *      basic stats

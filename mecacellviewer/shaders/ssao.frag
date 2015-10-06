@@ -84,7 +84,7 @@ void main(){
 	else {
 		FragColor.rgb = vec3(color);
 	}
-	FragColor.a=1.0;
+	FragColor.a=color.a;
 	float contrast = 1.15;
 	FragColor.rgb = (FragColor.rgb - 0.5) * max(contrast, 0.0) + 0.5;
 	gl_FragDepth = texture(depthBuf,UV).r; 
