@@ -17,31 +17,31 @@
 #include "model.h"
 
 #define CUBICROOT2 1.25992104989
-#define VOLUMEPI 0.23873241463 // 1/(4/3*pi)
+#define VOLUMEPI 0.23873241463  // 1/(4/3*pi)
 
 using namespace std;
 
 namespace MecaCell {
 template <typename Derived> class ConnectableCell : public Movable, public Orientable {
-protected:
+ protected:
 	using ConnectionType = Connection<Derived *>;
 	using ModelConnectionType = CellModelConnection<Derived>;
-	bool dead = false; // is the cell dead or alive ?
+	bool dead = false;  // is the cell dead or alive ?
 	array<double, 3> color = {{0.75, 0.12, 0.07}};
 	double radius = DEFAULT_CELL_RADIUS;
 	double baseRadius = DEFAULT_CELL_RADIUS;
 	double stiffness = DEFAULT_CELL_STIFFNESS;
 	double dampRatio = DEFAULT_CELL_DAMP_RATIO;
 	double angularStiffness = DEFAULT_CELL_ANG_STIFFNESS;
-	bool tested = false; // has already been tested for collision
+	bool tested = false;  // has already been tested for collision
 	vector<ConnectionType *> connections;
 	vector<ModelConnectionType *> modelConnections;
-	vector<Derived *> connectedCells; // TODO: try with an unordered_set (easier check for
-	                                  // already connected)
+	vector<Derived *> connectedCells;  // TODO: try with an unordered_set (easier check for
+	                                   // already connected)
 	double pressure = 1.0;
 	bool visible = true;
 
-public:
+ public:
 	ConnectableCell(Vec pos) : Movable(pos) { randomColor(); }
 
 	ConnectableCell(const Derived &c, const Vec &translation)
@@ -148,7 +148,7 @@ public:
 	/******************************
 	 * connections
 	 *****************************/
-	void connection(Derived *c, vector<ConnectionType *> &worldConnexions) {
+	ConnectionType *connection(Derived *c) {
 		if (c != this) {
 			Vec AB = c->position - position;
 			double sqdist = AB.sqlength();
@@ -161,7 +161,7 @@ public:
 					// if those cells aren't already connected
 					// we check if this connection would not go through an already connected cell
 					bool ok = true;
-					for (auto &con : connections) {
+					for (const auto &con : connections) {
 						Derived *otherCell =
 						    con->getNode0() == selfptr() ? con->getNode1() : con->getNode0();
 						Vec AO = otherCell->getPosition() - position;
@@ -190,7 +190,7 @@ public:
 						    (stiffness * radius + c->stiffness * c->radius) / (radius + c->radius);
 						double dr =
 						    (dampRatio * radius + c->dampRatio * c->radius) / (radius + c->radius);
-						// double maxTeta = mix(0.0, M_PI / 2.0, minAdh);
+						//// double maxTeta = mix(0.0, M_PI / 2.0, minAdh);
 						double maxTeta = M_PI / 12.0;
 						ConnectionType *s = new ConnectionType(
 						    pair<Derived *, Derived *>(selfptr(), c),
@@ -217,12 +217,12 @@ public:
 						s->getTorsion().first.setCurrentKCoef(contactSurface);
 						s->getTorsion().second.setCurrentKCoef(contactSurface);
 						addConnection(c, s);
-
-						worldConnexions.push_back(s);
+						return s;
 					}
 				}
 			}
 		}
+		return nullptr;
 	}
 
 	double getMomentOfInertia() const { return 4.0 * mass * radius * radius; }
@@ -342,12 +342,12 @@ public:
 			if (r0 < 1.0 / 3.0) {
 				/// green
 				color[0] = 0.1 + (0.4 * r1);
-				color[1] = 0.78 + (0.2 * r0); // + (0.1 * r0);
+				color[1] = 0.78 + (0.2 * r0);  // + (0.1 * r0);
 				color[2] = 0.06 + 0.6 * r0;
 			} else if (r0 < 2.0 / 3.0) {
 				// yellow
 				color[0] = 0.9 + (0.1 * r1);
-				color[1] = 0.73; // + (0.1 * r0);
+				color[1] = 0.73;  // + (0.1 * r0);
 				color[2] = 0.36 + 0.2 * r0;
 			} else {
 				// blue

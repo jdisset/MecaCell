@@ -3,33 +3,53 @@
 
 #include <vector>
 #include <set>
+#include <unordered_set>
+#include <deque>
 #include <iostream>
 #include <unordered_map>
+#include <array>
 #include "tools.h"
 using namespace std;
 
 namespace MecaCell {
 template <typename O> class Grid {
-private:
-	double cellSize; // actually it's 1/cellSize, just so we can multiply
-	unordered_map<Vec, vector<O>> um;
+ private:
+	double cellSize;  // actually it's 1/cellSize, just so we can multiply
+	unordered_map<Vec, unordered_set<O>> um;
 
-public:
+ public:
 	Grid(double cs) : cellSize(1.0 / cs) {}
 
 	double getCellSize() const { return 1.0 / cellSize; }
-	const unordered_map<Vec, vector<O>> &getContent() const { return um; }
+	const unordered_map<Vec, unordered_set<O>> &getContent() const { return um; }
+
+	array<vector<vector<O>>, 8> getThreadSafeGrid() const {
+		array<vector<vector<O>>, 8> res;
+		for (const auto &c : um) {
+			size_t color = vecToColor(c.first);
+			vector<O> v;
+			for (const auto &o : c.second) {
+				v.push_back(o);
+			}
+			res[color].push_back(v);
+		}
+		return res;
+	}
+
+	inline size_t vecToColor(const Vec &v) const {
+		return (abs((int)v.x) % 2) + (abs((int)v.y) % 2) * 2 + (abs((int)v.z) % 2) * 4;
+	}
 
 	void insert(const O &obj) {
 		Vec center = ptr(obj)->getPosition() * cellSize;
 		double radius = ptr(obj)->getRadius() * cellSize;
 		Vec minCorner = center - radius;
 		Vec maxCorner = center + radius;
-		minCorner.iterateTo(maxCorner, [&](Vec v) { um[v].push_back(obj); });
+		minCorner.iterateTo(maxCorner, [&](Vec v) { um[v].insert(obj); });
 	}
 
 	void insert(const O &obj, const Vec &p0, const Vec &p1,
-	            const Vec &p2) { // insert triangles
+	            const Vec &p2) {  // insert triangles
 		Vec blf(min(p0.x, min(p1.x, p2.x)), min(p0.y, min(p1.y, p2.y)),
 		        min(p0.z, min(p1.z, p2.z)));
 		Vec trb(max(p0.x, max(p1.x, p2.x)), max(p0.y, max(p1.y, p2.y)),
@@ -40,7 +60,7 @@ public:
 			std::pair<bool, Vec> projec = projectionIntriangle(p0, p1, p2, center);
 			if ((center - projec.second).sqlength() < 0.8 * cs * cs) {
 				if (projec.first || closestDistToTriangleEdge(p0, p1, p2, center) < 0.87 * cs) {
-					um[v].push_back(obj);
+					um[v].insert(obj);
 				}
 			}
 		});
@@ -51,38 +71,38 @@ public:
 		return Vec(floor(res.x), floor(res.y), floor(res.z));
 	}
 
-	set<O> retrieveUnique(const Vec &coord, double r) const {
-		set<O> res;
+	// set<O> retrieveUnique(const Vec &coord, double r) const {
+	// set<O> res;
+	// Vec center = coord * cellSize;
+	// double radius = r * cellSize;
+	// Vec minCorner = center - radius;
+	// Vec maxCorner = center + radius;
+	//// TODO check if faster with a set (uniques...) and by removing  selfcollision
+	// minCorner.iterateTo(maxCorner, [&](const Vec &v) {
+	// if (um.count(v)) {
+	// for (auto &e : um.at(v)) {
+	// res.insert(e);
+	//}
+	//}
+	//});
+	// return res;
+	//}
+
+	unordered_set<O> retrieve(const Vec &coord, double r) const {
+		unordered_set<O> res;
 		Vec center = coord * cellSize;
 		double radius = r * cellSize;
 		Vec minCorner = center - radius;
 		Vec maxCorner = center + radius;
 		// TODO check if faster with a set (uniques...) and by removing  selfcollision
 		minCorner.iterateTo(maxCorner, [&](const Vec &v) {
-			if (um.count(v)) {
-				for (auto &e : um.at(v)) {
-					res.insert(e);
-				}
-			}
+			if (um.count(v)) res.insert(um.at(v).begin(), um.at(v).end());
 		});
 		return res;
 	}
 
-	vector<O> retrieve(const Vec &coord, double r) const {
-		vector<O> res;
-		Vec center = coord * cellSize;
-		double radius = r * cellSize;
-		Vec minCorner = center - radius;
-		Vec maxCorner = center + radius;
-		// TODO check if faster with a set (uniques...) and by removing  selfcollision
-		minCorner.iterateTo(maxCorner, [&](const Vec &v) {
-			if (um.count(v)) res.insert(res.end(), um.at(v).begin(), um.at(v).end());
-		});
-		return res;
-	}
-
-	vector<O> retrieve(const O &obj) const {
-		vector<O> res;
+	unordered_set<O> retrieve(const O &obj) const {
+		unordered_set<O> res;
 		Vec center = ptr(obj)->getPosition() * cellSize;
 		double radius = ptr(obj)->getRadius() * cellSize;
 		Vec minCorner = center - radius;
@@ -95,7 +115,7 @@ public:
 
 	double computeSurface() const {
 		if (Vec::dimension == 3) {
-			double res = 0.0; // first = surface, second = volume;
+			double res = 0.0;  // first = surface, second = volume;
 			double faceArea = pow(1.0 / cellSize, 2);
 			for (auto &i : um) {
 				res += (6.0 - static_cast<double>(getNbNeighbours(i.first))) * faceArea;

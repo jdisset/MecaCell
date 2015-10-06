@@ -9,12 +9,27 @@
 #include "grid.hpp"
 #include "model.h"
 #include "modelconnection.hpp"
+#include <cstdint>
+#ifdef PARRALEL
+#include <omp.h>
+#endif
 
 using namespace std;
+namespace std {
+template <> struct hash<pair<MecaCell::Model *, unsigned int>> {
+	typedef pair<MecaCell::Model *, unsigned int> argument_type;
+	typedef uintptr_t result_type;
+
+	result_type operator()(const pair<MecaCell::Model *, unsigned int> &t) const {
+		return ((reinterpret_cast<result_type>(t.first) + t.second) *
+		        (reinterpret_cast<result_type>(t.first) + t.second + 1) / 2) +
+		       t.second;
+	}
+};
+}
 namespace MecaCell {
 template <typename Cell, typename Integrator> class BasicWorld {
-
-protected:
+ protected:
 	Integrator updateCellPos;
 
 	double dt = 1.0 / 50.0;
@@ -26,7 +41,7 @@ protected:
 	vector<Cell *> cellsToDestroy;
 
 	// hashmap containing cells
-	Grid<Cell *> grid = Grid<Cell *>(5.0 * DEFAULT_CELL_RADIUS);
+	Grid<Cell *> grid = Grid<Cell *>(4.0 * DEFAULT_CELL_RADIUS);
 
 	// model grid containting pair<model_ptr, face_id>
 	Grid<std::pair<Model *, unsigned int>> modelGrid =
@@ -43,7 +58,7 @@ protected:
 	// threshold (dot product) above which we consider two connections to be merged
 	const double MIN_CONNECTION_SIMILARITY = 0.8;
 
-public:
+ public:
 	using cell_type = Cell;
 	using integrator_type = Integrator;
 	using connect_type = Connection<Cell *>;
@@ -87,8 +102,7 @@ public:
 			}
 			if (cellCellCollisions) {
 				grid.clear();
-				for (const auto &c : cells)
-					grid.insert(c);
+				for (const auto &c : cells) grid.insert(c);
 				updateConnectionsLengthAndDirection();
 				cellCollisions();
 				deleteImpossibleConnections();
@@ -118,9 +132,11 @@ public:
 	void setDt(double d) { dt = d; }
 
 	void computeForces() {
-		// connections
-		for (auto &con : connections)
-			con->computeForces(dt);
+// connections
+#pragma omp parallel for
+		for (size_t i = 0; i < connections.size(); ++i) {
+			connections[i]->computeForces(dt);
+		}
 		for (auto &m : cellModelConnections) {
 			// model* -> cell* -> vec<connection>
 			for (auto &c : m.second) {
@@ -130,7 +146,9 @@ public:
 			}
 		}
 
-		for (auto &c : cells) {
+		//#pragma omp parallel for
+		for (size_t i = 0; i < cells.size(); ++i) {
+			auto &c = cells[i];
 			// friction
 			c->receiveForce(-6.0 * M_PI * viscosityCoef * c->getRadius() * c->getVelocity());
 			// gravity
@@ -139,6 +157,7 @@ public:
 	}
 
 	void resetForces() {
+		//#pragma omp parallel for
 		for (auto cIt = cells.begin(); cIt < cells.end(); ++cIt) {
 			(*cIt)->resetForce();
 			(*cIt)->resetTorque();
@@ -146,12 +165,15 @@ public:
 	}
 
 	void applyGravity() {
+		//#pragma omp parallel for
 		for (auto cIt = cells.begin(); cIt < cells.end(); ++cIt)
 			(*cIt)->receiveForce(g * (*cIt)->getMass());
 	}
 
 	void updateConnectionsLengthAndDirection() {
-		for (auto &c : connections) {
+		//#pragma omp parallel for
+		for (size_t i = 0; i < connections.size(); ++i) {
+			auto &c = connections[i];
 			double contactSurface =
 			    M_PI *
 			    (pow(c->getSc().length, 2) +
@@ -165,6 +187,7 @@ public:
 	}
 
 	void updatePositionsAndOrientations() {
+		//#pragma omp parallel for
 		for (auto cIt = cells.begin(); cIt < cells.end(); ++cIt) {
 			Cell *c = *cIt;
 			updateCellPos(*c, dt);
@@ -200,6 +223,7 @@ public:
 	}
 
 	void insertInGrid(Model &m) {
+		//#pragma omp parallel for
 		for (size_t i = 0; i < m.faces.size(); ++i) {
 			auto &f = m.faces[i];
 			modelGrid.insert({&m, i}, m.vertices[f.indices[0]], m.vertices[f.indices[1]],
@@ -236,7 +260,7 @@ public:
 		}
 		for (auto &c : cells) {
 			// for each cell, we find if a cell - model collision is possible.
-			auto toTest = modelGrid.retrieveUnique(c->getPosition(), c->getRadius());
+			auto toTest = modelGrid.retrieve(c->getPosition(), c->getRadius());
 			for (const auto &mf : toTest) {
 				cerr << GREY << "+----------------------------------------------------+" << NORMAL
 				     << endl;
@@ -314,16 +338,16 @@ public:
 						               MIN_CELL_ADH_LENGTH * c->getRadius(), adh);
 						unique_ptr<CellModelConnection<Cell>> cmc(new CellModelConnection<Cell>(
 						    Connection<SpaceConnectionPoint, Cell *>(
-						        {SpaceConnectionPoint(c->getPosition()), c}, // N0, N1
+						        {SpaceConnectionPoint(c->getPosition()), c},  // N0, N1
 						        Spring(100, dampingFromRatio(0.9, c->getMass(), 100),
-						               0)), // anchor
+						               0)),  // anchor
 						    Connection<ModelConnectionPoint, Cell *>(
 						        {ModelConnectionPoint(mf.first, projec.second, mf.second),
-						         c}, // N0, N1
+						         c},  // N0, N1
 						        Spring(c->getStiffness(),
 						               dampingFromRatio(c->getDampRatio(), c->getMass(),
 						                                c->getStiffness() * 1.0),
-						               l) // bounce
+						               l)  // bounce
 						        )));
 						cmc->anchor.tjEnabled = false;
 						// cmc->anchor.getFlex().first.targetUpdateEnabled = false;
@@ -368,16 +392,45 @@ public:
 		}
 	}
 
+	// void cellCollisions() {
+	// for (auto &c : cells) {
+	// vector<Cell *> toTest = grid.retrieve(c);
+	// connect_type *s = nullptr;
+	// for (const auto &c2 : toTest) {
+	// if (!c2->alreadyTested()) {
+	// auto con = c->connection(c2);
+	// if (con) connections.push_back(con);
+	//}
+	//}
+	// c->markAsTested();
+	//}
+	//}
 	void cellCollisions() {
-		for (auto &c : cells) {
-			vector<Cell *> toTest = grid.retrieve(c);
-			connect_type *s = nullptr;
-			for (const auto &c2 : toTest) {
-				if (!c2->alreadyTested()) {
-					c->connection(c2, connections);
+		auto gridCells = grid.getThreadSafeGrid();
+		for (auto &batch : gridCells) {
+			// each batch should be thread safe
+			array<vector<connect_type *>, 64> newConnections;
+// set<Cell *> test;
+#pragma omp parallel for schedule(dynamic)
+			for (int i = 0; i < batch.size(); ++i) {
+				for (int j = 0; j < batch[i].size(); ++j) {
+					auto &c0 = batch[i][j];
+					// assert(test.count(c0) == 0);
+					// test.insert(c0);
+					for (int k = j + 1; k < batch[i].size(); ++k) {
+						auto &c1 = batch[i][k];
+						auto con = c0->connection(c1);
+						if (con) {
+							newConnections[omp_get_thread_num()].push_back(con);
+						}
+					}
 				}
 			}
-			c->markAsTested();
+			for (auto &cv : newConnections) {
+				for (auto &nc : cv) {
+					connections.push_back(nc);
+				}
+			}
 		}
 	}
 
@@ -393,9 +446,9 @@ public:
 			    }
 			    return false;
 			  }), connections.end());
-		// for (auto &c : cells) {
-		// deleteOverlapingConnections(c);
-		//}
+		for (auto &c : cells) {
+			deleteOverlapingConnections(c);
+		}
 	}
 
 	// deleteOverlapingConnections
@@ -404,10 +457,10 @@ public:
 		double overlapCoef = 0.9;
 		vector<connect_type *> &vec = cell->getRWConnections();
 		for (auto c0It = vec.begin(); c0It < vec.end();) {
-			bool deleted = false; // tells if c0 was deleted inside the inner loop (so we know
-			                      // if we have to increment c0It)
+			bool deleted = false;  // tells if c0 was deleted inside the inner loop (so we know
+			                       // if we have to increment c0It)
 			connect_type *c0 = *c0It;
-			if (c0->getNode1() != nullptr) { // if this is not a wall connection
+			if (c0->getNode1() != nullptr) {  // if this is not a wall connection
 				Vec c0dir;
 				Cell *other0 = nullptr;
 				double r0;
@@ -460,8 +513,8 @@ public:
 							                  connections.end());
 							deleted = true;
 							delete c0;
-							break; // we need to exit the inner loop, c0 doesn't exist
-							       // anymore.
+							break;  // we need to exit the inner loop, c0 doesn't exist
+							        // anymore.
 						} else {
 							++c1It;
 						}
@@ -475,6 +528,7 @@ public:
 	}
 
 	void updateBehavior() {
+		//#pragma omp parallel for
 		for (size_t i = 0; i < cells.size(); ++i) {
 			addCell(cells[i]->updateBehavior(dt));
 		}
@@ -482,10 +536,8 @@ public:
 
 	~BasicWorld() {
 		destroyCells();
-		while (!cells.empty())
-			delete cells.back(), cells.pop_back();
-		while (!connections.empty())
-			delete connections.back(), connections.pop_back();
+		while (!cells.empty()) delete cells.back(), cells.pop_back();
+		while (!connections.empty()) delete connections.back(), connections.pop_back();
 	}
 
 	void disableCellCellCollisions() { cellCellCollisions = false; }
