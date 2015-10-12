@@ -15,7 +15,6 @@
 #include <QThread>
 #include <Qt>
 #include <QWindow>
-#include <QQuickWidget>
 
 #define MECACELL_VIEWER
 #include "macros.h"

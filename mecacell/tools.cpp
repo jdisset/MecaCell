@@ -27,23 +27,23 @@ double closestDistToTriangleEdge(const Vec &v0, const Vec &v1, const Vec &v2,
 	v2dist = v2p.sqlength();
 	if (sqV0pa >= 0 && sqV0pa <= a.sqlength()) {
 		adist = ((v0 + (sqV0pa / a.sqlength()) * a) - p).sqlength();
-	} else if (sqV0pa < 0) { // v0 is the closest
+	} else if (sqV0pa < 0) {  // v0 is the closest
 		adist = v0dist;
-	} else { // v1 is the closest
+	} else {  // v1 is the closest
 		adist = v1dist;
 	}
 	if (sqV0pb >= 0 && sqV0pb <= b.sqlength()) {
 		bdist = ((v0 + (sqV0pb / b.sqlength()) * b) - p).sqlength();
-	} else if (sqV0pb < 0) { // v0 is the closest
+	} else if (sqV0pb < 0) {  // v0 is the closest
 		bdist = v0dist;
-	} else { // v2 is the closest
+	} else {  // v2 is the closest
 		bdist = v2dist;
 	}
 	if (sqV1pc >= 0 && sqV1pc <= c.sqlength()) {
 		cdist = ((v1 + (sqV1pc / c.sqlength()) * c) - p).sqlength();
-	} else if (sqV1pc < 0) { // v1 is the closest
+	} else if (sqV1pc < 0) {  // v1 is the closest
 		cdist = v1dist;
-	} else { // v2 is the closest
+	} else {  // v2 is the closest
 		cdist = v2dist;
 	}
 	return sqrt(min(adist, min(bdist, cdist)));
@@ -90,10 +90,10 @@ Vec hsvToRgb(double h, double s, double v) {
 	long i;
 	Vec out;
 
-	if (s <= 0.0) { // < is bogus, just shuts up warnings
-		out.x = v;
-		out.y = v;
-		out.z = v;
+	if (s <= 0.0) {  // < is bogus, just shuts up warnings
+		out.xRef() = v;
+		out.yRef() = v;
+		out.zRef() = v;
 		return out;
 	}
 	hh = h;
@@ -107,42 +107,42 @@ Vec hsvToRgb(double h, double s, double v) {
 
 	switch (i) {
 		case 0:
-			out.x = v;
-			out.y = t;
-			out.z = p;
+			out.xRef() = v;
+			out.yRef() = t;
+			out.zRef() = p;
 			break;
 		case 1:
-			out.x = q;
-			out.y = v;
-			out.z = p;
+			out.xRef() = q;
+			out.yRef() = v;
+			out.zRef() = p;
 			break;
 		case 2:
-			out.x = p;
-			out.y = v;
-			out.z = t;
+			out.xRef() = p;
+			out.yRef() = v;
+			out.zRef() = t;
 			break;
 
 		case 3:
-			out.x = p;
-			out.y = q;
-			out.z = v;
+			out.xRef() = p;
+			out.yRef() = q;
+			out.zRef() = v;
 			break;
 		case 4:
-			out.x = t;
-			out.y = p;
-			out.z = v;
+			out.xRef() = t;
+			out.yRef() = p;
+			out.zRef() = v;
 			break;
 		case 5:
 		default:
-			out.x = v;
-			out.y = p;
-			out.z = q;
+			out.xRef() = v;
+			out.yRef() = p;
+			out.zRef() = q;
 			break;
 	}
 	return out;
 }
 double dampingFromRatio(const double r, const double m, const double k) {
-	return r * 2.0 * sqrt(m * k); // for angular springs m is the moment of inertia
+	return r * 2.0 * sqrt(m * k);  // for angular springs m is the moment of inertia
 }
 std::default_random_engine globalRand(std::random_device{}());
 

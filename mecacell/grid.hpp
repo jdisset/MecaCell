@@ -37,7 +37,7 @@ template <typename O> class Grid {
 	}
 
 	inline size_t vecToColor(const Vec &v) const {
-		return (abs((int)v.x) % 2) + (abs((int)v.y) % 2) * 2 + (abs((int)v.z) % 2) * 4;
+		return (abs((int)v.x()) % 2) + (abs((int)v.y()) % 2) * 2 + (abs((int)v.z()) % 2) * 4;
 	}
 
 	void insert(const O &obj) {
@@ -50,10 +50,10 @@ template <typename O> class Grid {
 
 	void insert(const O &obj, const Vec &p0, const Vec &p1,
 	            const Vec &p2) {  // insert triangles
-		Vec blf(min(p0.x, min(p1.x, p2.x)), min(p0.y, min(p1.y, p2.y)),
-		        min(p0.z, min(p1.z, p2.z)));
-		Vec trb(max(p0.x, max(p1.x, p2.x)), max(p0.y, max(p1.y, p2.y)),
-		        max(p0.z, max(p1.z, p2.z)));
+		Vec blf(min(p0.x(), min(p1.x(), p2.x())), min(p0.y(), min(p1.y(), p2.y())),
+		        min(p0.z(), min(p1.z(), p2.z())));
+		Vec trb(max(p0.x(), max(p1.x(), p2.x())), max(p0.y(), max(p1.y(), p2.y())),
+		        max(p0.z(), max(p1.z(), p2.z())));
 		double cs = 1.0 / cellSize;
 		getIndexFromPosition(blf).iterateTo(getIndexFromPosition(trb) + 1, [&](const Vec &v) {
 			Vec center = cs * v;
@@ -68,7 +68,7 @@ template <typename O> class Grid {
 
 	Vec getIndexFromPosition(const Vec &v) {
 		Vec res = v * cellSize;
-		return Vec(floor(res.x), floor(res.y), floor(res.z));
+		return Vec(floor(res.x()), floor(res.y()), floor(res.z()));
 	}
 
 	// set<O> retrieveUnique(const Vec &coord, double r) const {

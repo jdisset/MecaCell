@@ -1,14 +1,15 @@
 #include "quaternion.h"
-#define dispVec(v) "(" << v.x << "," << v.y << "," << v.z << ")"
+#define dispVec(v) "(" << v.x() << "," << v.y() << "," << v.z() << ")"
 
 namespace MecaCell {
 Quaternion Quaternion::normalized() const {
-	double magnitude = sqrt(w * w + v.x * v.x + v.y * v.y + v.z * v.z);
-	return Quaternion(v.x / magnitude, v.y / magnitude, v.z / magnitude, w / magnitude);
+	double magnitude = sqrt(w * w + v.x() * v.x() + v.y() * v.y() + v.z() * v.z());
+	return Quaternion(v.x() / magnitude, v.y() / magnitude, v.z() / magnitude,
+	                  w / magnitude);
 }
 
 void Quaternion::normalize() {
-	double magnitude = sqrt(w * w + v.x * v.x + v.y * v.y + v.z * v.z);
+	double magnitude = sqrt(w * w + v.x() * v.x() + v.y() * v.y() + v.z() * v.z());
 	w = min(w / magnitude, 1.0);
 	v = v / magnitude;
 }
@@ -57,9 +58,9 @@ Vector3D Quaternion::operator*(const Vector3D &V) const {
 }
 
 Quaternion Quaternion::operator*(const Quaternion &q2) const {
-	return Quaternion(v.x * q2.w + v.y * q2.v.z - v.z * q2.v.y + w * q2.v.x,
-	                  -v.x * q2.v.z + v.y * q2.w + v.z * q2.v.x + w * q2.v.y,
-	                  v.x * q2.v.y - v.y * q2.v.x + v.z * q2.w + w * q2.v.z,
-	                  -v.x * q2.v.x - v.y * q2.v.y - v.z * q2.v.z + w * q2.w);
+	return Quaternion(v.x() * q2.w + v.y() * q2.v.z() - v.z() * q2.v.y() + w * q2.v.x(),
+	                  -v.x() * q2.v.z() + v.y() * q2.w + v.z() * q2.v.x() + w * q2.v.y(),
+	                  v.x() * q2.v.y() - v.y() * q2.v.x() + v.z() * q2.w + w * q2.v.z(),
+	                  -v.x() * q2.v.x() - v.y() * q2.v.y() - v.z() * q2.v.z() + w * q2.w);
 }
 }

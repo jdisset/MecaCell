@@ -18,9 +18,9 @@ template <typename Model> struct ModelViewer {
 	void load(const Model &m) {
 		// extracting vertices, normals and uv (if available)
 		for (auto &v : m.vertices) {
-			vertices.push_back(v.x);
-			vertices.push_back(v.y);
-			vertices.push_back(v.z);
+			vertices.push_back(v.x());
+			vertices.push_back(v.y());
+			vertices.push_back(v.z());
 		}
 		normals.resize(vertices.size());
 		for (auto &f : m.obj.faces) {
@@ -33,9 +33,9 @@ template <typename Model> struct ModelViewer {
 			for (int id = 0; id < 3; ++id) {
 				size_t vid = f.at("v").indices[id];
 				size_t nid = f.at("n").indices[id];
-				normals[vid * 3 + 0] = m.normals[nid].x;
-				normals[vid * 3 + 1] = m.normals[nid].y;
-				normals[vid * 3 + 2] = m.normals[nid].z;
+				normals[vid * 3 + 0] = m.normals[nid].x();
+				normals[vid * 3 + 1] = m.normals[nid].y();
+				normals[vid * 3 + 2] = m.normals[nid].z();
 			}
 		}
 

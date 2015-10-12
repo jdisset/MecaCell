@@ -19,6 +19,7 @@
 #define NORMAL "\033[0m"
 
 namespace MecaCell {
+typedef float float_t;
 typedef Vector3D Vec;
 extern double DEFAULT_CELL_DAMP_RATIO;
 extern double DEFAULT_SPRING_DAMP_RATIO;

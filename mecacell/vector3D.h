@@ -4,20 +4,29 @@
 #include <functional>
 #include <iostream>
 #include "rotation.h"
+#include <array>
 #include "basis.h"
 
 namespace MecaCell {
 class Vector3D {
-public:
-	double x, y, z;
+ public:
+	std::array<double, 3> coords;
+
 	static const int dimension = 3;
-	Vector3D(double a, double b, double c) : x(a), y(b), z(c) {}
-	Vector3D() : x(0), y(0), z(0) {}
-	explicit Vector3D(double a) : x(a), y(a), z(a) {}
-	Vector3D(const Vector3D &v) : x(v.x), y(v.y), z(v.z) {}
+	Vector3D(double a, double b, double c) : coords{{a, b, c}} {}
+	Vector3D() : coords{{0, 0, 0}} {}
+	explicit Vector3D(double a) : coords{{a, a, a}} {}
+	explicit Vector3D(std::array<double, 3> c) : coords{c} {}
 
 	double dot(const Vector3D &v) const;
 	Vector3D cross(const Vector3D &v) const;
+
+	inline double &xRef() { return coords[0]; }
+	inline double &yRef() { return coords[1]; }
+	inline double &zRef() { return coords[2]; }
+	inline double x() const { return coords[0]; }
+	inline double y() const { return coords[1]; }
+	inline double z() const { return coords[2]; }
 
 	void random();
 	Vector3D deltaDirection(double amount);
@@ -48,14 +57,19 @@ public:
 	Vector3D rotated(const Rotation<Vector3D> &) const;
 	static void addAsAngularVelocity(const Vector3D &, Rotation<Vector3D> &);
 	static Rotation<Vector3D> getRotation(const Vector3D &, const Vector3D &);
-	static Rotation<Vector3D> rotateRotation(const Rotation<Vector3D> &, const Rotation<Vector3D> &);
-	static Rotation<Vector3D> addRotations(const Rotation<Vector3D> &, const Rotation<Vector3D> &);
-	static Rotation<Vector3D> getRotation(const Vector3D &, const Vector3D &, const Vector3D &,
-	                                      const Vector3D &);
+	static Rotation<Vector3D> rotateRotation(const Rotation<Vector3D> &,
+	                                         const Rotation<Vector3D> &);
+	static Rotation<Vector3D> addRotations(const Rotation<Vector3D> &,
+	                                       const Rotation<Vector3D> &);
+	static Rotation<Vector3D> getRotation(const Vector3D &, const Vector3D &,
+	                                      const Vector3D &, const Vector3D &);
 	static Rotation<Vector3D> getRotation(const Basis<Vector3D> &, const Basis<Vector3D> &);
-	static Vector3D getProjection(const Vector3D &origin, const Vector3D &A, const Vector3D &B);
-	static Vector3D getProjectionOnPlane(const Vector3D &o, const Vector3D &n, const Vector3D &p);
-	static double rayCast(const Vector3D &o, const Vector3D &n, const Vector3D &p, const Vector3D &r);
+	static Vector3D getProjection(const Vector3D &origin, const Vector3D &A,
+	                              const Vector3D &B);
+	static Vector3D getProjectionOnPlane(const Vector3D &o, const Vector3D &n,
+	                                     const Vector3D &p);
+	static double rayCast(const Vector3D &o, const Vector3D &n, const Vector3D &p,
+	                      const Vector3D &r);
 
 	double getX() const;
 	double getY() const;
@@ -68,7 +82,8 @@ public:
 	static int getHash(int a, int b);
 	std::size_t getHash() const;
 
-	void iterateTo(Vector3D const &v, const std::function<void(const Vector3D &)> &fun, int inc = 1);
+	void iterateTo(Vector3D const &v, const std::function<void(const Vector3D &)> &fun,
+	               int inc = 1);
 
 	Vector3D ortho() const;
 	Vector3D ortho(Vector3D v) const;
@@ -84,4 +99,4 @@ template <> struct hash<MecaCell::Vector3D> {
 	std::size_t operator()(const MecaCell::Vector3D &v) const { return v.getHash(); }
 };
 }
-#endif // VECTOR3D_H
+#endif  // VECTOR3D_H
