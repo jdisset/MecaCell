@@ -4,6 +4,7 @@
 #include "primitives/sphere.hpp"
 #include "camera.hpp"
 
+namespace MecacellViewer{
 class Skybox {
 	QOpenGLShaderProgram shader;
 	unique_ptr<QOpenGLTexture> texture = nullptr;
@@ -39,4 +40,5 @@ public:
 		shader.release();
 	}
 };
+}
 #endif

@@ -4,9 +4,10 @@
 #include <QDebug>
 #include <QOpenGLContext>
 #include "viewtools.h"
+namespace MecacellViewer {
 bool culling = false;
 QOpenGLFunctions *GL = nullptr;
-QString shaderWithHeader(QString filename) {
+QString addShaderHeader(const QString &sh) {
 	int majorV = QOpenGLContext::currentContext()->format().majorVersion();
 	int minorV = QOpenGLContext::currentContext()->format().minorVersion();
 	bool needCore = true;
@@ -31,12 +32,15 @@ QString shaderWithHeader(QString filename) {
 	} else {
 		version = "110";
 	}
-
 	QString core = needCore ? " core" : "";
-	QFile f(filename);
-	if (!f.open(QIODevice::ReadOnly | QIODevice::Text)) qDebug() << "unable to open " << filename << endl;
-	QTextStream in(&f);
-	QString res = QString("#version ") + version + core + QString("\n") + in.readAll();
-	return res;
+	return QString(QString("#version ") + version + core + QString("\n") + sh);
 }
-void initResources() { Q_INIT_RESOURCE(resourcesLibMecacellViewer); }
+
+QString shaderWithHeader(QString filename) {
+	QFile f(filename);
+	if (!f.open(QIODevice::ReadOnly | QIODevice::Text))
+		qDebug() << "unable to open " << filename << endl;
+	QTextStream in(&f);
+	return addShaderHeader(in.readAll());
+}
+}

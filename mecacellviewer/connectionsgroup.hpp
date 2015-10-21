@@ -3,6 +3,7 @@
 #include "viewtools.h"
 #include "primitives/lines.hpp"
 #include <vector>
+namespace MecacellViewer{
 class ConnectionsGroup {
 	QOpenGLShaderProgram shader;
 	Lines lines;
@@ -99,4 +100,5 @@ public:
 		shader.release();
 	}
 };
+}
 #endif

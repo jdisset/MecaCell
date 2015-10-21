@@ -11,10 +11,18 @@
 class Camera : public QObject {
 	Q_OBJECT
 
-public:
+ public:
 	enum ProjectionType { Perspective, Orthographic };
-	enum RotateOrder { TiltPanRoll, TiltRollPan, PanTiltRoll, PanRollTilt, RollTiltPan, RollPanTilt };
+	enum RotateOrder {
+		TiltPanRoll,
+		TiltRollPan,
+		PanTiltRoll,
+		PanRollTilt,
+		RollTiltPan,
+		RollPanTilt
+	};
 	enum Mode { fps, centered };
+	// in centered mode x is left/right, y is up/down, z is forward/backward
 
 	ProjectionType projectionType = Perspective;
 	Mode mode = fps;
@@ -32,7 +40,8 @@ public:
 	float sensitivity = 0.2;
 	float forceIntensity = 15000;
 	float rotationSensitivity = 65;
-	float friction = 7.5;
+	float friction = 7.0f;
+	float mass = 1.5;
 	QVector3D force;
 	QVector3D speed;
 	QVector3D torque;
@@ -124,8 +133,12 @@ public:
 		return QQuaternion::fromAxisAndAngle(side, angle);
 	}
 
-	QQuaternion roll(float angle) const { return QQuaternion::fromAxisAndAngle(viewVector, angle); }
-	QQuaternion pan(float angle) const { return QQuaternion::fromAxisAndAngle(upVector, angle); }
+	QQuaternion roll(float angle) const {
+		return QQuaternion::fromAxisAndAngle(viewVector, angle);
+	}
+	QQuaternion pan(float angle) const {
+		return QQuaternion::fromAxisAndAngle(upVector, angle);
+	}
 
 	/*********************************
 	 *     MOVEMENT & ORIENTATION
@@ -137,18 +150,13 @@ public:
 
 	void moveAroundTarget(const QVector2D &v) { moveAroundTarget(v.x(), v.y()); }
 	void moveAroundTarget(qreal x, qreal y) {
-		QQuaternion q1 = tilt(sensitivity * y);
-		if (mode == centered) {
-			QVector3D newpos = target + q1.rotatedVector(-viewVector);
-			upVector = q1.rotatedVector(upVector);
-			setPosition(newpos);
-			QQuaternion q2 = pan(sensitivity * x);
-			newpos = target + q2.rotatedVector(-viewVector);
-			upVector = q2.rotatedVector(upVector);
-			setPosition(newpos);
-		} else if (mode == fps) {
-			torque += rotationSensitivity *
-			          (upVector * x + QVector3D::crossProduct(viewVector, upVector).normalized() * y);
+		if (mode == fps) {
+			torque +=
+			    rotationSensitivity *
+			    (upVector * x + QVector3D::crossProduct(viewVector, upVector).normalized() * y);
+		} else if (mode == centered) {
+			double distanceFromTarget = (position - target).length();
+			force += QVector3D(x, -y, 0) * rotationSensitivity * 0.05 * distanceFromTarget;
 		}
 	}
 
@@ -166,17 +174,19 @@ public:
 	}
 
 	void right(float) {
-		QVector3D v = QVector3D::crossProduct(viewVector, upVector).normalized();
-		force += v * forceIntensity;
-		if (mode == centered) {
-			viewVector = (target - position).normalized();
+		if (mode == fps) {
+			QVector3D v = QVector3D::crossProduct(viewVector, upVector).normalized();
+			force += v * forceIntensity;
+		} else if (mode == centered) {
+			force += QVector3D(forceIntensity, 0, 0);
 		}
 	}
 	void left(float) {
-		QVector3D v = QVector3D::crossProduct(upVector, viewVector).normalized();
-		force += v * forceIntensity;
-		if (mode == centered) {
-			viewVector = (target - position).normalized();
+		if (mode == fps) {
+			QVector3D v = QVector3D::crossProduct(upVector, viewVector).normalized();
+			force += v * forceIntensity;
+		} else if (mode == centered) {
+			force += QVector3D(-forceIntensity, 0, 0);
 		}
 	}
 	void backward(float dt) {
@@ -184,8 +194,7 @@ public:
 		if (mode == fps) {
 			force += -viewVector.normalized() * forceIntensity;
 		} else if (mode == centered) {
-			float amount = 0.1 * (position - target).length();
-			translate(-viewVector.normalized() * dt * amount);
+			force += QVector3D(0, 0, forceIntensity);
 		}
 	}
 	void forward(float dt) {
@@ -193,30 +202,38 @@ public:
 		if (mode == fps) {
 			force += viewVector.normalized() * forceIntensity;
 		} else if (mode == centered) {
-			float amount = 0.1 * (position - target).length();
-			translate(viewVector.normalized() * dt * amount);
+			force += QVector3D(0, 0, -forceIntensity);
 		}
 	}
 
 	void updatePosition(float dt) {
 		if (dt > 1.0 / 20.0) dt = 1.0 / 20.0;
 		if (mode == fps) {
-			speed += force * dt - speed * friction * dt;
+			speed += (force / mass) * dt - speed * friction * dt;
 			position += speed * dt;
 			force = QVector3D(0, 0, 0);
 			angularVelocity += (torque - friction * angularVelocity) * dt;
-			QQuaternion q1 =
-			    QQuaternion::fromAxisAndAngle(angularVelocity.normalized(), dt * angularVelocity.length());
+			QQuaternion q1 = QQuaternion::fromAxisAndAngle(angularVelocity.normalized(),
+			                                               dt * angularVelocity.length());
 			viewVector = q1.rotatedVector(viewVector);
 			upVector = q1.rotatedVector(upVector);
 			torque = QVector3D(0, 0, 0);
 			target = position + viewVector;
+		} else if (mode == centered) {
+			speed += (force / mass) * dt - speed * friction * dt;
+			double distanceFromTarget = (position - target).length();
+			distanceFromTarget += speed.z() * dt;
+			position += speed.x() * dt * getRightVector();
+			position += speed.y() * dt * getUpVector();
+			viewVector = (target - position).normalized();
+			position = target - viewVector * distanceFromTarget;
+			force = QVector3D(0, 0, 0);
 		}
 	}
 	/**************************
 	 *          SET
 	**************************/
-	void setUpVector(const QVector3D &vector) { upVector = vector; }
+	void setUpVector(const QVector3D &vec) { upVector = vec; }
 	void setTarget(const QVector3D &vertex) {
 		target = vertex;
 		viewVector = target - position;
@@ -225,6 +242,10 @@ public:
 	void setPosition(const QVector3D &vertex) {
 		position = vertex;
 		viewVector = target - position;
+	}
+	void setMode(Mode m) {
+		mode = m;
+		speed = QVector3D(0, 0, 0);
 	}
 
 	/**************************
@@ -239,15 +260,20 @@ public:
 	QVector3D getTarget() const { return target; }
 	QVector3D getUpVector() const { return upVector.normalized(); }
 	QVector3D getViewVector() const { return viewVector.normalized(); }
-	QVector3D getRightVector() const { return QVector3D::crossProduct(viewVector, upVector).normalized(); }
+	QVector3D getRightVector() const {
+		return QVector3D::crossProduct(viewVector, upVector).normalized();
+	}
 
 	std::string toString() {
 		QString dbg;
 		QDebug(&dbg) << "Camera";
 		QDebug(&dbg) << "\n";
-		QDebug(&dbg) << "   projection:" << (getProjectionType() == Perspective ? "Perspective" : "Orthographic");
-		QDebug(&dbg) << "-- viewsize:" << getViewSize().width() << "x" << getViewSize().height() << "\n";
-		QDebug(&dbg) << "   near-plane:" << getNearPlane() << "-- far-plane:" << getFarPlane();
+		QDebug(&dbg) << "   projection:"
+		             << (getProjectionType() == Perspective ? "Perspective" : "Orthographic");
+		QDebug(&dbg) << "-- viewsize:" << getViewSize().width() << "x"
+		             << getViewSize().height() << "\n";
+		QDebug(&dbg) << "   near-plane:" << getNearPlane()
+		             << "-- far-plane:" << getFarPlane();
 		QDebug(&dbg) << "-- field-of-view:" << getFieldOfView() << "\n";
 		QDebug(&dbg) << "   position:" << getPosition() << "-- target:" << getTarget();
 		QDebug(&dbg) << "-- up:" << getUpVector() << "\n";

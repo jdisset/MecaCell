@@ -7,17 +7,19 @@ Button {
 	property color notpressedColor: "#00000000"
 	property color hoveredColor: "#20000000"
 	property string menu: ""
+	property string name : ""
+
 	text: "A button"
 	width: parent.width
 	height: 30
 	onClicked: {
-		renderer.buttonClick(menu, text);
+		renderer.buttonClick(name);
 	}
 	style: ButtonStyle {
 		label: Text {
 			verticalAlignment: Text.AlignVCenter
 			horizontalAlignment: Text.AlignHCenter
-				//font.family: opensans.name
+			//font.family: opensans.name
 			font.pointSize: 11
 			font.bold: true
 			color: "#FFF"

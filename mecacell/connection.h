@@ -11,16 +11,16 @@ namespace MecaCell {
 ////////////////////////////////////////////////////////////////////
 // This is just a classic "linear" spring
 struct Spring {
-	double k = 1.0;      // stiffness
-	double c = 1.0;      // damp coef
-	double l = 1.0;      // rest length
-	double length = 1.0; // current length
-	double prevLength = 1.0;
-	double minLengthRatio = 0.5; // max compression
+	float_t k = 1.0;      // stiffness
+	float_t c = 1.0;      // damp coef
+	float_t l = 1.0;      // rest length
+	float_t length = 1.0; // current length
+	float_t prevLength = 1.0;
+	float_t minLengthRatio = 0.5; // max compression
 	Vec direction;               // current direction from node 0 to node 1
 
 	Spring(){};
-	Spring(const double &K, const double &C, const double &L)
+	Spring(const float_t &K, const float_t &C, const float_t &L)
 	    : k(K), c(C), l(L), length(L){};
 
 	void updateLengthDirection(const Vec &p0, const Vec &p1) {
@@ -35,10 +35,10 @@ struct Spring {
 ////////////////////////////////////////////////////////////////////
 // flexible joint. Can be used for flexure (torque + force) or torsion (torque only)
 struct Joint {
-	double k = 1.0; // angular stiffness
-	double currentK = 1.0;
-	double c = 1.0;               // damp
-	double maxTeta = M_PI / 20.0; // maximum angle
+	float_t k = 1.0; // angular stiffness
+	float_t currentK = 1.0;
+	float_t c = 1.0;               // damp
+	float_t maxTeta = M_PI / 20.0; // maximum angle
 	Rotation<Vec> r;              // rotation from node to joint
 	Rotation<Vec> delta;          // current rotation
 	Rotation<Vec> prevDelta;
@@ -48,7 +48,7 @@ struct Joint {
 	bool targetUpdateEnabled = true;
 	Joint(){};
 
-	Joint(const double &K, const double &C, const double &MTETA, bool handleMteta = true)
+	Joint(const float_t &K, const float_t &C, const float_t &MTETA, bool handleMteta = true)
 	    : k(K), c(C), maxTeta(MTETA), maxTetaAutoCorrect(handleMteta) {}
 
 	// current direction is computed using a reference Vector v rotated with rotation rot
@@ -56,7 +56,7 @@ struct Joint {
 		direction = v.rotated(r.rotated(rot));
 	}
 	void updateDelta() { delta = Vec::getRotation(direction, target); }
-	void setCurrentKCoef(double kc) { currentK = k * kc; }
+	void setCurrentKCoef(float_t kc) { currentK = k * kc; }
 };
 
 ////////////////////////////////////////////////////////////////////
@@ -74,8 +74,8 @@ struct Joint {
 // - Vec getAngularVelocity()
 // - Basis getOrientation()
 // - Rotation getOrientationRotation()
-// - double getInertia()
-// - void receiveForce(double intensity, Vec direction, bool compressive)
+// - float_t getInertia()
+// - void receiveForce(float_t intensity, Vec direction, bool compressive)
 // - void receiveTorque(Vec acc)
 template <typename N0, typename N1 = N0> class Connection {
 private:
@@ -140,7 +140,7 @@ public:
 	N0 &getNode0() { return connected.first; }
 	N1 &getNode1() { return connected.second; }
 	float getLength() { return sc.length; }
-	void setBaseLength(const double d) { sc.l = d; }
+	void setBaseLength(const float_t d) { sc.l = d; }
 	Vec getDirection() { return sc.direction; }
 	template <typename R, typename T> R &getOtherNode(const T &n) {
 		return n == connected.first ? connected.second : connected.first;
@@ -153,15 +153,15 @@ public:
 		sc.updateLengthDirection(ptr(connected.first)->getPosition(),
 		                         ptr(connected.second)->getPosition());
 	}
-	void computeForces(double dt) {
+	void computeForces(float_t dt) {
 		// BASIC SPRING
 		sc.updateLengthDirection(ptr(connected.first)->getPosition(),
 		                         ptr(connected.second)->getPosition());
 		if (scEnabled) {
-			double x = sc.length - sc.l; // actual compression / elongation
-			double minlength = sc.minLengthRatio * sc.l;
+			float_t x = sc.length - sc.l; // actual compression / elongation
+			float_t minlength = sc.minLengthRatio * sc.l;
 			if (sc.length < minlength) {
-				double d = minlength - sc.length;
+				float_t d = minlength - sc.length;
 				Vec component0 =
 				    ptr(connected.first)->getVelocity().dot(sc.direction) * sc.direction;
 				Vec tangent0 = ptr(connected.first)->getVelocity() - component0;
@@ -177,9 +177,9 @@ public:
 				sc.length = minlength;
 			}
 			bool compression = x < 0;
-			double v = sc.length - sc.prevLength;
-			double k = sc.k; // compression ? sc.k : sc.k * 0.2;
-			double f = (-k * x - sc.c * v / dt) / 2.0;
+			float_t v = sc.length - sc.prevLength;
+			float_t k = sc.k; // compression ? sc.k : sc.k * 0.2;
+			float_t f = (-k * x - sc.c * v / dt) / 2.0;
 			ptr(connected.first)->receiveForce(f, -sc.direction, compression);
 			ptr(connected.second)->receiveForce(f, sc.direction, compression);
 			sc.prevLength = sc.length;
@@ -209,7 +209,7 @@ public:
 		Joint &fjNode = n == 0 ? fj.first : fj.second;
 		const auto &node = ptr(get<n>(connected));
 		const auto &other = ptr(get < n == 0 ? 1 : 0 > (connected));
-		const double sign = n == 0 ? 1 : -1;
+		const float_t sign = n == 0 ? 1 : -1;
 
 		if (fjEnabled) {
 			if (fjNode.targetUpdateEnabled) fjNode.target = sc.direction * sign;
@@ -225,10 +225,10 @@ public:
 			}
 			// flex torque and force
 			fjNode.delta.n.normalize();
-			double d = scEnabled ? sc.length : (ptr(connected.first)->getPosition() -
+			float_t d = scEnabled ? sc.length : (ptr(connected.first)->getPosition() -
 			                                    ptr(connected.second)->getPosition())
 			                                       .length();
-			double torque = fjNode.currentK * fjNode.delta.teta +
+			float_t torque = fjNode.currentK * fjNode.delta.teta +
 			                fjNode.c * (fjNode.delta.teta - fjNode.prevDelta.teta); // -kx - cv
 			Vec vFlex = fjNode.delta.n * torque;                                    // torque
 			Vec ortho = sc.direction.ortho(fjNode.delta.n).normalized(); // force direction
@@ -242,7 +242,7 @@ public:
 		}
 		if (tjEnabled) {
 			// updating torsion joint (needs to stay perp to sc.direction)
-			double scalar = tjNode.direction.dot(sc.direction);
+			float_t scalar = tjNode.direction.dot(sc.direction);
 			// if the angle between our torsion spring and sc.direction is too far from 90°,
 			// we reproject & recompute it
 			if (abs(scalar) > MAX_TS_INCL) {
@@ -258,7 +258,7 @@ public:
 			tjNode.updateDelta();
 			// torsion torque
 			tjNode.delta.n.normalize();
-			double torque =
+			float_t torque =
 			    tjNode.currentK *
 			    tjNode.delta
 			        .teta; // - tjNode.c * node->getAngularVelocity().dot(tjNode.delta.teta.n)

@@ -5,6 +5,7 @@
 
 using std::vector;
 
+namespace MecacellViewer {
 template <typename Model> struct ModelViewer {
 	QOpenGLShaderProgram shader;
 	QOpenGLVertexArrayObject vao;
@@ -15,16 +16,14 @@ template <typename Model> struct ModelViewer {
 	QOpenGLBuffer vbuf, nbuf, tbuf, bitanbuf, ibuf;
 
 	void load(const Model &m) {
-
 		// extracting vertices, normals and uv (if available)
 		for (auto &v : m.vertices) {
-			vertices.push_back(v.x);
-			vertices.push_back(v.y);
-			vertices.push_back(v.z);
+			vertices.push_back(v.x());
+			vertices.push_back(v.y());
+			vertices.push_back(v.z());
 		}
 		normals.resize(vertices.size());
 		for (auto &f : m.obj.faces) {
-
 			assert(f.count("v") && f.count("n"));
 			for (auto &vid : f.at("v").indices) {
 				assert(vid < m.obj.vertices.size());
@@ -34,19 +33,22 @@ template <typename Model> struct ModelViewer {
 			for (int id = 0; id < 3; ++id) {
 				size_t vid = f.at("v").indices[id];
 				size_t nid = f.at("n").indices[id];
-				normals[vid * 3 + 0] = m.normals[nid].x;
-				normals[vid * 3 + 1] = m.normals[nid].y;
-				normals[vid * 3 + 2] = m.normals[nid].z;
+				normals[vid * 3 + 0] = m.normals[nid].x();
+				normals[vid * 3 + 1] = m.normals[nid].y();
+				normals[vid * 3 + 2] = m.normals[nid].z();
 			}
 		}
 
-		cerr << vertices.size() << " vertices, " << normals.size() << "normals, " << uv.size() << " uv" << endl;
+		cerr << vertices.size() << " vertices, " << normals.size() << "normals, " << uv.size()
+		     << " uv" << endl;
 
 		// creating and binding shaders/vao/vbos
 		// TODO : directly use model's transformed vertices and normals
 
-		shader.addShaderFromSourceCode(QOpenGLShader::Vertex, shaderWithHeader(":/shaders/mvp.vert"));
-		shader.addShaderFromSourceCode(QOpenGLShader::Fragment, shaderWithHeader(":/shaders/model.frag"));
+		shader.addShaderFromSourceCode(QOpenGLShader::Vertex,
+		                               shaderWithHeader(":/shaders/mvp.vert"));
+		shader.addShaderFromSourceCode(QOpenGLShader::Fragment,
+		                               shaderWithHeader(":/shaders/model.frag"));
 		shader.link();
 		shader.bind();
 		vao.create();
@@ -96,4 +98,5 @@ template <typename Model> struct ModelViewer {
 		shader.release();
 	}
 };
+}
 #endif

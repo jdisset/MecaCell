@@ -3,11 +3,12 @@
 #include "viewtools.h"
 #include "primitives/quad.hpp"
 
+namespace MecacellViewer {
 class RenderQuad {
 	QOpenGLShaderProgram shader;
 	Quad quad;
 
-public:
+ public:
 	RenderQuad(){};
 	void load(const QString &vs, const QString &fs) {
 		shader.addShaderFromSourceCode(QOpenGLShader::Vertex, shaderWithHeader(vs));
@@ -44,4 +45,5 @@ public:
 		shader.release();
 	}
 };
+}
 #endif

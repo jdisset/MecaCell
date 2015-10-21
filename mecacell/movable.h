@@ -10,9 +10,9 @@ protected:
 	Vec velocity = Vec::zero();
 	Vec force = Vec::zero();
 	bool movementEnabled = true;
-	double mass = 1.0;
-	double baseMass = 1.0;
-	double totalForce = 0;
+	float_t mass = 1.0;
+	float_t baseMass = 1.0;
+	float_t totalForce = 0;
 
 public:
 	/**********************************************
@@ -20,7 +20,7 @@ public:
 	 **********************************************/
 	Movable() {}
 	Movable(Vec pos) : position(pos) {}
-	Movable(Vec pos, double m) : position(pos), mass(m) {}
+	Movable(Vec pos, float_t m) : position(pos), mass(m) {}
 	/**********************************************
 	 *                GET & SET
 	 **********************************************/
@@ -31,18 +31,18 @@ public:
 	Vec getPrevposition() const { return prevposition; }
 	Vec getVelocity() const { return velocity; }
 	Vec getForce() const { return force; }
-	double getMass() const { return mass; }
-	double getBaseMass() const { return baseMass; }
+	float_t getMass() const { return mass; }
+	float_t getBaseMass() const { return baseMass; }
 	void setPosition(const Vec &p) { position = p; }
 	void setPrevposition(const Vec &p) { prevposition = p; }
 	void setVelocity(const Vec &v) { velocity = v; }
 	void setForce(const Vec &f) { force = f; }
-	void setMass(const double m) { mass = m; }
-	void setBaseMass(const double m) { baseMass = m; }
+	void setMass(const float_t m) { mass = m; }
+	void setBaseMass(const float_t m) { baseMass = m; }
 	/**********************************************
 	 *                 UPDATES
 	 **********************************************/
-	void receiveForce(const double &intensity, const Vec &direction, const bool &compressive) {
+	void receiveForce(const float_t &intensity, const Vec &direction, const bool &compressive) {
 		force += direction * intensity;
 		totalForce += compressive ? intensity : -intensity;
 	}

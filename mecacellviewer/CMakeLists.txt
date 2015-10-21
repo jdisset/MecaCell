@@ -5,6 +5,7 @@ find_package(Qt5Widgets)
 find_package(Qt5Gui)
 find_package(Qt5Quick)
 find_package(Qt5OpenGL)
+find_package(Qt5QuickWidgets)
 qt5_add_resources(RESOURCES resourcesLibMecacellViewer.qrc)
 
 file(GLOB VIEWHEADERS 
