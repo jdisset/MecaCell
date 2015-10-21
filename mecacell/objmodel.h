@@ -18,8 +18,8 @@ using std::array;
 namespace MecaCell {
 
 struct UV {
-	double u, v;
-	UV(double U, double V) : u(U), v(V){};
+	float_t u, v;
+	UV(float_t U, float_t V) : u(U), v(V){};
 };
 
 struct Triangle {

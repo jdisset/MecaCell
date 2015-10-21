@@ -1,13 +1,12 @@
 #ifndef INTEGRATORS_HPP
 #define INTEGRATORS_HPP
-
+#include "tools.h"
 // Integration schemes
 // using structs instead of lambda templates (c++14 feature :-/ )
 namespace MecaCell {
 
 struct Verlet {
-	template <typename C> void operator()(C &c, const double &dt) {
-
+	template <typename C> void operator()(C &c, const float_t &dt) {
 		if (c.isMovementEnabled()) {
 			// position
 			auto oldVel = c.getVelocity();
@@ -26,8 +25,7 @@ struct Verlet {
 	}
 };
 struct Euler {
-	template <typename C> void operator()(C &c, const double &dt) {
-
+	template <typename C> void operator()(C &c, const float_t &dt) {
 		if (c.isMovementEnabled()) {
 			// position
 			c.setVelocity(c.getVelocity() + c.getForce() * dt / c.getMass());

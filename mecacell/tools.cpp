@@ -3,13 +3,8 @@
 
 namespace MecaCell {
 
-int double2int(double d) {
-	d += 6755399441055744.0;
-	return reinterpret_cast<int &>(d);
-}
-
-double closestDistToTriangleEdge(const Vec &v0, const Vec &v1, const Vec &v2,
-                                 const Vec &p) {
+float_t closestDistToTriangleEdge(const Vec &v0, const Vec &v1, const Vec &v2,
+                                  const Vec &p) {
 	Vec a = v1 - v0;
 	Vec b = v2 - v0;
 	Vec c = v2 - v1;
@@ -17,11 +12,11 @@ double closestDistToTriangleEdge(const Vec &v0, const Vec &v1, const Vec &v2,
 	Vec v0p = p - v0;
 	Vec v1p = p - v1;
 	Vec v2p = p - v2;
-	double sqV0pa = v0p.dot(a);
-	double sqV0pb = v0p.dot(b);
-	double sqV1pc = v1p.dot(c);
-	double adist, bdist, cdist;
-	double v0dist, v1dist, v2dist;
+	float_t sqV0pa = v0p.dot(a);
+	float_t sqV0pb = v0p.dot(b);
+	float_t sqV1pc = v1p.dot(c);
+	float_t adist, bdist, cdist;
+	float_t v0dist, v1dist, v2dist;
 	v0dist = v0p.sqlength();
 	v1dist = v1p.sqlength();
 	v2dist = v2p.sqlength();
@@ -49,18 +44,18 @@ double closestDistToTriangleEdge(const Vec &v0, const Vec &v1, const Vec &v2,
 	return sqrt(min(adist, min(bdist, cdist)));
 }
 std::pair<bool, Vec> rayInTriangle(const Vec &v0, const Vec &v1, const Vec &v2,
-                                   const Vec &o, const Vec &r, const double tolerance) {
+                                   const Vec &o, const Vec &r, const float_t tolerance) {
 	Vec u = v1 - v0;
 	Vec v = v2 - v0;
 	Vec n = u.cross(v);
-	double l = Vec::rayCast(v0, n, o, r);
+	float_t l = Vec::rayCast(v0, n, o, r);
 	if (l > 0) {
 		Vec p = o + l * r;
 		Vec w = p - v0;
-		double nsq = n.sqlength();
-		double l = u.cross(w).dot(n) / nsq;
-		double b = w.cross(v).dot(n) / nsq;
-		double a = 1.0 - l - b;
+		float_t nsq = n.sqlength();
+		float_t l = u.cross(w).dot(n) / nsq;
+		float_t b = w.cross(v).dot(n) / nsq;
+		float_t a = 1.0 - l - b;
 		return {0 - tolerance <= a && a <= 1.0 + tolerance && 0 - tolerance <= b &&
 		            b <= 1.0 + tolerance && 0 - tolerance <= l && l <= 1.0 + tolerance,
 		        a * v0 + b * v1 + l * v2};
@@ -71,22 +66,22 @@ std::pair<bool, Vec> rayInTriangle(const Vec &v0, const Vec &v1, const Vec &v2,
 }
 
 std::pair<bool, Vec> projectionIntriangle(const Vec &v0, const Vec &v1, const Vec &v2,
-                                          const Vec &p, const double tolerance) {
+                                          const Vec &p, const float_t tolerance) {
 	Vec u = v1 - v0;
 	Vec v = v2 - v0;
 	Vec n = u.cross(v);
 	Vec w = p - v0;
-	double nsq = n.sqlength();
-	double l = u.cross(w).dot(n) / nsq;
-	double b = w.cross(v).dot(n) / nsq;
-	double a = 1.0 - l - b;
+	float_t nsq = n.sqlength();
+	float_t l = u.cross(w).dot(n) / nsq;
+	float_t b = w.cross(v).dot(n) / nsq;
+	float_t a = 1.0 - l - b;
 	return {0 - tolerance <= a && a <= 1.0 + tolerance && 0 - tolerance <= b &&
 	            b <= 1.0 + tolerance && 0 - tolerance <= l && l <= 1.0 + tolerance,
 	        a * v0 + b * v1 + l * v2};
 }
 
-Vec hsvToRgb(double h, double s, double v) {
-	double hh, p, q, t, ff;
+Vec hsvToRgb(float_t h, float_t s, float_t v) {
+	float_t hh, p, q, t, ff;
 	long i;
 	Vec out;
 
@@ -141,7 +136,7 @@ Vec hsvToRgb(double h, double s, double v) {
 	}
 	return out;
 }
-double dampingFromRatio(const double r, const double m, const double k) {
+float_t dampingFromRatio(const float_t r, const float_t m, const float_t k) {
 	return r * 2.0 * sqrt(m * k);  // for angular springs m is the moment of inertia
 }
 std::default_random_engine globalRand(std::random_device{}());
@@ -156,12 +151,12 @@ std::vector<std::string> splitStr(const std::string &s, char delim) {
 	return res;
 }
 
-double DEFAULT_CELL_DAMP_RATIO = 0.8;
-double DEFAULT_CELL_MASS = 1.0;
-double DEFAULT_CELL_RADIUS = 40.0;
-double DEFAULT_CELL_STIFFNESS = 45.0;
-double DEFAULT_CELL_ANG_STIFFNESS = 0.8;
-double MIN_CELL_ADH_LENGTH = 0.6;
-double MAX_CELL_ADH_LENGTH = 0.8;
-double ADH_THRESHOLD = 0.1;
+float_t DEFAULT_CELL_DAMP_RATIO = 0.8;
+float_t DEFAULT_CELL_MASS = 1.0;
+float_t DEFAULT_CELL_RADIUS = 40.0;
+float_t DEFAULT_CELL_STIFFNESS = 45.0;
+float_t DEFAULT_CELL_ANG_STIFFNESS = 0.8;
+float_t MIN_CELL_ADH_LENGTH = 0.6;
+float_t MAX_CELL_ADH_LENGTH = 0.8;
+float_t ADH_THRESHOLD = 0.1;
 }

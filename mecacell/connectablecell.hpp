@@ -27,18 +27,18 @@ template <typename Derived> class ConnectableCell : public Movable, public Orien
 	using ConnectionType = Connection<Derived *>;
 	using ModelConnectionType = CellModelConnection<Derived>;
 	bool dead = false;  // is the cell dead or alive ?
-	array<double, 3> color = {{0.75, 0.12, 0.07}};
-	double radius = DEFAULT_CELL_RADIUS;
-	double baseRadius = DEFAULT_CELL_RADIUS;
-	double stiffness = DEFAULT_CELL_STIFFNESS;
-	double dampRatio = DEFAULT_CELL_DAMP_RATIO;
-	double angularStiffness = DEFAULT_CELL_ANG_STIFFNESS;
+	array<float_t, 3> color = {{0.75, 0.12, 0.07}};
+	float_t radius = DEFAULT_CELL_RADIUS;
+	float_t baseRadius = DEFAULT_CELL_RADIUS;
+	float_t stiffness = DEFAULT_CELL_STIFFNESS;
+	float_t dampRatio = DEFAULT_CELL_DAMP_RATIO;
+	float_t angularStiffness = DEFAULT_CELL_ANG_STIFFNESS;
 	bool tested = false;  // has already been tested for collision
 	vector<ConnectionType *> connections;
 	vector<ModelConnectionType *> modelConnections;
 	vector<Derived *> connectedCells;  // TODO: try with an unordered_set (easier check for
 	                                   // already connected)
-	double pressure = 1.0;
+	float_t pressure = 1.0;
 	bool visible = true;
 
  public:
@@ -55,28 +55,28 @@ template <typename Derived> class ConnectableCell : public Movable, public Orien
 	      angularStiffness(c.angularStiffness),
 	      tested(false) {}
 
-	double getRadius() const { return radius; }
-	double getBaseRadius() const { return baseRadius; }
-	double getStiffness() const { return stiffness; }
-	double getColor(unsigned int i) const {
+	float_t getRadius() const { return radius; }
+	float_t getBaseRadius() const { return baseRadius; }
+	float_t getStiffness() const { return stiffness; }
+	float_t getColor(unsigned int i) const {
 		if (i < 3) return color[i];
 		return 0;
 	}
 	const std::vector<Derived *> &getConnectedCells() const { return connectedCells; }
 
-	double getPressure() const { return pressure; }
+	float_t getPressure() const { return pressure; }
 
 	void computePressure() {
-		double surface = 4.0 * M_PI * radius * radius;
+		float_t surface = 4.0 * M_PI * radius * radius;
 		pressure = totalForce / surface;
 	}
 
-	double getNormalizedPressure() const {
-		double sign = pressure >= 0 ? 1 : -1;
+	float_t getNormalizedPressure() const {
+		float_t sign = pressure >= 0 ? 1 : -1;
 		return 0.5 + sign * 0.5 * (1.0 - exp(-abs(10.0 * pressure)));
 	}
 
-	double getSqradius() const { return radius * radius; }
+	float_t getSqradius() const { return radius * radius; }
 	bool alreadyTested() const { return tested; }
 	int getNbConnections() const { return connections.size(); }
 
@@ -100,40 +100,40 @@ template <typename Derived> class ConnectableCell : public Movable, public Orien
 	 * main setters & getters
 	 *****************************/
 
-	void setBaseRadius(double r) { baseRadius = r; }
-	void setStiffness(double s) { stiffness = s; }
-	void setAngularStiffness(double s) { angularStiffness = s; }
-	void setRadius(double r) { radius = r; }
+	void setBaseRadius(float_t r) { baseRadius = r; }
+	void setStiffness(float_t s) { stiffness = s; }
+	void setAngularStiffness(float_t s) { angularStiffness = s; }
+	void setRadius(float_t r) { radius = r; }
 	void markAsTested() { tested = true; }
 	void markAsNotTested() { tested = false; }
-	double getBaseVolume() const {
+	float_t getBaseVolume() const {
 		return (4.0 / 3.0) * M_PI * baseRadius * baseRadius * baseRadius;
 	}
-	double getVolume() const { return (4.0 / 3.0) * M_PI * radius * radius * radius; }
-	double getRelativeVolume() const { return getVolume() / getBaseVolume(); }
-	double getDampRatio() const { return dampRatio; }
+	float_t getVolume() const { return (4.0 / 3.0) * M_PI * radius * radius * radius; }
+	float_t getRelativeVolume() const { return getVolume() / getBaseVolume(); }
+	float_t getDampRatio() const { return dampRatio; }
 
 	// return the connection length with another cell
 	// according to an adhesion coef (0 <= adh <= 1)
-	double getConnectionLength(const Derived *c, const double adh) const {
-		double l = radius + c->radius;
+	float_t getConnectionLength(const Derived *c, const float_t adh) const {
+		float_t l = radius + c->radius;
 		return getConnectionLength(l, adh);
 	}
 
-	static double getConnectionLength(const double l, const double adh) {
+	static float_t getConnectionLength(const float_t l, const float_t adh) {
 		if (adh > ADH_THRESHOLD)
 			return mix(MAX_CELL_ADH_LENGTH * l, MIN_CELL_ADH_LENGTH * l, adh);
 		return l;
 	}
 
-	void setVolume(double v) { setRadius(cbrt(v / (4.0 * M_PI / 3.0))); }
+	void setVolume(float_t v) { setRadius(cbrt(v / (4.0 * M_PI / 3.0))); }
 	Derived *selfptr() { return static_cast<Derived *>(this); }
 	Derived &self() { return static_cast<Derived &>(*this); }
 	const Derived &selfconst() const { return static_cast<const Derived &>(*this); }
 
 	// Don't forget to implement this method in the derived class
-	double getAdhesionWith(const Derived *d) { return self().getAdhesionWith(d); }
-	double getAdhesionWithModel(const string &) { return 0.7; }
+	float_t getAdhesionWith(const Derived *d) { return self().getAdhesionWith(d); }
+	float_t getAdhesionWithModel(const string &) { return 0.7; }
 
 	vector<ConnectionType *> &getRWConnections() { return connections; }
 	vector<ModelConnectionType *> &getRWModelConnections() { return modelConnections; }
@@ -151,8 +151,8 @@ template <typename Derived> class ConnectableCell : public Movable, public Orien
 	ConnectionType *connection(Derived *c) {
 		if (c != this) {
 			Vec AB = c->position - position;
-			double sqdist = AB.sqlength();
-			double sql = radius + c->radius;
+			float_t sqdist = AB.sqlength();
+			float_t sql = radius + c->radius;
 			sql *= sql;
 			// interpenetration
 			if (sqdist <= sql) {
@@ -165,7 +165,7 @@ template <typename Derived> class ConnectableCell : public Movable, public Orien
 						Derived *otherCell =
 						    con->getNode0() == selfptr() ? con->getNode1() : con->getNode0();
 						Vec AO = otherCell->getPosition() - position;
-						double AOdotAB = AO.dot(AB);
+						float_t AOdotAB = AO.dot(AB);
 						if (AOdotAB > 0) {
 							// Other cell's projection onto AB
 							Vec AP = AB * AOdotAB / sqdist;
@@ -184,14 +184,14 @@ template <typename Derived> class ConnectableCell : public Movable, public Orien
 						// a new connection. For the old connection, user should be able to tweak the
 						// coefficien through a
 						// updateConnectionParams(ConnectionType*) method.
-						double minAdh = (getAdhesionWith(c) + c->getAdhesionWith(selfptr())) * 0.5;
-						double l = getConnectionLength(c, minAdh);
-						double k =
+						float_t minAdh = (getAdhesionWith(c) + c->getAdhesionWith(selfptr())) * 0.5;
+						float_t l = getConnectionLength(c, minAdh);
+						float_t k =
 						    (stiffness * radius + c->stiffness * c->radius) / (radius + c->radius);
-						double dr =
+						float_t dr =
 						    (dampRatio * radius + c->dampRatio * c->radius) / (radius + c->radius);
-						//// double maxTeta = mix(0.0, M_PI / 2.0, minAdh);
-						double maxTeta = M_PI / 12.0;
+						//// float_t maxTeta = mix(0.0, M_PI / 2.0, minAdh);
+						float_t maxTeta = M_PI / 12.0;
 						ConnectionType *s = new ConnectionType(
 						    pair<Derived *, Derived *>(selfptr(), c),
 						    Spring(k, dampingFromRatio(dr, mass + c->mass, k), l),
@@ -211,7 +211,7 @@ template <typename Derived> class ConnectableCell : public Movable, public Orien
 						                    dampingFromRatio(dr, c->getMomentOfInertia() * 2.0,
 						                                     c->angularStiffness),
 						                    maxTeta)));
-						double contactSurface = M_PI * (sqdist + pow((radius + c->radius) / 2, 2));
+						float_t contactSurface = M_PI * (sqdist + pow((radius + c->radius) / 2, 2));
 						s->getFlex().first.setCurrentKCoef(contactSurface);
 						s->getFlex().second.setCurrentKCoef(contactSurface);
 						s->getTorsion().first.setCurrentKCoef(contactSurface);
@@ -225,8 +225,8 @@ template <typename Derived> class ConnectableCell : public Movable, public Orien
 		return nullptr;
 	}
 
-	double getMomentOfInertia() const { return 4.0 * mass * radius * radius; }
-	double getAngularStiffness() const { return angularStiffness; }
+	float_t getMomentOfInertia() const { return 4.0 * mass * radius * radius; }
+	float_t getAngularStiffness() const { return angularStiffness; }
 
 	// recomputes all connections sizes according to the the current size of the cell
 	// TODO : also change the stiffness / strength of a connection according to the adhesion
@@ -236,7 +236,7 @@ template <typename Derived> class ConnectableCell : public Movable, public Orien
 		for (auto &con : connections) {
 			Derived *otherCell =
 			    con->getNode0() == selfptr() ? con->getNode1() : con->getNode0();
-			double adhCoef =
+			float_t adhCoef =
 			    (getAdhesionWith(otherCell) + otherCell->getAdhesionWith(selfptr())) * 0.5;
 			con->setBaseLength(getConnectionLength(otherCell, adhCoef));
 		}
@@ -252,8 +252,8 @@ template <typename Derived> class ConnectableCell : public Movable, public Orien
 		return newC;
 	}
 
-	void grow(double qtty) {
-		double rv = getRelativeVolume() + qtty;
+	void grow(float_t qtty) {
+		float_t rv = getRelativeVolume() + qtty;
 		setVolume(getBaseVolume() * rv);
 		setMass(getBaseMass() * rv);
 		updateAllConnections();
@@ -330,14 +330,14 @@ template <typename Derived> class ConnectableCell : public Movable, public Orien
 	 *****************************/
 	void updateStats() { computePressure(); }
 
-	Derived *updateBehavior(double dt) { return self().updateBehavior(dt); }
+	Derived *updateBehavior(float_t dt) { return self().updateBehavior(dt); }
 
 	void die() { dead = true; }
 	bool isDead() { return dead; }
 
 	void randomColor() {
-		double r0 = 0.0001 * (rand() % 10000);
-		double r1 = 0.0001 * (rand() % 10000);
+		float_t r0 = 0.0001 * (rand() % 10000);
+		float_t r1 = 0.0001 * (rand() % 10000);
 		if (false) {
 			if (r0 < 1.0 / 3.0) {
 				/// green

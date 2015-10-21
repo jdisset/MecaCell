@@ -14,22 +14,22 @@ void Matrix4x4::translate(const Vec &v) {
 }
 
 void Matrix4x4::rotate(const Rotation<Vec> &r) {
-	double squ = r.n.x() * r.n.x();
-	double sqv = r.n.y() * r.n.y();
-	double sqw = r.n.z() * r.n.z();
-	double uv = r.n.x() * r.n.y();
-	double uw = r.n.x() * r.n.z();
-	double vw = r.n.y() * r.n.z();
-	double costeta = cos(r.teta);
-	double sinteta = sin(r.teta);
+	float_t squ = r.n.x() * r.n.x();
+	float_t sqv = r.n.y() * r.n.y();
+	float_t sqw = r.n.z() * r.n.z();
+	float_t uv = r.n.x() * r.n.y();
+	float_t uw = r.n.x() * r.n.z();
+	float_t vw = r.n.y() * r.n.z();
+	float_t costeta = cos(r.teta);
+	float_t sinteta = sin(r.teta);
 
 	Matrix4x4 rm(
-	    {{{{squ + (1.0 - squ) * costeta, uv * (1.0 - costeta) - r.n.z() * sinteta,
-	        uw * (1.0 - costeta) + r.n.y() * sinteta, 0}},
-	      {{uv * (1.0 - costeta) + r.n.z() * sinteta, sqv + (1.0 - sqv) * costeta,
-	        vw * (1.0 - costeta) - r.n.x() * sinteta, 0}},
-	      {{uw * (1.0 - costeta) - r.n.y() * sinteta,
-	        vw * (1.0 - costeta) + r.n.x() * sinteta, sqw + (1.0 - sqw) * costeta, 0}},
+	    {{{{squ + (1.0f - squ) * costeta, uv * (1.0f - costeta) - r.n.z() * sinteta,
+	        uw * (1.0f - costeta) + r.n.y() * sinteta, 0}},
+	      {{uv * (1.0f - costeta) + r.n.z() * sinteta, sqv + (1.0f - sqv) * costeta,
+	        vw * (1.0f - costeta) - r.n.x() * sinteta, 0}},
+	      {{uw * (1.0f - costeta) - r.n.y() * sinteta,
+	        vw * (1.0f - costeta) + r.n.x() * sinteta, sqw + (1.0f - sqw) * costeta, 0}},
 	      {{0, 0, 0, 1}}}});
 	*this = rm * (*this);
 }

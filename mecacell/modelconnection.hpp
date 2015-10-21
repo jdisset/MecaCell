@@ -30,8 +30,8 @@ struct SpaceConnectionPoint { // just a connection point with anything anywhere
 	Vec getAngularVelocity() { return Vec::zero(); }
 	Basis<Vec> getOrientation() { return Basis<Vec>(); }
 	Rotation<Vec> getOrientationRotation() { return Rotation<Vec>(); }
-	double getInertia() { return 1; }
-	void receiveForce(double, const Vec &, bool) {}
+	float_t getInertia() { return 1; }
+	void receiveForce(float_t, const Vec &, bool) {}
 	void receiveForce(const Vec &) {}
 	void receiveTorque(const Vec &) {}
 };
@@ -49,8 +49,8 @@ struct ModelConnectionPoint {
 	Vec getAngularVelocity() { return Vec::zero(); }
 	Basis<Vec> getOrientation() { return Basis<Vec>(); }
 	Rotation<Vec> getOrientationRotation() { return Rotation<Vec>(); }
-	double getInertia() { return 1; }
-	void receiveForce(double, const Vec &, bool) {}
+	float_t getInertia() { return 1; }
+	void receiveForce(float_t, const Vec &, bool) {}
 	void receiveForce(const Vec &) {}
 	void receiveTorque(const Vec &) {}
 };
@@ -61,10 +61,10 @@ template <typename Cell> struct CellModelConnection {
 	Model *model;
 	CSConnection anchor;  // slide and anchor, only angular
 	CMConnection bounce;  // always perpendicular, only classic spring
-	double maxTeta = 0.1; // this is for the anchor, and should always be smaller than the
+	float_t maxTeta = 0.1; // this is for the anchor, and should always be smaller than the
 	                      // actual connection's maxTeta
 
-	void computeForces(double dt) {
+	void computeForces(float_t dt) {
 		anchor.computeForces(dt);
 		bounce.computeForces(dt);
 	}

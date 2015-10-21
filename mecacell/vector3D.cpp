@@ -1,5 +1,4 @@
 #include "vector3D.h"
-
 #include <cmath>
 #include <functional>
 #include <iostream>
@@ -13,18 +12,9 @@
 using namespace std;
 namespace MecaCell {
 
-double Vector3D::dot(const Vector3D &v) const {
-	return coords[0] * v.coords[0] + coords[1] * v.coords[1] + coords[2] * v.coords[2];
-}
-
-Vector3D Vector3D::cross(const Vector3D &v) const {
-	return Vector3D(coords[1] * v.coords[2] - coords[2] * v.coords[1],
-	                coords[2] * v.coords[0] - coords[0] * v.coords[2],
-	                coords[0] * v.coords[1] - coords[1] * v.coords[0]);
-}
 
 void Vector3D::random() {
-	std::normal_distribution<double> nDist(0.0, 1.0);
+	std::normal_distribution<float_t> nDist(0.0, 1.0);
 	coords = {{nDist(globalRand), nDist(globalRand), nDist(globalRand)}};
 	normalize();
 }
@@ -35,8 +25,8 @@ Vector3D Vector3D::randomUnit() {
 	return v;
 }
 
-Vector3D Vector3D::deltaDirection(double amount) {
-	std::normal_distribution<double> nDist(0.0, amount);
+Vector3D Vector3D::deltaDirection(float_t amount) {
+	std::normal_distribution<float_t> nDist(0.0, amount);
 	return Vector3D(coords[0] + nDist(globalRand), coords[1] + nDist(globalRand),
 	                coords[2] + nDist(globalRand))
 	    .normalized();
@@ -48,73 +38,15 @@ bool Vector3D::isZero() const {
 	return (coords[0] == 0 && coords[1] == 0 && coords[2] == 0);
 }
 
-void Vector3D::operator/=(const double &d) {
-	for (int i = 0; i < 3; ++i) coords[i] /= d;
-}
-
-void Vector3D::operator*=(const double &d) {
-	for (int i = 0; i < 3; ++i) coords[i] *= d;
-}
-
-void Vector3D::operator+=(const Vector3D &v) {
-	for (int i = 0; i < 3; ++i) coords[i] += v.coords[i];
-}
-
-Vector3D Vector3D::operator+(const Vector3D &v) const {
-	return Vector3D(coords[0] + v.coords[0], coords[1] + v.coords[1],
-	                coords[2] + v.coords[2]);
-}
-Vector3D Vector3D::operator-(const Vector3D &v) const {
-	return Vector3D(coords[0] - v.coords[0], coords[1] - v.coords[1],
-	                coords[2] - v.coords[2]);
-}
-Vector3D Vector3D::operator-(const double &v) const {
-	return Vector3D(coords[0] - v, coords[1] - v, coords[2] - v);
-}
-Vector3D Vector3D::operator+(const double &v) const {
-	return Vector3D(coords[0] + v, coords[1] + v, coords[2] + v);
-}
-Vector3D Vector3D::operator/(const double &s) const {
-	return Vector3D(coords[0] / s, coords[1] / s, coords[2] / s);
-}
-Vector3D Vector3D::operator/(const Vector3D &v) const {
-	return Vector3D(coords[0] / v.coords[0], coords[1] / v.coords[1],
-	                coords[2] / v.coords[2]);
-}
-Vector3D Vector3D::operator-() const {
-	return Vector3D(-coords[0], -coords[1], -coords[2]);
-}
-
-bool Vector3D::operator>=(const double &v) const {
-	return (coords[0] >= v && coords[1] >= v && coords[2] >= v);
-}
-bool Vector3D::operator<=(const double &v) const {
-	return (coords[0] <= v && coords[1] <= v && coords[2] <= v);
-}
-bool Vector3D::operator>(const double &v) const {
-	return (coords[0] > v && coords[1] > v && coords[2] > v);
-}
-bool Vector3D::operator<(const double &v) const {
-	return (coords[0] < v && coords[1] < v && coords[2] < v);
-}
-
-double Vector3D::length() const {
+float_t Vector3D::length() const {
 	return sqrt(coords[0] * coords[0] + coords[1] * coords[1] + coords[2] * coords[2]);
 }
-double Vector3D::sqlength() const {
-	return (coords[0] * coords[0] + coords[1] * coords[1] + coords[2] * coords[2]);
+float_t Vector3D::sqlength() const {
+	return coords[0] * coords[0] + coords[1] * coords[1] + coords[2] * coords[2];
 }
 
-double Vector3D::getX() const { return coords[0]; }
-double Vector3D::getY() const { return coords[1]; }
-double Vector3D::getZ() const { return coords[2]; }
+void Vector3D::normalize() { *this /= length(); }
 
-void Vector3D::normalize() { *this = *this / length(); }
-
-Vector3D Vector3D::normalized() const {
-	double l = length();
-	return Vector3D(coords[0] / l, coords[1] / l, coords[2] / l);
-}
 
 std::string Vector3D::toString() {
 	std::stringstream s;
@@ -134,39 +66,6 @@ std::size_t Vector3D::getHash() const {
 	return getHash(coords[0], getHash(coords[1], coords[2]));
 }
 
-void Vector3D::iterateTo(Vector3D const &v,
-                         const std::function<void(const Vector3D &)> &fun, int inc) {
-	int im, iM, jm, jM, km, kM;
-	if (coords[0] < v.coords[0]) {
-		im = double2int(coords[0]);
-		iM = double2int(v.coords[0]);
-	} else {
-		im = double2int(v.coords[0]);
-		iM = double2int(coords[0]);
-	}
-	if (coords[1] < v.coords[1]) {
-		jm = double2int(coords[1]);
-		jM = double2int(v.coords[1]);
-	} else {
-		jm = double2int(v.coords[1]);
-		jM = double2int(coords[1]);
-	}
-	if (coords[2] < v.coords[2]) {
-		km = double2int(coords[2]);
-		kM = double2int(v.coords[2]);
-	} else {
-		km = double2int(v.coords[2]);
-		kM = double2int(coords[2]);
-	}
-	for (int i = im; i <= iM; i += inc) {
-		for (int j = jm; j <= jM; j += inc) {
-			for (int k = km; k <= kM; k += inc) {
-				fun(Vector3D(i, j, k));
-			}
-		}
-	}
-}
-
 Vector3D Vector3D::ortho() const {
 	if (coords[1] == 0 && coords[0] == 0) {
 		return Vector3D(0, 1, 0);
@@ -181,15 +80,15 @@ Vector3D Vector3D::ortho(Vector3D v) const {
 	return ortho();
 }
 
-Vector3D Vector3D::rotated(const double &angle, const Vector3D &vec) const {
-	double halfangle = angle * 0.5;
+Vector3D Vector3D::rotated(const float_t &angle, const Vector3D &vec) const {
+	float_t halfangle = angle * 0.5;
 	Vector3D v = vec * sin(halfangle);
 	Vector3D vcV = 2.0 * v.cross(*this);
 	return *this + cos(halfangle) * vcV + v.cross(vcV);
 }
 
 Vector3D Vector3D::rotated(const Rotation<Vector3D> &r) const {
-	double halfangle = r.teta * 0.5;
+	float_t halfangle = r.teta * 0.5;
 	Vector3D v = r.n * sin(halfangle);
 	Vector3D vcV = 2.0 * v.cross(*this);
 	return *this + cos(halfangle) * vcV + v.cross(vcV);
@@ -209,7 +108,7 @@ Rotation<Vector3D> Vector3D::addRotations(const Rotation<Vector3D> &R0,
 }
 
 void Vector3D::addAsAngularVelocity(const Vector3D &v, Rotation<Vector3D> &r) {
-	double dTeta = v.length();
+	float_t dTeta = v.length();
 	Vector3D n0(0, 1, 0);
 	if (dTeta > 0) {
 		n0 = v / dTeta;
@@ -217,8 +116,8 @@ void Vector3D::addAsAngularVelocity(const Vector3D &v, Rotation<Vector3D> &r) {
 	r = addRotations(r, Rotation<Vector3D>(n0, dTeta));
 }
 
-double Vector3D::rayCast(const Vector3D &o, const Vector3D &n, const Vector3D &p,
-                         const Vector3D &r) {
+float_t Vector3D::rayCast(const Vector3D &o, const Vector3D &n, const Vector3D &p,
+                          const Vector3D &r) {
 	// returns l such that p + l.r lies on the plane defined bcoords[1] its normal n and an
 	// offset
 	// o
@@ -226,7 +125,7 @@ double Vector3D::rayCast(const Vector3D &o, const Vector3D &n, const Vector3D &p
 	// not face the
 	// plane
 	// l = 0 means that the racoords[1] is parallel to the plane or that p is on the plane
-	double nr = n.dot(r);
+	float_t nr = n.dot(r);
 	return (nr == 0) ? 0 : n.dot(o - p) / nr;
 }
 
@@ -246,7 +145,7 @@ Vector3D Vector3D::getProjection(const Vector3D &origin, const Vector3D &B,
 
 Rotation<Vector3D> Vector3D::getRotation(const Vector3D &v0, const Vector3D &v1) {
 	Rotation<Vector3D> res;
-	res.teta = acos(min(1.0, max(-1.0, v0.dot(v1))));
+	res.teta = acos(min<float_t>(1.0, max<float_t>(-1.0, v0.dot(v1))));
 	Vector3D cross = v0.cross(v1);
 	if (cross.sqlength() == 0) {
 		cross = Vector3D(0, 1, 0);
@@ -270,21 +169,4 @@ Rotation<Vector3D> Vector3D::getRotation(const Vector3D &X0, const Vector3D &Y0,
 	return qres.toAxisAngle();
 }
 
-Vector3D operator*(const Vector3D &v, const double &s) {
-	return Vector3D(v.coords[0] * s, v.coords[1] * s, v.coords[2] * s);
-}
-Vector3D operator*(const double &s, const Vector3D &v) {
-	return Vector3D(v.coords[0] * s, v.coords[1] * s, v.coords[2] * s);
-}
-
-bool operator==(const Vector3D &a, const Vector3D &b) {
-	return (a.coords[0] == b.coords[0] && a.coords[1] == b.coords[1] &&
-	        a.coords[2] == b.coords[2]);
-}
-bool operator!=(const Vector3D &a, const Vector3D &b) { return !operator==(a, b); }
-
-ostream &operator<<(ostream &out, const Vector3D &v) {
-	out << "(" << v.coords[0] << ", " << v.coords[1] << ", " << v.coords[2] << ")";
-	return out;
-}
 }

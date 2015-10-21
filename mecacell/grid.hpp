@@ -14,13 +14,13 @@ using namespace std;
 namespace MecaCell {
 template <typename O> class Grid {
  private:
-	double cellSize;  // actually it's 1/cellSize, just so we can multiply
+	float_t cellSize;  // actually it's 1/cellSize, just so we can multiply
 	unordered_map<Vec, unordered_set<O>> um;
 
  public:
-	Grid(double cs) : cellSize(1.0 / cs) {}
+	Grid(float_t cs) : cellSize(1.0 / cs) {}
 
-	double getCellSize() const { return 1.0 / cellSize; }
+	float_t getCellSize() const { return 1.0 / cellSize; }
 	const unordered_map<Vec, unordered_set<O>> &getContent() const { return um; }
 
 	array<vector<vector<O>>, 8> getThreadSafeGrid() const {
@@ -41,11 +41,17 @@ template <typename O> class Grid {
 	}
 
 	void insert(const O &obj) {
-		Vec center = ptr(obj)->getPosition() * cellSize;
-		double radius = ptr(obj)->getRadius() * cellSize;
-		Vec minCorner = center - radius;
-		Vec maxCorner = center + radius;
-		minCorner.iterateTo(maxCorner, [&](Vec v) { um[v].insert(obj); });
+		const Vec &center = ptr(obj)->getPosition();
+		const float_t &radius = ptr(obj)->getRadius();
+		Vec minCorner = getIndexFromPosition(center - radius);
+		Vec maxCorner = getIndexFromPosition(center + radius);
+		for (double i = minCorner.x(); i <= maxCorner.x(); ++i) {
+			for (double j = minCorner.y(); j <= maxCorner.y(); ++j) {
+				for (double k = minCorner.z(); k <= maxCorner.z(); ++k) {
+					um[Vector3D(i, j, k)].insert(obj);
+				}
+			}
+		}
 	}
 
 	void insert(const O &obj, const Vec &p0, const Vec &p1,
@@ -54,7 +60,7 @@ template <typename O> class Grid {
 		        min(p0.z(), min(p1.z(), p2.z())));
 		Vec trb(max(p0.x(), max(p1.x(), p2.x())), max(p0.y(), max(p1.y(), p2.y())),
 		        max(p0.z(), max(p1.z(), p2.z())));
-		double cs = 1.0 / cellSize;
+		float_t cs = 1.0 / cellSize;
 		getIndexFromPosition(blf).iterateTo(getIndexFromPosition(trb) + 1, [&](const Vec &v) {
 			Vec center = cs * v;
 			std::pair<bool, Vec> projec = projectionIntriangle(p0, p1, p2, center);
@@ -66,15 +72,15 @@ template <typename O> class Grid {
 		});
 	}
 
-	Vec getIndexFromPosition(const Vec &v) {
+	Vec getIndexFromPosition(const Vec &v) const {
 		Vec res = v * cellSize;
 		return Vec(floor(res.x()), floor(res.y()), floor(res.z()));
 	}
 
-	// set<O> retrieveUnique(const Vec &coord, double r) const {
+	// set<O> retrieveUnique(const Vec &coord, float_t r) const {
 	// set<O> res;
 	// Vec center = coord * cellSize;
-	// double radius = r * cellSize;
+	// float_t radius = r * cellSize;
 	// Vec minCorner = center - radius;
 	// Vec maxCorner = center + radius;
 	//// TODO check if faster with a set (uniques...) and by removing  selfcollision
@@ -88,23 +94,25 @@ template <typename O> class Grid {
 	// return res;
 	//}
 
-	unordered_set<O> retrieve(const Vec &coord, double r) const {
+	unordered_set<O> retrieve(const Vec &center, float_t radius) const {
 		unordered_set<O> res;
-		Vec center = coord * cellSize;
-		double radius = r * cellSize;
-		Vec minCorner = center - radius;
-		Vec maxCorner = center + radius;
-		// TODO check if faster with a set (uniques...) and by removing  selfcollision
-		minCorner.iterateTo(maxCorner, [&](const Vec &v) {
-			if (um.count(v)) res.insert(um.at(v).begin(), um.at(v).end());
-		});
+		Vec minCorner = getIndexFromPosition(center - radius);
+		Vec maxCorner = getIndexFromPosition(center + radius);
+		for (double i = minCorner.x(); i <= maxCorner.x(); ++i) {
+			for (double j = minCorner.y(); j <= maxCorner.y(); ++j) {
+				for (double k = minCorner.z(); k <= maxCorner.z(); ++k) {
+					const Vector3D v(i, j, k);
+					if (um.count(v)) res.insert(um.at(v).begin(), um.at(v).end());
+				}
+			}
+		}
 		return res;
 	}
 
 	unordered_set<O> retrieve(const O &obj) const {
 		unordered_set<O> res;
 		Vec center = ptr(obj)->getPosition() * cellSize;
-		double radius = ptr(obj)->getRadius() * cellSize;
+		float_t radius = ptr(obj)->getRadius() * cellSize;
 		Vec minCorner = center - radius;
 		Vec maxCorner = center + radius;
 		minCorner.iterateTo(maxCorner, [this, &res](const Vec &v) {
@@ -113,25 +121,25 @@ template <typename O> class Grid {
 		return res;
 	}
 
-	double computeSurface() const {
+	float_t computeSurface() const {
 		if (Vec::dimension == 3) {
-			double res = 0.0;  // first = surface, second = volume;
-			double faceArea = pow(1.0 / cellSize, 2);
+			float_t res = 0.0;  // first = surface, second = volume;
+			float_t faceArea = pow(1.0 / cellSize, 2);
 			for (auto &i : um) {
-				res += (6.0 - static_cast<double>(getNbNeighbours(i.first))) * faceArea;
+				res += (6.0 - static_cast<float_t>(getNbNeighbours(i.first))) * faceArea;
 			}
 			return res;
 		}
-		return pow(1.0 / cellSize, 2) * static_cast<double>(um.size());
+		return pow(1.0 / cellSize, 2) * static_cast<float_t>(um.size());
 	}
 
-	double getVolume() const {
+	float_t getVolume() const {
 		if (Vec::dimension == 3)
-			return pow(1.0 / cellSize, 3) * static_cast<double>(um.size());
+			return pow(1.0 / cellSize, 3) * static_cast<float_t>(um.size());
 		return 0.0;
 	}
 
-	double computeSphericity() const {
+	float_t computeSphericity() const {
 		return (cbrt(M_PI) * (pow(6.0 * getVolume(), (2.0 / 3.0)))) / computeSurface();
 	}
 
