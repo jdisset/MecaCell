@@ -3,9 +3,7 @@ import QtQuick.Controls 1.2
 import QtQuick.Controls.Styles 1.3
 
 Button {
-	property color pressedColor: "#333"
 	property color notpressedColor: "#00000000"
-	property color hoveredColor: "#20000000"
 	property string menu: ""
 	property string name : ""
 
@@ -28,7 +26,7 @@ Button {
 		background: Rectangle {
 			border.width: 1
 			border.color: "#90FFFFFF"
-			color: control.hovered ? hoveredColor : (control.pressed ? pressedColor : notpressedColor)
+			color: control.hovered ? Qt.darker(notpressedColor,1.15) :  (control.pressed ? Qt.darker(notpressedColor,1.3): notpressedColor)
 			radius: 5
 		}
 	}

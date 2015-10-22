@@ -3,6 +3,72 @@
 
 namespace MecaCell {
 
+vector<Vec> getSpherePointsPacking(unsigned int n) {
+	// we simulate n mutually repulsive points on a sphere
+	vector<Vec> p;
+	double minl = 0;
+	double prevminl = 0;
+	double avgDelta = 1;
+	double prevAvgDelta = 1;
+	double dt = 0.5;
+	p.reserve(n);
+	for (size_t i = 0; i < n; ++i) {
+		Vec r = Vec::randomUnit();
+		p.push_back(r);
+	}
+
+	int cpt = 0;
+	do {
+		++cpt;
+		minl = updateElectrostaticPointsOnSphere(p, dt);
+		if (minl - prevminl < 0) {
+			dt *= 0.7;
+		}
+		avgDelta = mix(prevAvgDelta, minl - prevminl, 0.7);
+		prevAvgDelta = avgDelta;
+		prevminl = minl;
+	} while (dt > 1e-5 && cpt < 1000 && abs(avgDelta) / dt > 0.00001);
+	return p;
+}
+
+double updateElectrostaticPointsOnSphere(vector<Vec> &p, double dt) {
+	vector<Vec> f(p.size());
+	double maxF = 0;
+	for (size_t i = 0; i < p.size(); ++i) {
+		Vec force;
+		for (size_t j = 0; j < p.size(); ++j) {
+			if (i != j) {
+				Vec unprojected = p[i] - p[j];
+				double sql = unprojected.sqlength();
+				unprojected /= sql;
+				force += (unprojected - unprojected.dot(p[i]) * p[i]);
+			}
+		}
+		double fIntensity = force.sqlength();
+		if (fIntensity > maxF) maxF = fIntensity;
+		f[i] = force;
+	}
+	maxF = sqrt(maxF);
+	double totalDisplacement = 0;
+	// now we update the position of each point;
+	for (size_t i = 1; i < p.size(); ++i) {
+		Vec pprev = p[i];
+		p[i] += f[i] * dt;
+		p[i].normalize();
+		totalDisplacement += (pprev - p[i]).length();
+	}
+	double minminsql = 10000;
+	for (size_t i = 0; i < p.size(); ++i) {
+		double minsql = 10000;
+		for (size_t j = i + 1; j < p.size(); ++j) {
+			double sql = (p[i] - p[j]).sqlength();
+			if (sql < minsql) minsql = sql;
+		}
+		if (minsql < minminsql) minminsql = minsql;
+	}
+	return sqrt(minminsql);
+}
+
 float_t closestDistToTriangleEdge(const Vec &v0, const Vec &v1, const Vec &v2,
                                   const Vec &p) {
 	Vec a = v1 - v0;

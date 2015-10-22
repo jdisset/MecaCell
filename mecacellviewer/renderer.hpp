@@ -548,10 +548,10 @@ class Renderer : public SignalSlotRenderer {
 		       std::function<void(Renderer<Scenario, Plugins...> *)> c)
 		    : name(n), menu(m), label(l), onClicked(c){};
 		bool updt = true;
-		void setLabel(const std::string &l) {
-			label = QString::fromStdString(l);
-			updt = true;
-		}
+		//void setLabel(const std::string &l) {
+			//label = QString::fromStdString(l);
+			//updt = true;
+		//}
 		void setLabel(const QString &l) {
 			label = l;
 			updt = true;

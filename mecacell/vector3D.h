@@ -16,9 +16,17 @@ class Vector3D {
 
 	static const int dimension = 3;
 	inline Vector3D(float_t a, float_t b, float_t c) : coords{{a, b, c}} {}
-	Vector3D() : coords{{0, 0, 0}} {}
+	inline Vector3D() : coords{{0, 0, 0}} {}
 	inline explicit Vector3D(float_t a) : coords{{a, a, a}} {}
 	inline explicit Vector3D(std::array<float_t, 3> c) : coords(c) {}
+
+	inline Vector3D(const Vector3D &v) : coords(v.coords) {}
+	inline Vector3D(Vector3D &&v) : coords(std::move(v.coords)) {}
+	Vector3D &operator=(const Vector3D &other) {
+		if (&other == this) return *this;
+		coords = other.coords;
+		return *this;
+	}
 
 	inline float_t dot(const Vector3D &v) const {
 		return coords[0] * v.coords[0] + coords[1] * v.coords[1] + coords[2] * v.coords[2];
@@ -111,7 +119,7 @@ class Vector3D {
 	                       const Vector3D &r);
 
 	void normalize();
-	inline const Vector3D normalized() const { return *this / length(); }
+	inline const Vector3D normalized() const { return Vector3D(*this / length()); }
 
 	std::string toString();
 	static int getHash(int a, int b);

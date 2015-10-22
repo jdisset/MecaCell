@@ -15,6 +15,7 @@
 #include "connection.h"
 #include "modelconnection.hpp"
 #include "model.h"
+#include "surfacecontrolpoint.hpp"
 
 #define CUBICROOT2 1.25992104989
 #define VOLUMEPI 0.23873241463  // 1/(4/3*pi)
@@ -26,6 +27,8 @@ template <typename Derived> class ConnectableCell : public Movable, public Orien
  protected:
 	using ConnectionType = Connection<Derived *>;
 	using ModelConnectionType = CellModelConnection<Derived>;
+	using SCP = SurfaceControlPoint<Derived>;
+
 	bool dead = false;  // is the cell dead or alive ?
 	array<float_t, 3> color = {{0.75, 0.12, 0.07}};
 	float_t radius = DEFAULT_CELL_RADIUS;
@@ -38,6 +41,7 @@ template <typename Derived> class ConnectableCell : public Movable, public Orien
 	vector<ModelConnectionType *> modelConnections;
 	vector<Derived *> connectedCells;  // TODO: try with an unordered_set (easier check for
 	                                   // already connected)
+	vector<SCP> scp;
 	float_t pressure = 1.0;
 	bool visible = true;
 
@@ -181,7 +185,8 @@ template <typename Derived> class ConnectableCell : public Movable, public Orien
 					if (ok) {
 						// TODO: store adhesion with each connection. Each call to getAdhesionWith
 						// should only be for
-						// a new connection. For the old connection, user should be able to tweak the
+						// a new connection. For the old connection, user should be able to tweak
+						// the
 						// coefficien through a
 						// updateConnectionParams(ConnectionType*) method.
 						float_t minAdh = (getAdhesionWith(c) + c->getAdhesionWith(selfptr())) * 0.5;
@@ -229,7 +234,8 @@ template <typename Derived> class ConnectableCell : public Movable, public Orien
 	float_t getAngularStiffness() const { return angularStiffness; }
 
 	// recomputes all connections sizes according to the the current size of the cell
-	// TODO : also change the stiffness / strength of a connection according to the adhesion
+	// TODO : also change the stiffness / strength of a connection according to the
+	// adhesion
 	// area
 	//  (maybe directly from World?)
 	void updateAllConnections() {

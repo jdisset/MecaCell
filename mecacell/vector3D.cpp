@@ -12,7 +12,6 @@
 using namespace std;
 namespace MecaCell {
 
-
 void Vector3D::random() {
 	std::normal_distribution<float_t> nDist(0.0, 1.0);
 	coords = {{nDist(globalRand), nDist(globalRand), nDist(globalRand)}};
@@ -46,7 +45,6 @@ float_t Vector3D::sqlength() const {
 }
 
 void Vector3D::normalize() { *this /= length(); }
-
 
 std::string Vector3D::toString() {
 	std::stringstream s;
@@ -168,5 +166,4 @@ Rotation<Vector3D> Vector3D::getRotation(const Vector3D &X0, const Vector3D &Y0,
 	qres.normalize();
 	return qres.toAxisAngle();
 }
-
 }
