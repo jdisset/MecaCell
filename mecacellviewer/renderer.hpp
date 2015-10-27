@@ -2,6 +2,7 @@
 #define RENDERER_HPP
 #include "slotsignalbase.h"
 #include "cellgroup.hpp"
+#include "deformablecellgroup.hpp"
 #include "connectionsgroup.hpp"
 #include "camera.hpp"
 #include "model.hpp"
@@ -48,7 +49,7 @@ class Renderer : public SignalSlotRenderer {
 	// Visual elements
 	bool fullscreenMode = false, fullscreenModeToggled = false, skyboxEnabled = true;
 	Camera camera;
-	CellGroup<Cell> cells;
+	DeformableCellGroup<Cell> cells;
 	ConnectionsGroup connections;
 	Skybox skybox;
 	unique_ptr<QOpenGLFramebufferObject> ssaoFBO, msaaFBO, finalFBO, fsaaFBO;
@@ -83,7 +84,6 @@ class Renderer : public SignalSlotRenderer {
 	int menuSize = 200;
 	bool worldUpdate = true;
 	bool loopStep = true;
-	bool cut = false;
 	bool takeScreen = false;
 	string screenName;
 	colorMode cMode;
@@ -119,7 +119,6 @@ class Renderer : public SignalSlotRenderer {
 			loopStep = false;
 		}
 
-		cells.cut = cut;
 		FSAA_COEF = screenCoef == 2.0 ? 0.5 : 1.0;
 
 		processEvents();
@@ -420,9 +419,6 @@ class Renderer : public SignalSlotRenderer {
 		if (pressedKeys.count(Qt::Key_Right) || pressedKeys.count(Qt::Key_D)) {
 			camera.right(viewDt);
 		}
-		if (inputKeys.count(Qt::Key_C)) {
-			cut = !cut;
-		}
 
 		for (auto &bName : clickedButtons) {
 			if (buttonMap.count(bName)) {
@@ -548,9 +544,9 @@ class Renderer : public SignalSlotRenderer {
 		       std::function<void(Renderer<Scenario, Plugins...> *)> c)
 		    : name(n), menu(m), label(l), onClicked(c){};
 		bool updt = true;
-		//void setLabel(const std::string &l) {
-			//label = QString::fromStdString(l);
-			//updt = true;
+		// void setLabel(const std::string &l) {
+		// label = QString::fromStdString(l);
+		// updt = true;
 		//}
 		void setLabel(const QString &l) {
 			label = l;

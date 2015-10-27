@@ -1,17 +1,19 @@
-#ifndef CELLGROUP_HPP
-#define CELLGROUP_HPP
+#ifndef DEFORMABLECELLGROUP_HPP
+#define DEFORMABLECELLGROUP_HPP
 #include "viewtools.h"
+#include "primitives/deformablesphere.hpp"
 #include "primitives/sphere.hpp"
 
 namespace MecacellViewer {
-template <typename C> class CellGroup {
+
+template <typename C> class DeformableCellGroup {
 	QOpenGLShaderProgram shader;
 	unique_ptr<QOpenGLTexture> normalMap = nullptr;
-	IcoSphere sphere;
+	DeformableSphere sphere;
 
  public:
 	cellMode drawMode = plain;
-	CellGroup() {}
+	DeformableCellGroup() : sphere(150) {}
 
 	void load() {
 		shader.addShaderFromSourceCode(QOpenGLShader::Vertex,
@@ -33,21 +35,21 @@ template <typename C> class CellGroup {
 		if (cells.size() > 0) {
 			shader.bind();
 			sphere.vao.bind();
+			auto newvert = sphere.vert;
+			// for (auto &v : newvert) {
+			// v *= abs(QVector3D::dotProduct(QVector3D(0, 1, 0), v));
+			//}
+			sphere.update(newvert, shader);
 			normalMap->bind(0);
 			GL->glActiveTexture(GL_TEXTURE0);
 			GL->glBindTexture(GL_TEXTURE_2D, normalMap->textureId());
 			shader.setUniformValue(shader.uniformLocation("nmap"), 0);
 			shader.setUniformValue(shader.uniformLocation("projection"), projection);
 			shader.setUniformValue(shader.uniformLocation("view"), view);
-			vector<C *> sortedCells = cells;
 			decltype((*cells.begin())->getPosition()) viewVec(viewV.x(), viewV.y(), viewV.z());
 			decltype((*cells.begin())->getPosition()) camVec(camPos.x(), camPos.y(),
 			                                                 camPos.z());
-			std::sort(sortedCells.begin(), sortedCells.end(), [&](C *a, C *b) {
-				return (a->getPosition() - camVec).sqlength() >
-				       (b->getPosition() - camVec).sqlength();
-			});
-			for (auto &c : sortedCells) {
+			for (auto &c : cells) {
 				if (c->getVisible()) {
 					QMatrix4x4 model;
 					double radius = c->getRadius();

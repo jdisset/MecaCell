@@ -46,7 +46,8 @@ std::pair<bool, Vec> rayInTriangle(const Vec &v0, const Vec &v1, const Vec &v2,
                                    const float_t tolerance = 0.0);
 
 vector<Vec> getSpherePointsPacking(unsigned int);
-double updateElectrostaticPointsOnSphere(vector<Vec> &p, double dt = 1);
+std::pair<double, double> updateElectrostaticPointsOnSphere(vector<Vec> &p,
+                                                            double dt = 1);
 
 Vec hsvToRgb(float_t h, float_t s, float_t v);
 extern std::default_random_engine globalRand;

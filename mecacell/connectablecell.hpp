@@ -41,7 +41,7 @@ template <typename Derived> class ConnectableCell : public Movable, public Orien
 	vector<ModelConnectionType *> modelConnections;
 	vector<Derived *> connectedCells;  // TODO: try with an unordered_set (easier check for
 	                                   // already connected)
-	vector<SCP> scp;
+	vector<SCP> scp;                   // surface control points
 	float_t pressure = 1.0;
 	bool visible = true;
 
@@ -57,18 +57,50 @@ template <typename Derived> class ConnectableCell : public Movable, public Orien
 	      stiffness(c.stiffness),
 	      dampRatio(c.dampRatio),
 	      angularStiffness(c.angularStiffness),
-	      tested(false) {}
+	      tested(false),
+	      scp(c.scp) {}
 
-	float_t getRadius() const { return radius; }
-	float_t getBaseRadius() const { return baseRadius; }
-	float_t getStiffness() const { return stiffness; }
-	float_t getColor(unsigned int i) const {
+	float_t getMembraneDistance(const Vec &d) const {
+		/*
+		 * Returns the membrane distance from the center
+		 * of this cell in the given direction
+		 */
+		// result is a mix bewtween the membrane's rest equation (e.g a sphere)
+		// and a linear interpolation between the k-nearests scp. Proportion btwn
+		// these 2 parts is given by the distance btwn d and the nearests scp
+		// and the scps influence radii (which is a function of the number of scps)
+		// /!\ Careful with non-convex stuff... TODO: try non-convex cases
+		// IDEA: maybe use scp.restDist instead of getRadius(), so that you can have
+		// rest shapes controlled by SCPs.
+		if (scp.size() == 0) return getRadius();
+		double dist = 0;
+		double dotProductSum = 0;  //
+		double dotProductThreshold = 2.0 * (1.0 - 1.0 / (double)scp.size());
+		for (const auto &s : scp) {
+			double dp = d.dot(s.direction);
+			if (dp > dotProductThreshold) {
+				dotProductSum += dp;
+				dist += s.currentDist * dp;
+			}
+		}
+		if (dotProductSum > 0)
+			return dist / dotProductSum;
+		else
+			return getRadius();
+	};
+
+	inline float_t getRadius() const { return radius; }
+	inline float_t getBaseRadius() const { return baseRadius; }
+	inline float_t getStiffness() const { return stiffness; }
+	inline float_t getColor(unsigned int i) const {
 		if (i < 3) return color[i];
 		return 0;
 	}
-	const std::vector<Derived *> &getConnectedCells() const { return connectedCells; }
+	inline const std::vector<Derived *> &getConnectedCells() const {
+		return connectedCells;
+	}
 
-	float_t getPressure() const { return pressure; }
+	inline float_t getPressure() const { return pressure; }
 
 	void computePressure() {
 		float_t surface = 4.0 * M_PI * radius * radius;
@@ -110,9 +142,11 @@ template <typename Derived> class ConnectableCell : public Movable, public Orien
 	void setRadius(float_t r) { radius = r; }
 	void markAsTested() { tested = true; }
 	void markAsNotTested() { tested = false; }
+
 	float_t getBaseVolume() const {
 		return (4.0 / 3.0) * M_PI * baseRadius * baseRadius * baseRadius;
 	}
+
 	float_t getVolume() const { return (4.0 / 3.0) * M_PI * radius * radius * radius; }
 	float_t getRelativeVolume() const { return getVolume() / getBaseVolume(); }
 	float_t getDampRatio() const { return dampRatio; }

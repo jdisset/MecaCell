@@ -1,5 +1,6 @@
 #include "tools.h"
 #include <sstream>
+#include <utility>
 
 namespace MecaCell {
 
@@ -10,38 +11,58 @@ vector<Vec> getSpherePointsPacking(unsigned int n) {
 	double prevminl = 0;
 	double avgDelta = 1;
 	double prevAvgDelta = 1;
-	double dt = 0.5;
+	double dt = 2.0 / sqrt(static_cast<double>(n));
 	p.reserve(n);
-	for (size_t i = 0; i < n; ++i) {
-		Vec r = Vec::randomUnit();
-		p.push_back(r);
+	double maxD = sqrt((4.0 * M_PI / static_cast<double>(n)) / M_PI);
+
+	// init with golden spiral
+	double inc = M_PI * (3.0 - sqrt(5.0));
+	double off = 2.0 / (double)n;
+	for (unsigned int i = 0; i < n; ++i) {
+		double y = i * off - 1.0 + (off * 0.5);
+		double r = sqrt(1.0 - y * y);
+		double phi = i * inc;
+		p.push_back(Vec(cos(phi) * r, y, sin(phi) * r).normalized());
 	}
 
+	// then perfect with a few electrostatic repulsion iterations
 	int cpt = 0;
+	double prevExactDelta = 0;
+	double exactDelta = 0;
 	do {
 		++cpt;
-		minl = updateElectrostaticPointsOnSphere(p, dt);
-		if (minl - prevminl < 0) {
-			dt *= 0.7;
+		auto minlAndNewDt = updateElectrostaticPointsOnSphere(p, dt);
+		double minl = minlAndNewDt.first;
+		dt = minlAndNewDt.second;
+		prevExactDelta = exactDelta;
+		exactDelta = minl - prevminl;
+		if (exactDelta < 0) {
+			dt *= 0.8;
 		}
-		avgDelta = mix(prevAvgDelta, minl - prevminl, 0.7);
+		avgDelta = mix(prevAvgDelta, exactDelta, 0.7);
 		prevAvgDelta = avgDelta;
 		prevminl = minl;
-	} while (dt > 1e-5 && cpt < 1000 && abs(avgDelta) / dt > 0.00001);
+		cerr << "cpt = " << cpt << ", minl = " << minl << " avgDelta = " << avgDelta
+		     << ", dt = " << dt << ", abs(avgDelta) / dt = " << abs(avgDelta) / dt << endl;
+	} while (cpt < 10 || ((prevExactDelta > 0 || exactDelta > 0) && dt > 0.000001 &&
+	                      cpt < 200 && abs(avgDelta) / dt > 0.001 * maxD));
 	return p;
 }
 
-double updateElectrostaticPointsOnSphere(vector<Vec> &p, double dt) {
-	vector<Vec> f(p.size());
+std::pair<double, double> updateElectrostaticPointsOnSphere(vector<Vec> &p, double dt) {
+	double maxD = sqrt((4.0 * M_PI / static_cast<double>(p.size())) / M_PI) * 0.3;
 	double maxF = 0;
+	vector<Vec> f(p.size());
 	for (size_t i = 0; i < p.size(); ++i) {
 		Vec force;
 		for (size_t j = 0; j < p.size(); ++j) {
 			if (i != j) {
 				Vec unprojected = p[i] - p[j];
 				double sql = unprojected.sqlength();
-				unprojected /= sql;
-				force += (unprojected - unprojected.dot(p[i]) * p[i]);
+				if (sql != 0) {
+					unprojected /= sql;
+					force += (unprojected - unprojected.dot(p[i]) * p[i]);
+				}
 			}
 		}
 		double fIntensity = force.sqlength();
@@ -49,6 +70,9 @@ double updateElectrostaticPointsOnSphere(vector<Vec> &p, double dt) {
 		f[i] = force;
 	}
 	maxF = sqrt(maxF);
+	if (maxF * dt > maxD) {
+		dt *= (maxD / (maxF * dt));
+	}
 	double totalDisplacement = 0;
 	// now we update the position of each point;
 	for (size_t i = 1; i < p.size(); ++i) {
@@ -66,7 +90,7 @@ double updateElectrostaticPointsOnSphere(vector<Vec> &p, double dt) {
 		}
 		if (minsql < minminsql) minminsql = minsql;
 	}
-	return sqrt(minminsql);
+	return make_pair(sqrt(minminsql), dt);
 }
 
 float_t closestDistToTriangleEdge(const Vec &v0, const Vec &v1, const Vec &v2,

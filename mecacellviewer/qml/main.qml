@@ -8,8 +8,8 @@ Item{
 
 	property var guictrl: renderer.getGuiCtrl();
 	property var btnArray: new Object();
-	width: 1200
-	height: 800
+	width: 1000
+	height: 700
 	id: main
 
 	Component.onCompleted: {

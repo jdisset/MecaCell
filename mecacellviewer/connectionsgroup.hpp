@@ -3,12 +3,12 @@
 #include "viewtools.h"
 #include "primitives/lines.hpp"
 #include <vector>
-namespace MecacellViewer{
+namespace MecacellViewer {
 class ConnectionsGroup {
 	QOpenGLShaderProgram shader;
 	Lines lines;
 
-public:
+ public:
 	ConnectionsGroup() {}
 
 	void load() {
@@ -25,15 +25,11 @@ public:
 	template <typename Cell>
 	void drawModelConnections(const vector<Cell *> &cells, const QMatrix4x4 &view,
 	                          const QMatrix4x4 &projection) {
-		lines.vertices = std::vector<float>();
 		shader.bind();
 		lines.vao.bind();
 		lines.vbuf.bind();
-		lines.vbuf.allocate(&lines.vertices[0], lines.vertices.size() * sizeof(float));
 		QVector4D color(0.9, 0.2, 0.1, 1.0);
 		shader.setUniformValue(shader.uniformLocation("viewProjection"), projection * view);
-		shader.setUniformValue(shader.uniformLocation("color"), color);
-		GL->glDrawArrays(GL_LINES, 0, lines.vertices.size() / 3.0);
 		lines.vertices = std::vector<float>();
 		for (auto &c : cells) {
 			for (auto &conne : c->getRWModelConnections()) {
@@ -48,7 +44,6 @@ public:
 			}
 		}
 		lines.vbuf.allocate(&lines.vertices[0], lines.vertices.size() * sizeof(float));
-		shader.setUniformValue(shader.uniformLocation("viewProjection"), projection * view);
 		shader.setUniformValue(shader.uniformLocation("color"), color);
 		GL->glDrawArrays(GL_LINES, 0, lines.vertices.size() / 3.0);
 		lines.vertices = std::vector<float>();
@@ -66,7 +61,6 @@ public:
 		}
 		lines.vbuf.allocate(&lines.vertices[0], lines.vertices.size() * sizeof(float));
 		color = QVector4D(0.0, 0.4, 0.8, 1.0);
-		shader.setUniformValue(shader.uniformLocation("viewProjection"), projection * view);
 		shader.setUniformValue(shader.uniformLocation("color"), color);
 		GL->glDrawArrays(GL_LINES, 0, lines.vertices.size() / 3.0);
 		lines.vao.release();
