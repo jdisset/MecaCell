@@ -96,6 +96,7 @@ template <typename Cell, typename Integrator> class BasicWorld {
 		if (cells.size() > 0) {
 			computeForces();
 			updatePositionsAndOrientations();
+			updateConnectionsParams();
 			if (cellModelCollisions) {
 				updateModelGrid();
 				checkForCellModellCollisions();
@@ -131,6 +132,17 @@ template <typename Cell, typename Integrator> class BasicWorld {
 
 	void setDt(float_t d) { dt = d; }
 
+	void updateConnectionsParams() {
+		for (auto &c : connections) {
+			auto &c0 = c->getNode0();
+			auto &c1 = c->getNode1();
+			Vec d = c->getDirection();
+			float_t newl = Cell::getConnectionLength(
+			    c0->getMembraneDistance(d) + c1->getMembraneDistance(-d),
+			    (c0->getAdhesionWith(c1) + c1->getAdhesionWith(c0)) * 0.5);
+			c->getSc().setRestLength(newl);
+		}
+	}
 	void computeForces() {
 // connections
 #ifdef PARALLEL
@@ -147,7 +159,6 @@ template <typename Cell, typename Integrator> class BasicWorld {
 				}
 			}
 		}
-
 		//#pragma omp parallel for
 		for (size_t i = 0; i < cells.size(); ++i) {
 			auto &c = cells[i];
@@ -193,6 +204,10 @@ template <typename Cell, typename Integrator> class BasicWorld {
 		for (auto cIt = cells.begin(); cIt < cells.end(); ++cIt) {
 			Cell *c = *cIt;
 			updateCellPos(*c, dt);
+			c->compensateVolumeLoss();
+			for (auto &s : c->getScpsRW()) {
+				// s.updateDirection();
+			}
 			c->markAsNotTested();
 		}
 	}

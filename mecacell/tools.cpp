@@ -46,6 +46,10 @@ vector<Vec> getSpherePointsPacking(unsigned int n) {
 		     << ", dt = " << dt << ", abs(avgDelta) / dt = " << abs(avgDelta) / dt << endl;
 	} while (cpt < 10 || ((prevExactDelta > 0 || exactDelta > 0) && dt > 0.000001 &&
 	                      cpt < 200 && abs(avgDelta) / dt > 0.001 * maxD));
+	cerr << "result = " << endl;
+	for (auto &v : p) {
+		cerr << v.x() << "," << v.y() << "," << v.z() << endl;
+	}
 	return p;
 }
 

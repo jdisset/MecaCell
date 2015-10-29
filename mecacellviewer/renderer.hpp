@@ -4,6 +4,7 @@
 #include "cellgroup.hpp"
 #include "deformablecellgroup.hpp"
 #include "connectionsgroup.hpp"
+#include "points.hpp"
 #include "camera.hpp"
 #include "model.hpp"
 #include "skybox.hpp"
@@ -58,6 +59,7 @@ class Renderer : public SignalSlotRenderer {
 	RenderQuad ssaoTarget;
 	BlurQuad blurTarget;
 	GridViewer gridViewer;
+	Points pointsViewer;
 	unordered_map<std::string, ModelViewer<ModelType>> modelViewers;
 
 	// Events
@@ -149,6 +151,17 @@ class Renderer : public SignalSlotRenderer {
 		if (gc.contains("cellGrid")) {
 			gridViewer.draw(scenario.getWorld().getCellGrid(), view, projection,
 			                QVector4D(0.99, 0.9, 0.4, 1.0));
+		}
+		if (gc.contains("scp")) {
+			vector<tuple<QVector3D, QVector4D, double>> points;
+			for (auto &c : scenario.getWorld().cells) {
+				for (auto &s : c->getScpsRW()) {
+					points.push_back(tuple<QVector3D, QVector4D, double>(
+					    toQV3D(c->getPosition() + s.direction * s.currentDist),
+					    QVector4D(0.0, 0.3, 0.7, 1.0), 3.0));
+				}
+			}
+			pointsViewer.draw(points, projection * view);
 		}
 		if (gc.contains("modelGrid")) {
 			gridViewer.draw(scenario.getWorld().getModelGrid(), view, projection,
@@ -276,6 +289,7 @@ class Renderer : public SignalSlotRenderer {
 		blurTarget.load(":/shaders/dumb.vert", ":/shaders/blur.frag",
 		                viewportSize * screenCoef);
 		gridViewer.load(":/shaders/mvp.vert", ":/shaders/flat.frag");
+		pointsViewer.load();
 
 		// fbos
 		ssaoFormat.setAttachment(QOpenGLFramebufferObject::Depth);

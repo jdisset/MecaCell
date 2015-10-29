@@ -60,6 +60,15 @@ Item {
 					}
 				}
 				CheckableButton {
+					checked: false 
+					id: viewScp
+					legend: "Surface control points"
+					onToggled: {
+						if (checked) pushUniqueOptionInCtrl("visibleElements", "scp");
+						else removeOptionInCtrl("visibleElements", "scp");
+					}
+				}
+				CheckableButton {
 					checked: false
 					id: viewCellGrid
 					legend: "Cells grid"

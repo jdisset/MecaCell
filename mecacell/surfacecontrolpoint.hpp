@@ -11,9 +11,15 @@ template <typename RefFrame> struct SurfaceControlPoint {
 
 	SurfaceControlPoint(RefFrame *RF, Rotation<Vec> &&R, float_t rd)
 	    : rf(RF), r(std::move(R)), restDist(rd), currentDist(rd){};
-
-	void updateDirection(const Vec &v, const Rotation<Vec> &rot) {
-		direction = v.rotated(r.rotated(rot));
+	SurfaceControlPoint(RefFrame *RF, Vec v) : rf(RF) {
+		restDist = v.length();
+		currentDist = restDist;
+		direction = v / restDist;
+		r = rf->getOrientationRotation().inverted() +
+		    Vec::getRotation(Basis<Vec>(), Basis<Vec>(direction, direction.ortho()));
+	};
+	void updateDirection() {
+		direction = rf->getOrientation().X.rotated(r.rotated(rf->getOrientationRotation()));
 	}
 };
 }

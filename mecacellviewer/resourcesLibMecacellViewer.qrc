@@ -37,6 +37,8 @@
 		<file>shaders/particle.vert</file>
 		<file>shaders/particle.frag</file>
 		<file>shaders/blur.frag</file>
+		<file>shaders/point.vert</file>
+		<file>shaders/point.frag</file>
 
 		<file>textures/cellTexture.jpg</file>
 		<file>textures/background.jpg</file>

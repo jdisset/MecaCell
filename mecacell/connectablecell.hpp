@@ -32,6 +32,8 @@ template <typename Derived> class ConnectableCell : public Movable, public Orien
 	bool dead = false;  // is the cell dead or alive ?
 	array<float_t, 3> color = {{0.75, 0.12, 0.07}};
 	float_t radius = DEFAULT_CELL_RADIUS;
+	float_t correctedRadius =
+	    DEFAULT_CELL_RADIUS;  // taking volume conservation into account
 	float_t baseRadius = DEFAULT_CELL_RADIUS;
 	float_t stiffness = DEFAULT_CELL_STIFFNESS;
 	float_t dampRatio = DEFAULT_CELL_DAMP_RATIO;
@@ -72,7 +74,7 @@ template <typename Derived> class ConnectableCell : public Movable, public Orien
 		// /!\ Careful with non-convex stuff... TODO: try non-convex cases
 		// IDEA: maybe use scp.restDist instead of getRadius(), so that you can have
 		// rest shapes controlled by SCPs.
-		if (scp.size() == 0) return getRadius();
+		if (scp.size() == 0) return getCorrectedRadius();
 		double dist = 0;
 		double dotProductSum = 0;  //
 		double dotProductThreshold = 2.0 * (1.0 - 1.0 / (double)scp.size());
@@ -86,10 +88,11 @@ template <typename Derived> class ConnectableCell : public Movable, public Orien
 		if (dotProductSum > 0)
 			return dist / dotProductSum;
 		else
-			return getRadius();
+			return getCorrectedRadius();
 	};
 
 	inline float_t getRadius() const { return radius; }
+	inline float_t getCorrectedRadius() const { return correctedRadius; }
 	inline float_t getBaseRadius() const { return baseRadius; }
 	inline float_t getStiffness() const { return stiffness; }
 	inline float_t getColor(unsigned int i) const {
@@ -107,6 +110,36 @@ template <typename Derived> class ConnectableCell : public Movable, public Orien
 		pressure = totalForce / surface;
 	}
 
+	double compensateVolumeLoss() {
+		// just updates the correctedRadius
+		double targetVol = getVolume();
+		double volumeLoss = 0;
+		for (auto &c : connections) {
+			Derived *other = c->getNode0() == selfptr() ? c->getNode1() : c->getNode0();
+			double midpoint = c->getLength() * getRadius() / (getRadius() + other->getRadius());
+			double h = getRadius() - midpoint;
+			volumeLoss += (M_PI * h / 6.0) *
+			              (3.0 * (getRadius() * getRadius() - midpoint * midpoint) + h * h);
+		}
+		correctedRadius = cbrt((targetVol + volumeLoss) / ((4.0 / 3.0) * M_PI));
+	}
+
+	double getCurrentActualVolume() {
+		double targetVol =
+		    (4.0 / 3.0) * M_PI * correctedRadius * correctedRadius * correctedRadius;
+		double volumeLoss = 0;
+		for (auto &c : connections) {
+			Derived *other = c->getNode0() == selfptr() ? c->getNode1() : c->getNode0();
+			double midpoint = c->getLength() * getRadius() / (getRadius() + other->getRadius());
+			double h = getCorrectedRadius() - midpoint;
+			volumeLoss +=
+			    (M_PI * h / 6.0) *
+			    (3.0 * (getCorrectedRadius() * getCorrectedRadius() - midpoint * midpoint) +
+			     h * h);
+		}
+		return targetVol - volumeLoss;
+	}
+
 	float_t getNormalizedPressure() const {
 		float_t sign = pressure >= 0 ? 1 : -1;
 		return 0.5 + sign * 0.5 * (1.0 - exp(-abs(10.0 * pressure)));
@@ -116,6 +149,14 @@ template <typename Derived> class ConnectableCell : public Movable, public Orien
 	bool alreadyTested() const { return tested; }
 	int getNbConnections() const { return connections.size(); }
 
+	inline vector<SCP> &getScpsRW() { return scp; }
+	void setScps(vector<Vec> v) {
+		scp.clear();
+		for (auto &p : v) {
+			scp.emplace_back(selfptr(), p.normalized() * getRadius());
+		}
+	}
+	void setScps(vector<SCP> v) { scp = v; }
 	void setVisible(bool v) { visible = v; }
 	bool getVisible() { return visible; }
 	string toString() {
@@ -147,14 +188,16 @@ template <typename Derived> class ConnectableCell : public Movable, public Orien
 		return (4.0 / 3.0) * M_PI * baseRadius * baseRadius * baseRadius;
 	}
 
-	float_t getVolume() const { return (4.0 / 3.0) * M_PI * radius * radius * radius; }
+	inline float_t getVolume() const {
+		return (4.0 / 3.0) * M_PI * radius * radius * radius;
+	}
 	float_t getRelativeVolume() const { return getVolume() / getBaseVolume(); }
 	float_t getDampRatio() const { return dampRatio; }
 
 	// return the connection length with another cell
 	// according to an adhesion coef (0 <= adh <= 1)
-	float_t getConnectionLength(const Derived *c, const float_t adh) const {
-		float_t l = radius + c->radius;
+	inline float_t getConnectionLength(const Derived *c, const float_t adh) const {
+		float_t l = correctedRadius + c->correctedRadius;
 		return getConnectionLength(l, adh);
 	}
 
@@ -165,8 +208,8 @@ template <typename Derived> class ConnectableCell : public Movable, public Orien
 	}
 
 	void setVolume(float_t v) { setRadius(cbrt(v / (4.0 * M_PI / 3.0))); }
-	Derived *selfptr() { return static_cast<Derived *>(this); }
-	Derived &self() { return static_cast<Derived &>(*this); }
+	inline Derived *selfptr() { return static_cast<Derived *>(this); }
+	inline Derived &self() { return static_cast<Derived &>(*this); }
 	const Derived &selfconst() const { return static_cast<const Derived &>(*this); }
 
 	// Don't forget to implement this method in the derived class

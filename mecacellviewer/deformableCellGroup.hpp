@@ -35,11 +35,6 @@ template <typename C> class DeformableCellGroup {
 		if (cells.size() > 0) {
 			shader.bind();
 			sphere.vao.bind();
-			auto newvert = sphere.vert;
-			// for (auto &v : newvert) {
-			// v *= abs(QVector3D::dotProduct(QVector3D(0, 1, 0), v));
-			//}
-			sphere.update(newvert, shader);
 			normalMap->bind(0);
 			GL->glActiveTexture(GL_TEXTURE0);
 			GL->glBindTexture(GL_TEXTURE_2D, normalMap->textureId());
@@ -55,12 +50,17 @@ template <typename C> class DeformableCellGroup {
 					double radius = c->getRadius();
 					QVector3D center = toQV3D(c->getPosition());
 					model.translate(center);
-					model.rotate(radToDeg(c->getOrientationRotation().teta),
-					             toQV3D(c->getOrientationRotation().n));
+					// model.rotate(radToDeg(c->getOrientationRotation().teta),
+					// toQV3D(c->getOrientationRotation().n));
 					if (drawMode == plain) {
-						model.scale(QVector3D(radius, radius, radius));
+						auto newvert = sphere.vert;
+						for (auto &v : newvert) {
+							decltype((*cells.begin())->getPosition()) d(v.x(), v.y(), v.z());
+							v *= c->getMembraneDistance(d);
+						}
+						sphere.update(newvert, shader);
 					} else {
-						model.scale(QVector3D(2.0, 2.0, 2.0));
+						model.scale(QVector3D(0.1, 0.1, 0.1));
 					}
 					QVector3D color(c->getColor(0), c->getColor(1), c->getColor(2));
 					if (cm == pressure) {
