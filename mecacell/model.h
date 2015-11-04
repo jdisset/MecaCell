@@ -36,8 +36,21 @@ struct Model {
 	vector<Vec> vertices;
 	vector<Vec> normals;
 	vector<Triangle> faces;
-	unordered_map<size_t, unordered_set<size_t>> adjacency; // adjacent faces share at least one vertex
+	unordered_map<size_t, unordered_set<size_t>>
+	    adjacency;  // adjacent faces share at least one vertex
 	bool changed = true;
+};
+}
+namespace std {
+template <> struct hash<pair<MecaCell::Model *, size_t>> {
+	typedef pair<MecaCell::Model *, size_t> argument_type;
+	typedef uintptr_t result_type;
+
+	result_type operator()(const pair<MecaCell::Model *, size_t> &t) const {
+		return ((reinterpret_cast<result_type>(t.first) + t.second) *
+		        (reinterpret_cast<result_type>(t.first) + t.second + 1) / 2) +
+		       t.second;
+	}
 };
 }
 #endif

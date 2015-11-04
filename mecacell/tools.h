@@ -56,5 +56,23 @@ std::vector<std::string> splitStr(const std::string &s, char delim);
 // return a pointer (transform reference into pointer)
 template <typename T> T *ptr(T &obj) { return &obj; }
 template <typename T> T *ptr(T *obj) { return obj; }
+
+template <typename T> struct ordered_pair {
+	T first, second;
+	bool operator==(const ordered_pair &other) const {
+		return (first == other.first && second == other.second);
+	}
+};
+template <typename T> inline ordered_pair<T> make_ordered_pair(const T &a, const T &b) {
+	if (a < b) return {a, b};
+	return {b, a};
+}
+}
+namespace std {
+template <typename T> struct hash<MecaCell::ordered_pair<T>> {
+	size_t operator()(const MecaCell::ordered_pair<T> &x) const {
+		return hash<T>()(x.first) ^ hash<T>()(x.second);
+	}
+};
 }
 #endif

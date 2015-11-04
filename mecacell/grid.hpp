@@ -42,7 +42,7 @@ template <typename O> class Grid {
 
 	void insert(const O &obj) {
 		const Vec &center = ptr(obj)->getPosition();
-		const float_t &radius = ptr(obj)->getRadius();
+		const float_t &radius = ptr(obj)->getBoundingBoxRadius();
 		Vec minCorner = getIndexFromPosition(center - radius);
 		Vec maxCorner = getIndexFromPosition(center + radius);
 		for (double i = minCorner.x(); i <= maxCorner.x(); ++i) {
@@ -112,7 +112,7 @@ template <typename O> class Grid {
 	unordered_set<O> retrieve(const O &obj) const {
 		unordered_set<O> res;
 		Vec center = ptr(obj)->getPosition() * cellSize;
-		float_t radius = ptr(obj)->getRadius() * cellSize;
+		float_t radius = ptr(obj)->getBoundingBoxRadius() * cellSize;
 		Vec minCorner = center - radius;
 		Vec maxCorner = center + radius;
 		minCorner.iterateTo(maxCorner, [this, &res](const Vec &v) {

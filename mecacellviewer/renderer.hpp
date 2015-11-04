@@ -36,22 +36,31 @@ class Renderer : public SignalSlotRenderer {
 	    typename remove_reference<decltype(((Scenario *)nullptr)->getWorld())>::type;
 	using Cell = typename World::cell_type;
 	using Vec = decltype(((Cell *)nullptr)->getPosition());
-	using ConnectType = typename World::connect_type;
 	using ModelType = typename World::model_type;
-	using modelConn_ptr = unique_ptr<typename World::modelConnect_type>;
 
  private:
 	// Scenario
 	int argc;
 	char **argv;
 	Scenario scenario;
+
 	int frame = 0;
 
-	// Visual elements
+	// Display configuration
 	bool fullscreenMode = false, fullscreenModeToggled = false, skyboxEnabled = true;
+	double BLUR_COEF = 1.0, MSAA_COEF = 4, FSAA_COEF = 20.0;
+	double screenCoef = 1.0;
+	int menuSize = 200;
+	bool worldUpdate = true;
+	bool loopStep = true;
+	bool takeScreen = false;
+	string screenName;
+	colorMode cMode;
+
+	// Visual elements
 	Camera camera;
 	DeformableCellGroup<Cell> cells;
-	ConnectionsGroup connections;
+	// ConnectionsGroup connections;
 	Skybox skybox;
 	unique_ptr<QOpenGLFramebufferObject> ssaoFBO, msaaFBO, finalFBO, fsaaFBO;
 	QOpenGLFramebufferObjectFormat ssaoFormat, msaaFormat, finalFormat;
@@ -80,16 +89,9 @@ class Renderer : public SignalSlotRenderer {
 	const int fpsRefreshRate = 400;
 	Cell *selectedCell = nullptr;
 
-	// options
-	double BLUR_COEF = 1.0, MSAA_COEF = 4, FSAA_COEF = 20.0;
-	double screenCoef = 1.0;
-	int menuSize = 200;
-	bool worldUpdate = true;
-	bool loopStep = true;
-	bool takeScreen = false;
-	string screenName;
-	colorMode cMode;
-
+	/***********************************
+	 *              UTILS              *
+	 ***********************************/
 	void clear() {
 		GL->glDepthMask(true);
 		GL->glClearColor(1.0, 1.0, 1.0, 1.0);
@@ -152,17 +154,6 @@ class Renderer : public SignalSlotRenderer {
 			gridViewer.draw(scenario.getWorld().getCellGrid(), view, projection,
 			                QVector4D(0.99, 0.9, 0.4, 1.0));
 		}
-		if (gc.contains("scp")) {
-			vector<tuple<QVector3D, QVector4D, double>> points;
-			for (auto &c : scenario.getWorld().cells) {
-				for (auto &s : c->getScpsRW()) {
-					points.push_back(tuple<QVector3D, QVector4D, double>(
-					    toQV3D(c->getPosition() + s.direction * s.currentDist),
-					    QVector4D(0.0, 0.3, 0.7, 1.0), 3.0));
-				}
-			}
-			pointsViewer.draw(points, projection * view);
-		}
 		if (gc.contains("modelGrid")) {
 			gridViewer.draw(scenario.getWorld().getModelGrid(), view, projection,
 			                QVector4D(0.6, 0.1, 0.1, 1.0));
@@ -196,8 +187,9 @@ class Renderer : public SignalSlotRenderer {
 			           camera.getPosition(), cMode, selectedCell);
 		}
 		if (gc.contains("connections")) {
-			connections.draw<ConnectType>(scenario.getWorld().connections, view, projection);
-			connections.drawModelConnections<Cell>(scenario.getWorld().cells, view, projection);
+			// connections.draw<ConnectType>(scenario.getWorld().connections, view, projection);
+			// connections.drawModelConnections<Cell>(scenario.getWorld().cells, view,
+			// projection);
 		}
 
 		QOpenGLFramebufferObject::blitFramebuffer(
@@ -283,7 +275,7 @@ class Renderer : public SignalSlotRenderer {
 
 		// elements
 		cells.load();
-		connections.load();
+		// connections.load();
 		skybox.load();
 		ssaoTarget.load(":/shaders/dumb.vert", ":/shaders/ssao.frag");
 		blurTarget.load(":/shaders/dumb.vert", ":/shaders/blur.frag",
@@ -468,8 +460,7 @@ class Renderer : public SignalSlotRenderer {
 	QVariantMap cellToQVMap(Cell *c) {
 		QVariantMap res;
 		if (c) {
-			res["Radius"] = c->getRadius();
-			res["Stiffness"] = c->getStiffness();
+			res["Radius"] = c->getBoundingBoxRadius();
 			res["Volume"] = c->getVolume();
 			res["Pressure"] = c->getPressure();
 			res["Mass"] = c->getMass();
@@ -494,7 +485,7 @@ class Renderer : public SignalSlotRenderer {
 		double minEyeDist = 1e20;
 		for (auto &c : scenario.getWorld().cells) {
 			if (c->getVisible()) {
-				double sqRad = pow(c->getRadius(), 2);
+				double sqRad = pow(c->getBoundingBoxRadius(), 2);
 				QVector3D EC = toQV3D(c->getPosition()) - camera.getPosition();
 				QVector3D EV = vray * QVector3D::dotProduct(EC, vray);
 				double eyeDist = EC.lengthSquared();

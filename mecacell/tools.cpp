@@ -7,7 +7,6 @@ namespace MecaCell {
 vector<Vec> getSpherePointsPacking(unsigned int n) {
 	// we simulate n mutually repulsive points on a sphere
 	vector<Vec> p;
-	double minl = 0;
 	double prevminl = 0;
 	double avgDelta = 1;
 	double prevAvgDelta = 1;
@@ -147,7 +146,7 @@ std::pair<bool, Vec> rayInTriangle(const Vec &v0, const Vec &v1, const Vec &v2,
 		Vec p = o + l * r;
 		Vec w = p - v0;
 		float_t nsq = n.sqlength();
-		float_t l = u.cross(w).dot(n) / nsq;
+		l = u.cross(w).dot(n) / nsq;
 		float_t b = w.cross(v).dot(n) / nsq;
 		float_t a = 1.0 - l - b;
 		return {0 - tolerance <= a && a <= 1.0 + tolerance && 0 - tolerance <= b &&

@@ -8,93 +8,94 @@
 #include <cstdlib>
 #include <iostream>
 #include <memory>
+#include <unordered_set>
 #include <functional>
 #include "rotation.h"
 #include "movable.h"
 #include "orientable.h"
-#include "connection.h"
-#include "modelconnection.hpp"
 #include "model.h"
-#include "surfacecontrolpoint.hpp"
-
-#define CUBICROOT2 1.25992104989
-#define VOLUMEPI 0.23873241463  // 1/(4/3*pi)
 
 using namespace std;
 
 namespace MecaCell {
-template <typename Derived> class ConnectableCell : public Movable, public Orientable {
- protected:
-	using ConnectionType = Connection<Derived *>;
-	using ModelConnectionType = CellModelConnection<Derived>;
-	using SCP = SurfaceControlPoint<Derived>;
 
-	bool dead = false;  // is the cell dead or alive ?
+template <typename Derived, template <class> class Membrane>
+class ConnectableCell : public Movable, public Orientable {
+	friend class Membrane<Derived>;
+	/************************ ConnectableCell class template ******************************/
+	// Abstract:
+	// A ConnectableCell is the basis for every cell a user might want to use in mecacell.
+	// It uses the curriously reccuring template pattern : Derived is the user's type
+	// inheriting ConnectableCell.
+	// Membrane is the type of membrane used by the cell. A membrane is a low level class
+	// that handles everything related to physics (deformations, connections, volume).
+	// A ConnectableCell is a more abstract interface meant to expose higher instinctive,
+	// meaningful parameters and methods. It also represents the cell's center, which can
+	// be seen as its kernel (it is NOT always the center of mass, but often close enough)
+ public:
+	using membrane_t = Membrane<Derived>;
+	using CellCellConnectionContainer = typename membrane_t::CellCellConnectionContainer;
+	using CellModelConnectionContainer = typename membrane_t::CellModelConnectionContainer;
+
+ protected:
+	membrane_t membrane;
+	bool dead = false;
 	array<float_t, 3> color = {{0.75, 0.12, 0.07}};
-	float_t radius = DEFAULT_CELL_RADIUS;
-	float_t correctedRadius =
-	    DEFAULT_CELL_RADIUS;  // taking volume conservation into account
-	float_t baseRadius = DEFAULT_CELL_RADIUS;
-	float_t stiffness = DEFAULT_CELL_STIFFNESS;
-	float_t dampRatio = DEFAULT_CELL_DAMP_RATIO;
-	float_t angularStiffness = DEFAULT_CELL_ANG_STIFFNESS;
 	bool tested = false;  // has already been tested for collision
-	vector<ConnectionType *> connections;
-	vector<ModelConnectionType *> modelConnections;
-	vector<Derived *> connectedCells;  // TODO: try with an unordered_set (easier check for
-	                                   // already connected)
-	vector<SCP> scp;                   // surface control points
-	float_t pressure = 1.0;
+	unordered_set<Derived *> connectedCells;
 	bool visible = true;
 
  public:
-	ConnectableCell(Vec pos) : Movable(pos) { randomColor(); }
+	ConnectableCell(Vec pos) : Movable(pos), membrane(static_cast<Derived *>(this)) {
+		randomColor();
+	}
 
 	ConnectableCell(const Derived &c, const Vec &translation)
 	    : Movable(c.getPosition() + translation, c.mass),
+	      membrane(static_cast<Derived *>(this), c.membrane),
 	      dead(false),
 	      color(c.color),
-	      radius(c.radius),
-	      baseRadius(c.baseRadius),
-	      stiffness(c.stiffness),
-	      dampRatio(c.dampRatio),
-	      angularStiffness(c.angularStiffness),
-	      tested(false),
-	      scp(c.scp) {}
+	      tested(false) {}
 
-	float_t getMembraneDistance(const Vec &d) const {
-		/*
-		 * Returns the membrane distance from the center
-		 * of this cell in the given direction
-		 */
-		// result is a mix bewtween the membrane's rest equation (e.g a sphere)
-		// and a linear interpolation between the k-nearests scp. Proportion btwn
-		// these 2 parts is given by the distance btwn d and the nearests scp
-		// and the scps influence radii (which is a function of the number of scps)
-		// /!\ Careful with non-convex stuff... TODO: try non-convex cases
-		// IDEA: maybe use scp.restDist instead of getRadius(), so that you can have
-		// rest shapes controlled by SCPs.
-		if (scp.size() == 0) return getCorrectedRadius();
-		double dist = 0;
-		double dotProductSum = 0;  //
-		double dotProductThreshold = 2.0 * (1.0 - 1.0 / (double)scp.size());
-		for (const auto &s : scp) {
-			double dp = d.dot(s.direction);
-			if (dp > dotProductThreshold) {
-				dotProductSum += dp;
-				dist += s.currentDist * dp;
-			}
-		}
-		if (dotProductSum > 0)
-			return dist / dotProductSum;
-		else
-			return getCorrectedRadius();
+	/*************** STATIC **************/
+	template <typename SpacePartition>
+	static inline void checkForCellCellConnections(
+	    vector<Derived *> &cells, CellCellConnectionContainer &cellCellConnections,
+	    SpacePartition &grid) {
+		membrane_t::checkForCellCellConnections(cells, cellCellConnections, grid);
+	}
+	template <typename SpacePartition>
+	static inline void checkForCellModelConnections(
+	    vector<Derived *> &cells, unordered_map<string, Model> models,
+	    CellModelConnectionContainer &cellModelConnections, SpacePartition &modelGrid) {
+		membrane_t::checkForCellModelCollisions(cells, models, cellModelConnections,
+		                                        modelGrid);
+	}
+	static inline void updateCellCellConnections(CellCellConnectionContainer &c,
+	                                             float_t dt) {
+		membrane_t::updateCellCellConnections(c, dt);
+	}
+	static inline void updateCellModelConnections(CellModelConnectionContainer &c,
+	                                              float_t dt) {
+		membrane_t::updateCellModelConnections(c, dt);
+	}
+	static inline void disconnectAndDeleteAllConnections(Derived *c0,
+	                                                     CellCellConnectionContainer &con) {
+		disconnectAndDeleteAllConnections(c0, con);
+	}
+	template <typename Integrator> void inline updatePositionsAndOrientations(double dt) {
+		membrane.template updatePositionsAndOrientations<Integrator>(dt);
+	}
+
+	/************** GET ******************/
+	// basics
+	inline membrane_t &getMembrane() { return membrane; }
+	inline float_t getBaseVolume() const { return membrane.getBaseVolume(); }
+	inline float_t getVolume() const { return membrane.getVolume(); }
+	inline float_t getMembraneDistance(const Vec &d) const {
+		return membrane.getPreciseMembraneDistance(d);
 	};
-
-	inline float_t getRadius() const { return radius; }
-	inline float_t getCorrectedRadius() const { return correctedRadius; }
-	inline float_t getBaseRadius() const { return baseRadius; }
-	inline float_t getStiffness() const { return stiffness; }
+	inline float_t getBoundingBoxRadius() const { return membrane.getBoundingBoxRadius(); }
 	inline float_t getColor(unsigned int i) const {
 		if (i < 3) return color[i];
 		return 0;
@@ -102,236 +103,54 @@ template <typename Derived> class ConnectableCell : public Movable, public Orien
 	inline const std::vector<Derived *> &getConnectedCells() const {
 		return connectedCells;
 	}
+	inline float_t getPressure() const { return membrane.getPressure(); }
 
-	inline float_t getPressure() const { return pressure; }
-
-	void computePressure() {
-		float_t surface = 4.0 * M_PI * radius * radius;
-		pressure = totalForce / surface;
+	// Don't forget to implement this method in the derived class
+	inline float_t getAdhesionWith(const Derived *d) const {
+		return selfconst().getAdhesionWith(d);
 	}
+	inline float_t getAdhesionWithModel(const string &) const { return 0.7; }
 
-	double compensateVolumeLoss() {
-		// just updates the correctedRadius
-		double targetVol = getVolume();
-		double volumeLoss = 0;
-		for (auto &c : connections) {
-			Derived *other = c->getNode0() == selfptr() ? c->getNode1() : c->getNode0();
-			double midpoint = c->getLength() * getRadius() / (getRadius() + other->getRadius());
-			double h = getRadius() - midpoint;
-			volumeLoss += (M_PI * h / 6.0) *
-			              (3.0 * (getRadius() * getRadius() - midpoint * midpoint) + h * h);
-		}
-		correctedRadius = cbrt((targetVol + volumeLoss) / ((4.0 / 3.0) * M_PI));
-	}
+	// computed
 
-	double getCurrentActualVolume() {
-		double targetVol =
-		    (4.0 / 3.0) * M_PI * correctedRadius * correctedRadius * correctedRadius;
-		double volumeLoss = 0;
-		for (auto &c : connections) {
-			Derived *other = c->getNode0() == selfptr() ? c->getNode1() : c->getNode0();
-			double midpoint = c->getLength() * getRadius() / (getRadius() + other->getRadius());
-			double h = getCorrectedRadius() - midpoint;
-			volumeLoss +=
-			    (M_PI * h / 6.0) *
-			    (3.0 * (getCorrectedRadius() * getCorrectedRadius() - midpoint * midpoint) +
-			     h * h);
-		}
-		return targetVol - volumeLoss;
-	}
-
+	inline float_t getMomentOfInertia() const { return membrane.getMomentOfInertia(); }
+	inline float_t getRelativeVolume() const { return getVolume() / getBaseVolume(); }
 	float_t getNormalizedPressure() const {
-		float_t sign = pressure >= 0 ? 1 : -1;
-		return 0.5 + sign * 0.5 * (1.0 - exp(-abs(10.0 * pressure)));
+		float_t sign = getPressure() >= 0 ? 1 : -1;
+		return 0.5 + sign * 0.5 * (1.0 - exp(-abs(10.0 * getPressure())));
 	}
-
-	float_t getSqradius() const { return radius * radius; }
 	bool alreadyTested() const { return tested; }
-	int getNbConnections() const { return connections.size(); }
+	int getNbConnections() const { return connectedCells.size(); }
+	bool getVisible() const { return visible; }
 
-	inline vector<SCP> &getScpsRW() { return scp; }
-	void setScps(vector<Vec> v) {
-		scp.clear();
-		for (auto &p : v) {
-			scp.emplace_back(selfptr(), p.normalized() * getRadius());
-		}
-	}
-	void setScps(vector<SCP> v) { scp = v; }
-	void setVisible(bool v) { visible = v; }
-	bool getVisible() { return visible; }
-	string toString() {
+	string toString() const {
 		stringstream s;
 		s << "Cell " << this << " :" << endl;
 		s << " position = " << position << ", orientation = " << orientation << endl;
 		s << " velocity = " << velocity << ", angular velocity = " << angularVelocity << endl;
-		s << " radius = " << radius << " (base = " << baseRadius << ")" << endl;
-		s << " stiffness = " << stiffness << " (angular = " << angularStiffness << ")"
-		  << endl;
-		s << " damp ratio = " << dampRatio << endl;
-		s << " pressure = " << pressure << endl;
-		s << " " << connections.size() << " cell connections" << endl;
-		s << " " << modelConnections.size() << " model connections" << endl;
 		return s.str();
 	}
-	/******************************
-	 * main setters & getters
-	 *****************************/
 
-	void setBaseRadius(float_t r) { baseRadius = r; }
-	void setStiffness(float_t s) { stiffness = s; }
-	void setAngularStiffness(float_t s) { angularStiffness = s; }
-	void setRadius(float_t r) { radius = r; }
+	/************** SET ******************/
+	void setVisible(bool v) { visible = v; }
 	void markAsTested() { tested = true; }
 	void markAsNotTested() { tested = false; }
-
-	float_t getBaseVolume() const {
-		return (4.0 / 3.0) * M_PI * baseRadius * baseRadius * baseRadius;
-	}
-
-	inline float_t getVolume() const {
-		return (4.0 / 3.0) * M_PI * radius * radius * radius;
-	}
-	float_t getRelativeVolume() const { return getVolume() / getBaseVolume(); }
-	float_t getDampRatio() const { return dampRatio; }
-
+	void setVolume(float_t v) { membrane.setVolume(v); }
+	inline void resetForces() { membrane.resetForces(); }
 	// return the connection length with another cell
 	// according to an adhesion coef (0 <= adh <= 1)
-	inline float_t getConnectionLength(const Derived *c, const float_t adh) const {
-		float_t l = correctedRadius + c->correctedRadius;
-		return getConnectionLength(l, adh);
-	}
-
-	static float_t getConnectionLength(const float_t l, const float_t adh) {
-		if (adh > ADH_THRESHOLD)
-			return mix(MAX_CELL_ADH_LENGTH * l, MIN_CELL_ADH_LENGTH * l, adh);
-		return l;
-	}
-
-	void setVolume(float_t v) { setRadius(cbrt(v / (4.0 * M_PI / 3.0))); }
 	inline Derived *selfptr() { return static_cast<Derived *>(this); }
 	inline Derived &self() { return static_cast<Derived &>(*this); }
 	const Derived &selfconst() const { return static_cast<const Derived &>(*this); }
 
-	// Don't forget to implement this method in the derived class
-	float_t getAdhesionWith(const Derived *d) { return self().getAdhesionWith(d); }
-	float_t getAdhesionWithModel(const string &) { return 0.7; }
-
-	vector<ConnectionType *> &getRWConnections() { return connections; }
-	vector<ModelConnectionType *> &getRWModelConnections() { return modelConnections; }
-
-	// TODO : try using set instead of vectors for connections (faster random deletion)
-	void addModelConnection(ModelConnectionType *con) { modelConnections.push_back(con); }
-	void removeModelConnection(ModelConnectionType *con) {
-		modelConnections.erase(remove(modelConnections.begin(), modelConnections.end(), con),
-		                       modelConnections.end());
-	}
-
-	/******************************
-	 * connections
-	 *****************************/
-	ConnectionType *connection(Derived *c) {
-		if (c != this) {
-			Vec AB = c->position - position;
-			float_t sqdist = AB.sqlength();
-			float_t sql = radius + c->radius;
-			sql *= sql;
-			// interpenetration
-			if (sqdist <= sql) {
-				if (find(connectedCells.begin(), connectedCells.end(), c) ==
-				    connectedCells.end()) {
-					// if those cells aren't already connected
-					// we check if this connection would not go through an already connected cell
-					bool ok = true;
-					for (const auto &con : connections) {
-						Derived *otherCell =
-						    con->getNode0() == selfptr() ? con->getNode1() : con->getNode0();
-						Vec AO = otherCell->getPosition() - position;
-						float_t AOdotAB = AO.dot(AB);
-						if (AOdotAB > 0) {
-							// Other cell's projection onto AB
-							Vec AP = AB * AOdotAB / sqdist;
-							if (AP.dot(AB) < sqdist) {
-								// the other cell's projection is closer than our candidate
-								if ((AP - AO).sqlength() < 0.92 * pow(otherCell->getRadius(), 2)) {
-									ok = false;
-									break;
-								}
-							}
-						}
-					}
-					if (ok) {
-						// TODO: store adhesion with each connection. Each call to getAdhesionWith
-						// should only be for
-						// a new connection. For the old connection, user should be able to tweak
-						// the
-						// coefficien through a
-						// updateConnectionParams(ConnectionType*) method.
-						float_t minAdh = (getAdhesionWith(c) + c->getAdhesionWith(selfptr())) * 0.5;
-						float_t l = getConnectionLength(c, minAdh);
-						float_t k =
-						    (stiffness * radius + c->stiffness * c->radius) / (radius + c->radius);
-						float_t dr =
-						    (dampRatio * radius + c->dampRatio * c->radius) / (radius + c->radius);
-						//// float_t maxTeta = mix(0.0, M_PI / 2.0, minAdh);
-						float_t maxTeta = M_PI / 12.0;
-						ConnectionType *s = new ConnectionType(
-						    pair<Derived *, Derived *>(selfptr(), c),
-						    Spring(k, dampingFromRatio(dr, mass + c->mass, k), l),
-						    make_pair(Joint(getAngularStiffness(),
-						                    dampingFromRatio(dr, getMomentOfInertia() * 2.0,
-						                                     angularStiffness),
-						                    maxTeta),
-						              Joint(getAngularStiffness(),
-						                    dampingFromRatio(dr, c->getMomentOfInertia() * 2.0,
-						                                     c->angularStiffness),
-						                    maxTeta)),
-						    make_pair(Joint(getAngularStiffness(),
-						                    dampingFromRatio(dr, getMomentOfInertia() * 2.0,
-						                                     angularStiffness),
-						                    maxTeta),
-						              Joint(getAngularStiffness(),
-						                    dampingFromRatio(dr, c->getMomentOfInertia() * 2.0,
-						                                     c->angularStiffness),
-						                    maxTeta)));
-						float_t contactSurface = M_PI * (sqdist + pow((radius + c->radius) / 2, 2));
-						s->getFlex().first.setCurrentKCoef(contactSurface);
-						s->getFlex().second.setCurrentKCoef(contactSurface);
-						s->getTorsion().first.setCurrentKCoef(contactSurface);
-						s->getTorsion().second.setCurrentKCoef(contactSurface);
-						addConnection(c, s);
-						return s;
-					}
-				}
-			}
-		}
-		return nullptr;
-	}
-
-	float_t getMomentOfInertia() const { return 4.0 * mass * radius * radius; }
-	float_t getAngularStiffness() const { return angularStiffness; }
-
-	// recomputes all connections sizes according to the the current size of the cell
-	// TODO : also change the stiffness / strength of a connection according to the
-	// adhesion
-	// area
-	//  (maybe directly from World?)
-	void updateAllConnections() {
-		for (auto &con : connections) {
-			Derived *otherCell =
-			    con->getNode0() == selfptr() ? con->getNode1() : con->getNode0();
-			float_t adhCoef =
-			    (getAdhesionWith(otherCell) + otherCell->getAdhesionWith(selfptr())) * 0.5;
-			con->setBaseLength(getConnectionLength(otherCell, adhCoef));
-		}
-	}
-
 	template <typename C = Derived> C *divide() { return divide<C>(Vec::randomUnit()); }
 
 	template <typename C = Derived> C *divide(const Vec &direction) {
-		setRadius(getBaseRadius());
 		setMass(getBaseMass());
-		updateAllConnections();
-		C *newC = new C(selfconst(), direction.normalized() * radius * 0.8);
+		membrane.division();
+		membrane.updateAllConnections();
+		C *newC =
+		    new C(selfconst(), direction.normalized() * getMembraneDistance(direction) * 0.8);
 		return newC;
 	}
 
@@ -339,14 +158,6 @@ template <typename Derived> class ConnectableCell : public Movable, public Orien
 		float_t rv = getRelativeVolume() + qtty;
 		setVolume(getBaseVolume() * rv);
 		setMass(getBaseMass() * rv);
-		updateAllConnections();
-	}
-
-	void addConnection(Derived *c, ConnectionType *s) {
-		connections.push_back(s);
-		c->connections.push_back(s);
-		connectedCells.push_back(c);
-		c->connectedCells.push_back(selfptr());
 	}
 
 	// erase cell from the connectedCells container
@@ -357,61 +168,16 @@ template <typename Derived> class ConnectableCell : public Movable, public Orien
 		assert(connectedCells.size() == prevC - 1 || prevC == 0);
 	}
 
-	// erase connection with a cell (calls deleteConnection(c,s))
-	void removeConnection(Derived *c) {
-		ConnectionType *s = nullptr;
-		for (unsigned int i = 0; i < connections.size(); i++) {
-			ConnectionType *co = connections[i];
-			if ((co->getNode1() == this && co->getNode0() == c) ||
-			    (co->getNode1() == c && co->getNode0() == this)) {
-				s = co;
-				break;
-			}
-		}
-		if (s) removeConnection(c, s);
-	}
-
-	// erase connection S with cell C from the connections and connectedCells containers
-	// destructors are not called
-	void removeConnection(Derived *c, ConnectionType *s) {
-		assert(c);
-		eraseCell(c);
-		c->eraseCell(selfptr());
-		eraseConnection(s);
-		c->eraseConnection(s);
-	}
-
-	// erase connection s f the connections container
-	void eraseConnection(ConnectionType *s) {
-		connections.erase(remove(connections.begin(), connections.end(), s),
-		                  connections.end());
-	}
-
-	void eraseAndDeleteAllConnections(std::vector<ConnectionType *> &aux) {
-		for (auto cIt = connections.begin(); cIt != connections.end();) {
-			ConnectionType *sp = *cIt;
-			auto otherCell = sp->getNode0() == this ? sp->getNode1() : sp->getNode0();
-			if (otherCell != nullptr) {
-				aux.erase(remove(aux.begin(), aux.end(), sp), aux.end());
-				connectedCells.erase(
-				    remove(connectedCells.begin(), connectedCells.end(), otherCell),
-				    connectedCells.end());
-				otherCell->connectedCells.erase(remove(otherCell->connectedCells.begin(),
-				                                       otherCell->connectedCells.end(), this),
-				                                otherCell->connectedCells.end());
-				otherCell->eraseConnection(sp);
-				cIt = connections.erase(cIt);
-				delete sp;
-			} else {
-				++cIt;
-			}
-		}
+	static inline void checkAndCreateConnection(Derived *c0, Derived *c1,
+	                                            CellCellConnectionContainer &con) {
+		membrane_t::checkAndCreateConnection(c0, c1, con);
 	}
 
 	/******************************
 	 * division and control
 	 *****************************/
-	void updateStats() { computePressure(); }
+
+	void updateStats() { membrane.updateStats(); }
 
 	Derived *updateBehavior(float_t dt) { return self().updateBehavior(dt); }
 

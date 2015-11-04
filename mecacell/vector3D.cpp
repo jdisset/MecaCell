@@ -116,13 +116,10 @@ void Vector3D::addAsAngularVelocity(const Vector3D &v, Rotation<Vector3D> &r) {
 
 float_t Vector3D::rayCast(const Vector3D &o, const Vector3D &n, const Vector3D &p,
                           const Vector3D &r) {
-	// returns l such that p + l.r lies on the plane defined bcoords[1] its normal n and an
-	// offset
-	// o
-	// l > 0 means that the racoords[1] hits the plane, l < 0 means that the racoords[1] dos
-	// not face the
-	// plane
-	// l = 0 means that the racoords[1] is parallel to the plane or that p is on the plane
+	// returns l such that p + l.r lies on the plane defined by its normal n and an offset o
+	// l > 0 means that the ray hits the plane,
+	// l < 0 means that the racoords[1] does not face the plane
+	// l = 0 means that the ray is parallel to the plane or that p is on the plane
 	float_t nr = n.dot(r);
 	return (nr == 0) ? 0 : n.dot(o - p) / nr;
 }

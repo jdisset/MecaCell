@@ -68,7 +68,6 @@ template <typename Cell> struct CellModelConnection {
 		anchor.computeForces(dt);
 		bounce.computeForces(dt);
 	}
-
 	CellModelConnection() {}
 	CellModelConnection(CSConnection a, CMConnection b) : anchor(a), bounce(b) {}
 	bool dirty = false; // does this connection need to be deleted?

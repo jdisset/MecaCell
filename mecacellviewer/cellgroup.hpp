@@ -50,7 +50,7 @@ template <typename C> class CellGroup {
 			for (auto &c : sortedCells) {
 				if (c->getVisible()) {
 					QMatrix4x4 model;
-					double radius = c->getRadius();
+					double radius = c->getBoundingBoxRadius();
 					QVector3D center = toQV3D(c->getPosition());
 					model.translate(center);
 					model.rotate(radToDeg(c->getOrientationRotation().teta),

@@ -50,7 +50,6 @@ QString shaderWithHeader(QString filename) {
 std::vector<QVector3D> getSpherePointsPacking(unsigned int n) {
 	// we simulate n mutually repulsive points on a sphere
 	std::vector<QVector3D> p;
-	double minl = 0;
 	double prevminl = 0;
 	double avgDelta = 1;
 	double prevAvgDelta = 1;
@@ -86,7 +85,7 @@ std::vector<QVector3D> getSpherePointsPacking(unsigned int n) {
 		prevAvgDelta = avgDelta;
 		prevminl = minl;
 	} while (cpt < 10 || ((prevExactDelta > 0 || exactDelta > 0) && dt > 0.000001 &&
-	                      cpt < 200 && abs(avgDelta) / dt > 0.001 * maxD));
+	                      cpt < 200 && fabs(avgDelta) / dt > 0.001 * maxD));
 	return p;
 }
 
