@@ -46,6 +46,7 @@ template <typename Cell> class SphereMembrane {
 	float_t angularStiffness = DEFAULT_CELL_ANG_STIFFNESS;
 	float_t maxTeta = M_PI / 12.0;
 	float_t pressure = 0;
+	bool volumeConservation = true;
 
  public:
 	SphereMembrane(Cell *c) : cell(c){};
@@ -141,7 +142,7 @@ template <typename Cell> class SphereMembrane {
 		// here we just have to move the cell center
 		Integrator::updatePosition(*cell, dt);
 		Integrator::updateOrientation(*cell, dt);
-		compensateVolumeLoss();
+		if (volumeConservation) compensateVolumeLoss();
 		cell->markAsNotTested();
 	}
 
@@ -308,6 +309,7 @@ template <typename Cell> class SphereMembrane {
 	static void checkForCellCellConnections(
 	    vector<Cell *> &cells, CellCellConnectionContainer &cellCellConnections,
 	    SpacePartition &grid) {
+		vector<ordered_pair<Cell *>> newConnections;
 		grid.clear();
 		for (const auto &c : cells) grid.insert(c);
 		auto gridCells = grid.getThreadSafeGrid();
@@ -317,12 +319,28 @@ template <typename Cell> class SphereMembrane {
 					auto &c0 = batch[i][j];
 					for (int k = j + 1; k < batch[i].size(); ++k) {
 						auto &c1 = batch[i][k];
-						checkAndCreateConnection(c0, c1, cellCellConnections);
+						Vec AB = c1->position - c0->position;
+						float_t sqDistance = AB.sqlength();
+						float_t sqMaxLength = pow(c0->membrane.radius + c1->membrane.radius, 2);
+						if (sqDistance <= sqMaxLength) {
+							if (!c0->connectedCells.count(c1) && c1 != c0) {
+								float_t dist = sqrt(sqDistance);
+								Vec dir = AB / dist;
+								if (dist < c0->membrane.getPreciseMembraneDistance(dir) +
+								               c1->membrane.getPreciseMembraneDistance(-dir)) {
+									newConnections.push_back(make_ordered_pair(c0, c1));
+								}
+							}
+						}
 					}
 				}
 			}
 		}
+		for (auto &nc : newConnections) {
+			createConnection(nc, cellCellConnections);
+		}
 	}
+
 	static void updateCellModelConnections(CellModelConnectionContainer &con, float_t dt) {
 		for (auto &mod : con) {
 			for (auto &vec : mod.second) {
@@ -333,18 +351,24 @@ template <typename Cell> class SphereMembrane {
 		}
 	}
 
+	inline float_t getConnectionMidpoint(const Cell *other,
+	                                     const ConnectionType *connection) {
+		return connection->getLength() * radius / (radius + other->membrane.radius);
+	}
+
 	static void updateCellCellConnections(CellCellConnectionContainer &con, float_t dt) {
 		// we update forces & delete impossible connections (cells not in contact anymore...)
 		// here connections are just beams between cells centers
-		for (auto it = con.begin(); it != con.end();) {
+		vector<ordered_pair<Cell *>> toErase;
+		for (auto it = con.begin(); it != con.end(); ++it) {
 			auto &connection = (*it).second;  // the connection
 			auto &c0 = (*it).first.first;     // cell
 			auto &c1 = (*it).first.second;    // cell
 			// we check if the connection still makes sense
 			if (connection.getSc().length >
-			    c0->membrane.correctedRadius + c1->membrane.correctedRadius) {
-				disconnect(c0, c1);
-				it = con.erase(it);
+			    0.00000000001 + c0->getMembraneDistance(connection.getDirection()) +
+			        c1->getMembraneDistance(-connection.getDirection())) {
+				toErase.push_back((*it).first);
 			} else {
 				// connection still ok, we update its parameters
 				// according to contact surface and cells volumes
@@ -361,8 +385,11 @@ template <typename Cell> class SphereMembrane {
 				connection.getSc().setRestLength(newl);
 				// then we compute the forces
 				connection.computeForces(dt);
-				++it;
 			}
+		}
+		for (auto &p : toErase) {
+			disconnect(p.first, p.second);
+			con.erase(p);
 		}
 	}
 
@@ -384,22 +411,8 @@ template <typename Cell> class SphereMembrane {
 		}
 	}
 
-	static void checkAndCreateConnection(Cell *c0, Cell *c1,
-	                                     CellCellConnectionContainer &con) {
-		Vec AB = c1->position - c0->position;
-		float_t sqDistance = AB.sqlength();
-		float_t sqMaxLength = pow(c0->membrane.radius + c1->membrane.radius, 2);
-		if (sqDistance <= sqMaxLength) {
-			if (!c0->connectedCells.count(c1) && c1 != c0) {
-				float_t dist = sqrt(sqDistance);
-				Vec dir = AB / dist;
-				if (dist < c0->membrane.getPreciseMembraneDistance(dir) +
-				               c1->membrane.getPreciseMembraneDistance(-dir)) {
-					createConnection(make_ordered_pair(c0, c1), con);
-				}
-			}
-		}
-	}
+	static vector<ordered_pair<Cell *>> checkAndReturnNewConnection(
+	    Cell *c0, Cell *c1, CellCellConnectionContainer &con) {}
 
 	static void createConnection(ordered_pair<Cell *> cells,
 	                             CellCellConnectionContainer &con) {
