@@ -82,6 +82,7 @@ class BasicWorld {
 		}
 		return result;
 	}
+	size_t getNbOfCellCellConnections(){return getConnectedCellsList().size();}
 
 	/**********************************************
 	 *             MAIN UPDATE ROUTINE            *
