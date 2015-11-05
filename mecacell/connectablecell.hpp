@@ -14,12 +14,13 @@
 #include "movable.h"
 #include "orientable.h"
 #include "model.h"
+#include "spheremembrane.hpp"
 
 using namespace std;
 
 namespace MecaCell {
 
-template <typename Derived, template <class> class Membrane>
+template <typename Derived, template <class> class Membrane = SphereMembrane>
 class ConnectableCell : public Movable, public Orientable {
 	friend class Membrane<Derived>;
 	/************************ ConnectableCell class template ******************************/
@@ -46,6 +47,18 @@ class ConnectableCell : public Movable, public Orientable {
 	bool visible = true;
 
  public:
+	ConnectableCell(const Derived &c)
+	    : Movable(c.getPosition()),
+	      membrane(static_cast<Derived *>(this), c.membrane),
+	      dead(false),
+	      color(c.color),
+	      tested(false) {}
+
+	ConnectableCell(const ConnectableCell &c)
+	    : ConnectableCell(static_cast<const Derived &>(c)) {}
+
+	ConnectableCell(const Derived *c) : ConnectableCell(*c) {}
+
 	ConnectableCell(Vec pos) : Movable(pos), membrane(static_cast<Derived *>(this)) {
 		randomColor();
 	}
@@ -79,10 +92,12 @@ class ConnectableCell : public Movable, public Orientable {
 	                                              float_t dt) {
 		membrane_t::updateCellModelConnections(c, dt);
 	}
+
 	static inline void disconnectAndDeleteAllConnections(Derived *c0,
 	                                                     CellCellConnectionContainer &con) {
-		disconnectAndDeleteAllConnections(c0, con);
+		membrane_t::disconnectAndDeleteAllConnections(c0, con);
 	}
+
 	template <typename Integrator> void inline updatePositionsAndOrientations(double dt) {
 		membrane.template updatePositionsAndOrientations<Integrator>(dt);
 	}
@@ -100,7 +115,7 @@ class ConnectableCell : public Movable, public Orientable {
 		if (i < 3) return color[i];
 		return 0;
 	}
-	inline const std::vector<Derived *> &getConnectedCells() const {
+	inline const std::unordered_set<Derived *> &getConnectedCells() const {
 		return connectedCells;
 	}
 	inline float_t getPressure() const { return membrane.getPressure(); }
@@ -148,7 +163,7 @@ class ConnectableCell : public Movable, public Orientable {
 	template <typename C = Derived> C *divide(const Vec &direction) {
 		setMass(getBaseMass());
 		membrane.division();
-		membrane.updateAllConnections();
+		// membrane.updateAllConnections();
 		C *newC =
 		    new C(selfconst(), direction.normalized() * getMembraneDistance(direction) * 0.8);
 		return newC;

@@ -26,13 +26,12 @@ class BasicWorld {
 	using CellModelConnectionContainer = typename Cell::CellModelConnectionContainer;
 
  protected:
-	float_t dt = 1.0 / 50.0;        // interval btwn updates
-	int frame = 0;                  // current update number
-	vector<Cell *> cellsToDestroy;  // list of cells having commited apoptosis
+	float_t dt = 1.0 / 50.0;  // interval btwn updates
+	int frame = 0;            // current update number
 
 	// space partition hashmap for cells
 	SpacePartition<Cell *> cellSpacePartition =
-	    SpacePartition<Cell *>(4.0 * DEFAULT_CELL_RADIUS);
+	    SpacePartition<Cell *>(4.5 * DEFAULT_CELL_RADIUS);
 
 	// space partition hashmap for 3Dobj faces
 	SpacePartition<std::pair<model_type *, size_t>> modelSpacePartition =
@@ -70,6 +69,20 @@ class BasicWorld {
 	void disableCellCellCollisions() { cellCellCollisions = false; }
 	int getNbUpdates() const { return frame; }
 
+	vector<pair<Cell *, Cell *>> getConnectedCellsList() {
+		unordered_set<ordered_pair<Cell *>> uniquePairs;
+		for (auto &c : cells) {
+			for (auto &other : c->getConnectedCells()) {
+				uniquePairs.insert(make_ordered_pair(c, other));
+			}
+		}
+		vector<pair<Cell *, Cell *>> result;
+		for (auto &p : uniquePairs) {
+			result.push_back(make_pair(p.first, p.second));
+		}
+		return result;
+	}
+
 	/**********************************************
 	 *             MAIN UPDATE ROUTINE            *
 	 *********************************************/
@@ -85,17 +98,28 @@ class BasicWorld {
 		Cell::updateCellModelConnections(cellModelConnections, dt);
 
 		// updating cells positions
-		for (auto &c : cells) c->template updatePositionsAndOrientations<Integrator>(dt);
+		for (auto &c : cells) {
+			c->template updatePositionsAndOrientations<Integrator>(dt);
+		}
 
 		// looking for connections/collisions
 		if (cellCellCollisions)
 			Cell::checkForCellCellConnections(cells, cellCellConnections, cellSpacePartition);
-		if (cellModelCollisions)
+		if (cellModelCollisions && models.size() > 0)
 			Cell::checkForCellModelConnections(cells, models, cellModelConnections,
 			                                   modelSpacePartition);
 
 		// cell behavior returns a new cell or nullptr
-		for (auto &c : cells) addCell(c->updateBehavior(dt));
+		vector<Cell *> newCells;
+		for (auto &c : cells) {
+			Cell *nc = c->updateBehavior(dt);
+			if (nc) {
+				newCells.push_back(nc);
+			}
+		}
+		for (auto &nc : newCells) {
+			addCell(nc);
+		}
 
 		destroyDeadCells();  // cleanup
 

@@ -67,14 +67,13 @@ class ConnectionsGroup {
 		shader.release();
 	}
 
-	template <typename C>
-	void draw(const vector<C *> &co, const QMatrix4x4 &view, const QMatrix4x4 &projection) {
+	template <typename Cell>
+	void draw(const vector<pair<Cell *, Cell *>> &cells, const QMatrix4x4 &view,
+	          const QMatrix4x4 &projection) {
 		lines.vertices = std::vector<float>();
-		for (auto &c : co) {
-			auto cell0 = c->getNode0();
-			auto cell1 = c->getNode1();
-			QVector3D center0 = toQV3D(cell0->getPosition());
-			QVector3D center1 = toQV3D(cell1->getPosition());
+		for (auto &c : cells) {
+			QVector3D center0 = toQV3D(c.first->getPosition());
+			QVector3D center1 = toQV3D(c.second->getPosition());
 			lines.vertices.push_back(center0.x());
 			lines.vertices.push_back(center0.y());
 			lines.vertices.push_back(center0.z());
@@ -96,3 +95,4 @@ class ConnectionsGroup {
 };
 }
 #endif
+

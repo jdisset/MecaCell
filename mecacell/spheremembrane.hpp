@@ -45,11 +45,19 @@ template <typename Cell> class SphereMembrane {
 	float_t dampRatio = DEFAULT_CELL_DAMP_RATIO;
 	float_t angularStiffness = DEFAULT_CELL_ANG_STIFFNESS;
 	float_t maxTeta = M_PI / 12.0;
-	float_t pressure;
+	float_t pressure = 0;
 
  public:
 	SphereMembrane(Cell *c) : cell(c){};
-	SphereMembrane(Cell *c, const SphereMembrane &sm) : SphereMembrane(sm), cell(c){};
+	SphereMembrane(Cell *c, const SphereMembrane &sm)
+	    : cell(c),
+	      baseRadius(sm.baseRadius),
+	      radius(sm.radius),
+	      correctedRadius(sm.radius),
+	      stiffness(sm.stiffness),
+	      dampRatio(sm.dampRatio),
+	      angularStiffness(sm.angularStiffness),
+	      maxTeta(sm.maxTeta){};
 
 	/**********************************************************
 	                             GET
@@ -68,7 +76,6 @@ template <typename Cell> class SphereMembrane {
 	decltype(modelConnections) &getRWModelConnections() { return modelConnections; }
 	/************************ computed **************************/
 	float_t getPreciseMembraneDistance(const Vec &d) const {
-		// TODO : tester. VRAIMENT.
 		// /!\ assumes that d is normalized
 		float_t closestDist = radius;
 		for (auto &con : cellConnections) {
@@ -84,6 +91,7 @@ template <typename Cell> class SphereMembrane {
 		}
 		return closestDist;
 	}
+
 	inline float_t getVolume() const {
 		return (4.0 / 3.0) * M_PI * radius * radius * radius;
 	}
@@ -136,18 +144,19 @@ template <typename Cell> class SphereMembrane {
 		compensateVolumeLoss();
 		cell->markAsNotTested();
 	}
+
 	void computePressure() {
 		float_t surface = 4.0 * M_PI * radius * radius;
 		pressure = cell->totalForce / surface;
 	}
+
 	double compensateVolumeLoss() {
 		// just updates the correctedRadius
 		double targetVol = getVolume();
 		double volumeLoss = 0;
 		for (auto &co : cellConnections) {
 			auto &c = co.second;
-			Cell *other = co.first;
-			double midpoint = c->getLength() * radius / (radius + other->membrane.radius);
+			double midpoint = c->getLength() * radius / (radius + co.first->membrane.radius);
 			double h = radius - midpoint;
 			volumeLoss +=
 			    (M_PI * h / 6.0) * (3.0 * (radius * radius - midpoint * midpoint) + h * h);
@@ -366,21 +375,22 @@ template <typename Cell> class SphereMembrane {
 
 	static inline void disconnectAndDeleteAllConnections(Cell *c0,
 	                                                     CellCellConnectionContainer &con) {
-		for (auto &c1 : c0->connectedCells) {
+		// TODO: handle model connections
+		auto cop = c0->connectedCells;
+		for (auto &c1 : cop) {
 			disconnect(c0, c1);
 			auto p = make_ordered_pair(c0, c1);
-			ConnectionType *connection = con.at(p);
 			con.erase(p);
 		}
 	}
 
 	static void checkAndCreateConnection(Cell *c0, Cell *c1,
 	                                     CellCellConnectionContainer &con) {
-		if (!c0->connectedCells.count(c1) && c1 != c0) {
-			Vec AB = c1->position - c0->position;
-			float_t sqDistance = AB.sqlength();
-			float_t sqMaxLength = pow(c0->membrane.radius + c1->membrane.radius, 2);
-			if (sqDistance <= sqMaxLength) {
+		Vec AB = c1->position - c0->position;
+		float_t sqDistance = AB.sqlength();
+		float_t sqMaxLength = pow(c0->membrane.radius + c1->membrane.radius, 2);
+		if (sqDistance <= sqMaxLength) {
+			if (!c0->connectedCells.count(c1) && c1 != c0) {
 				float_t dist = sqrt(sqDistance);
 				Vec dir = AB / dist;
 				if (dist < c0->membrane.getPreciseMembraneDistance(dir) +

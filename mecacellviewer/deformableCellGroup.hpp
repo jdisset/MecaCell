@@ -56,7 +56,7 @@ template <typename C> class DeformableCellGroup {
 						auto newvert = sphere.vert;
 						for (auto &v : newvert) {
 							decltype((*cells.begin())->getPosition()) d(v.x(), v.y(), v.z());
-							v *= c->getMembraneDistance(d);
+							v *= c->getMembraneDistance(-d);
 						}
 						sphere.update(newvert, shader);
 					} else {

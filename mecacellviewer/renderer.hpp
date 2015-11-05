@@ -59,8 +59,8 @@ class Renderer : public SignalSlotRenderer {
 
 	// Visual elements
 	Camera camera;
-	DeformableCellGroup<Cell> cells;
-	// ConnectionsGroup connections;
+	CellGroup<Cell> cells;
+	ConnectionsGroup connections;
 	Skybox skybox;
 	unique_ptr<QOpenGLFramebufferObject> ssaoFBO, msaaFBO, finalFBO, fsaaFBO;
 	QOpenGLFramebufferObjectFormat ssaoFormat, msaaFormat, finalFormat;
@@ -187,7 +187,8 @@ class Renderer : public SignalSlotRenderer {
 			           camera.getPosition(), cMode, selectedCell);
 		}
 		if (gc.contains("connections")) {
-			// connections.draw<ConnectType>(scenario.getWorld().connections, view, projection);
+			connections.draw<Cell>(scenario.getWorld().getConnectedCellsList(), view,
+			                              projection);
 			// connections.drawModelConnections<Cell>(scenario.getWorld().cells, view,
 			// projection);
 		}
@@ -275,7 +276,7 @@ class Renderer : public SignalSlotRenderer {
 
 		// elements
 		cells.load();
-		// connections.load();
+		connections.load();
 		skybox.load();
 		ssaoTarget.load(":/shaders/dumb.vert", ":/shaders/ssao.frag");
 		blurTarget.load(":/shaders/dumb.vert", ":/shaders/blur.frag",
