@@ -44,9 +44,8 @@ class Movable {
 	 **********************************************/
 	void receiveForce(const float_t &intensity, const Vec &direction,
 	                  const bool &compressive) {
-		const float_t rndInt = roundN(intensity);
-		force += roundN(direction) * rndInt;
-		totalForce += compressive ? rndInt : -rndInt;
+		force += direction * intensity;
+		totalForce += compressive ? intensity : -intensity;
 	}
 	void receiveForce(const Vec &f) { force += f; }
 	void resetVelocity() { velocity = Vec::zero(); }
