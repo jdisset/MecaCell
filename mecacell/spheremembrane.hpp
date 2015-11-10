@@ -356,7 +356,7 @@ template <typename Cell> class SphereMembrane {
 						stringstream header;
 						auto op = make_ordered_cell_pair(batch[i][j], batch[i][k]);
 						stringstream cotest;
-						Vec AB = op.first->position - op.second->position;
+						Vec AB = roundN(op.first->position - op.second->position);
 						float_t sqDistance = AB.sqlength();
 						float_t sqMaxLength = pow(
 						    op.first->membrane.correctedRadius + op.second->membrane.correctedRadius,
@@ -367,9 +367,11 @@ template <typename Cell> class SphereMembrane {
 								float_t dist = sqrt(sqDistance);
 								Vec dir = AB / dist;
 								if (dist <
-								    op.first->membrane.getConnectedCellAndMembraneDistance(dir).second +
-								        op.second->membrane.getConnectedCellAndMembraneDistance(-dir)
-								            .second) {
+								    roundN(op.first->membrane.getConnectedCellAndMembraneDistance(dir)
+								               .second) +
+								        roundN(
+								            op.second->membrane.getConnectedCellAndMembraneDistance(-dir)
+								                .second)) {
 									newConnections.insert(op);
 								}
 							}
@@ -412,16 +414,16 @@ template <typename Cell> class SphereMembrane {
 			auto &c0 = connection.getNode0();
 			auto &c1 = connection.getNode1();
 			// we check if the connection still makes sense
-			auto t0 =
-			    c0->membrane.getConnectedCellAndMembraneDistance(connection.getDirection());
-			auto t1 =
-			    c1->membrane.getConnectedCellAndMembraneDistance(-connection.getDirection());
+			auto t0 = c0->membrane.getConnectedCellAndMembraneDistance(
+			    roundN(connection.getDirection()));
+			auto t1 = c1->membrane.getConnectedCellAndMembraneDistance(
+			    roundN(-connection.getDirection()));
 			auto v0 = get<0>(t0);  // c0->membrane.getConnectedCell(connection.getDirection());
 			auto v1 = get<0>(t1);  // c1->membrane.getConnectedCell(-connection.getDirection());
 			auto c1ClosestToC0 = isInVector(c1, v0);
 			auto c0ClosestToC1 = isInVector(c0, v1);
-			if (connection.getSc().length >
-			        c0->getMembrane().correctedRadius + c1->getMembrane().correctedRadius ||
+			if (connection.getSc().length > roundN(c0->getMembrane().correctedRadius +
+			                                       c1->getMembrane().correctedRadius) ||
 			    !c0ClosestToC1 || !c1ClosestToC0) {
 				toErase.push_back(
 				    tuple<Cell *, Cell *, CellCellConnectionType *>(c0, c1, &connection));
@@ -429,8 +431,8 @@ template <typename Cell> class SphereMembrane {
 				// connection still ok, we update its parameters
 				// according to contact surface and cells volumes
 				float_t contactSurface =
-				    M_PI * (pow(connection.getSc().length, 2) +
-				            pow((c0->membrane.radius + c1->membrane.radius) / 2.0, 2));
+				    roundN(M_PI * (pow(connection.getSc().length, 2) +
+				                   pow((c0->membrane.radius + c1->membrane.radius) / 2.0, 2)));
 				connection.getFlex().first.setCurrentKCoef(contactSurface);
 				connection.getFlex().second.setCurrentKCoef(contactSurface);
 				connection.getTorsion().first.setCurrentKCoef(contactSurface);
@@ -438,7 +440,7 @@ template <typename Cell> class SphereMembrane {
 				float_t newl = getConnectionLength(
 				    c0->membrane.correctedRadius + c1->membrane.correctedRadius,
 				    (c0->getAdhesionWith(c1) + c1->getAdhesionWith(c0)) * 0.5);
-				connection.getSc().setRestLength(newl);
+				connection.getSc().setRestLength(roundN(newl));
 				// then we compute the forces
 				connection.computeForces(dt);
 			}
@@ -458,15 +460,16 @@ template <typename Cell> class SphereMembrane {
 	}
 
 	static void createConnection(Cell *c0, Cell *c1, CellCellConnectionContainer &con) {
-		float_t l = getConnectionLength(c0, c1);
+		float_t l = roundN(getConnectionLength(c0, c1));
 		auto &membrane0 = c0->membrane;
 		auto &membrane1 = c1->membrane;
 		float_t vol0 = membrane0.getVolume();
 		float_t vol1 = membrane1.getVolume();
-		float_t volProportion = vol0 + vol1;
-		float_t k = (membrane0.stiffness * vol0 + membrane1.stiffness * vol1) / volProportion;
+		float_t volProportion = roundN(vol0 + vol1);
+		float_t k =
+		    roundN((membrane0.stiffness * vol0 + membrane1.stiffness * vol1) / volProportion);
 		float_t dr =
-		    (membrane0.dampRatio * vol0 + membrane1.dampRatio * vol1) / volProportion;
+		    roundN((membrane0.dampRatio * vol0 + membrane1.dampRatio * vol1) / volProportion);
 
 		pair<Joint, Joint> joints = {
 		    Joint(membrane0.getAngularStiffness(),
@@ -478,9 +481,10 @@ template <typename Cell> class SphereMembrane {
 		                           membrane1.angularStiffness),
 		          membrane1.maxTeta)};
 
-		CCCM::createConnection(con, c0, c1, make_pair(c0, c1),
-		                       Spring(k, dampingFromRatio(dr, c0->mass + c1->mass, k), l),
-		                       joints, joints);
+		CCCM::createConnection(
+		    con, c0, c1, make_pair(c0, c1),
+		    Spring(k, roundN(dampingFromRatio(dr, c0->mass + c1->mass, k)), l), joints,
+		    joints);
 	}
 
 	void division() { setRadius(getBaseRadius()); }
