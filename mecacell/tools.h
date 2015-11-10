@@ -1,23 +1,14 @@
 #ifndef TOOLS_H
 #define TOOLS_H
+#include "logger.hpp"
 #include "vector3D.h"
 #include "assert.h"
 #include <random>
 #include <string>
 #include <vector>
 #include <iostream>
+#include <stdio.h>
 #define dispV(v) "(" << v.x << "," << v.y << "," << v.z << ")"
-#define PURPLE "\033[1;35m"
-#define BLUE "\033[34m"
-#define GREY "\033[1;30m"
-#define YELLOW "\033[1;33m"
-#define RED "\033[1;31m"
-#define CYAN "\033[36m"
-#define CYANBOLD "\033[1;36m"
-#define GREEN "\033[32m"
-#define GREENBOLD "\033[1;32m"
-#define NORMAL "\033[0m"
-
 namespace MecaCell {
 typedef Vector3D Vec;
 
@@ -63,9 +54,53 @@ template <typename T> struct ordered_pair {
 		return (first == other.first && second == other.second);
 	}
 };
+template <typename T> inline ordered_pair<T *> make_ordered_cell_pair(T *a, T *b) {
+	if (a->id < b->id) return {a, b};
+	return {b, a};
+}
 template <typename T> inline ordered_pair<T> make_ordered_pair(const T &a, const T &b) {
 	if (a < b) return {a, b};
 	return {b, a};
+}
+template <typename T> inline bool isInVector(const T &elem, const std::vector<T> &vec) {
+	return std::find(vec.begin(), vec.end(), elem) != vec.end();
+}
+
+string hexstr(const Vector3D &v);
+
+template <typename T> std::string hexstr(T d) {
+	char buffer[30];
+	snprintf(buffer, 30, "%A", d);
+	return buffer;
+}
+
+template <typename T> inline bool fuzzyEqual(const T &a, const T &b) {
+	return (fabs(a - b) < 1e-8 * fabs(a));
+}
+
+template <typename T> inline void eraseFromVector(const T &elem, std::vector<T> &vec) {
+	size_t s0 = vec.size();
+	vec.erase(std::remove(vec.begin(), vec.end(), elem), vec.end());
+	assert(vec.size() == s0 - 1);
+}
+template <typename T> inline ostream &operator<<(ostream &out, const vector<T> &v) {
+	out << "[ ";
+	for (auto &e : v) {
+		out << e->id << " ";
+	}
+	out << "]";
+	return out;
+}
+template <typename T> inline constexpr T constpow(const T base, unsigned const exponent) {
+	return (exponent == 0) ? 1 : (base * constpow(base, exponent - 1));
+}
+
+template <typename T, size_t N = 10> T inline roundN(const T &t) {
+	const int p = constpow(10, N);
+	return (round(t * p) / p) + 0.0;
+}
+template <size_t N = 10> inline Vec roundN(const Vec &v) {
+	return Vec(roundN(v.x()), roundN(v.y()), round(v.z()));
 }
 }
 namespace std {

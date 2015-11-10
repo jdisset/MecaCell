@@ -4,7 +4,7 @@
 
 namespace MecaCell {
 class Movable {
-protected:
+ protected:
 	Vec position = Vec::zero();
 	Vec prevposition = Vec::zero();
 	Vec velocity = Vec::zero();
@@ -14,7 +14,7 @@ protected:
 	float_t baseMass = 1.0;
 	float_t totalForce = 0;
 
-public:
+ public:
 	/**********************************************
 	 *               CONSTRUCTOR
 	 **********************************************/
@@ -42,9 +42,11 @@ public:
 	/**********************************************
 	 *                 UPDATES
 	 **********************************************/
-	void receiveForce(const float_t &intensity, const Vec &direction, const bool &compressive) {
-		force += direction * intensity;
-		totalForce += compressive ? intensity : -intensity;
+	void receiveForce(const float_t &intensity, const Vec &direction,
+	                  const bool &compressive) {
+		const float_t rndInt = roundN(intensity);
+		force += roundN(direction) * rndInt;
+		totalForce += compressive ? rndInt : -rndInt;
 	}
 	void receiveForce(const Vec &f) { force += f; }
 	void resetVelocity() { velocity = Vec::zero(); }

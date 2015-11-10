@@ -243,6 +243,11 @@ std::vector<std::string> splitStr(const std::string &s, char delim) {
 	}
 	return res;
 }
+string hexstr(const Vector3D &v) {
+	char buffer[90];
+	snprintf(buffer, 90, "(%A, %A, %A)", v.x(), v.y(), v.z());
+	return buffer;
+}
 
 float_t DEFAULT_CELL_DAMP_RATIO = 0.8;
 float_t DEFAULT_CELL_MASS = 1.0;

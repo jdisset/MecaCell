@@ -11,24 +11,27 @@ namespace MecaCell {
 ////////////////////////////////////////////////////////////////////
 // This is just a classic "linear" spring
 struct Spring {
-	float_t k = 1.0;       // stiffness
-	float_t c = 1.0;       // damp coef
-	float_t l = 1.0;       // rest length
-	float_t length = 1.0;  // current length
+	float_t k = 1.0;           // stiffness
+	float_t c = 1.0;           // damp coef
+	float_t restLength = 1.0;  // rest length
+	float_t length = 1.0;      // current length
 	float_t prevLength = 1.0;
 	float_t minLengthRatio = 0.5;  // max compression
 	Vec direction;                 // current direction from node 0 to node 1
+	bool updatedSinceLastComputeForce = false;
 
 	Spring(){};
 	Spring(const float_t &K, const float_t &C, const float_t &L)
-	    : k(K), c(C), l(L), length(L){};
+	    : k(K), c(C), restLength(L), length(L){};
 
 	void updateLengthDirection(const Vec &p0, const Vec &p1) {
 		direction = p1 - p0;
 		length = direction.length();
 		if (length > 0) direction /= length;
+		updatedSinceLastComputeForce = true;
 	}
-	void setRestLength(double L) { l = L; }
+	void setRestLength(float_t L) { restLength = L; }
+	inline float_t getRestLength() const { return restLength; }
 };
 
 ////////////////////////////////////////////////////////////////////
@@ -78,13 +81,11 @@ struct Joint {
 // - float_t getInertia()
 // - void receiveForce(float_t intensity, Vec direction, bool compressive)
 // - void receiveTorque(Vec acc)
-template <typename N0, typename N1 = N0> class Connection {
- private:
+template <typename N0, typename N1 = N0> struct Connection {
 	pair<N0, N1> connected;     // the two connected nodes
 	Spring sc;                  // basic spring
 	pair<Joint, Joint> fj, tj;  // flexure and torsion joints (1 per node)
 
- public:
 	bool scEnabled = true, fjEnabled = true, tjEnabled = false;
 	/**********************************************
 	 *               CONSTRUCTOR
@@ -140,9 +141,8 @@ template <typename N0, typename N1 = N0> class Connection {
 	inline pair<Joint, Joint> &getTorsion() { return tj; }
 	inline N0 &getNode0() { return connected.first; }
 	inline N1 &getNode1() { return connected.second; }
-	inline float getLength() { return sc.length; }
-	void setBaseLength(const float_t d) { sc.l = d; }
-	inline Vec getDirection() { return sc.direction; }
+	inline float getLength() const { return sc.length; }
+	inline Vec getDirection() const { return sc.direction; }
 
 	/**********************************************
 	 *              UPDATES
@@ -153,11 +153,13 @@ template <typename N0, typename N1 = N0> class Connection {
 	}
 	void computeForces(float_t dt) {
 		// BASIC SPRING
-		sc.updateLengthDirection(ptr(connected.first)->getPosition(),
-		                         ptr(connected.second)->getPosition());
+		if (!sc.updatedSinceLastComputeForce) {
+			sc.updateLengthDirection(ptr(connected.first)->getPosition(),
+			                         ptr(connected.second)->getPosition());
+		}
 		if (scEnabled) {
-			float_t x = sc.length - sc.l;  // actual compression / elongation
-			float_t minlength = sc.minLengthRatio * sc.l;
+			float_t x = sc.length - sc.restLength;  // actual compression / elongation
+			float_t minlength = sc.minLengthRatio * sc.restLength;
 			if (sc.length < minlength) {
 				float_t d = minlength - sc.length;
 				Vec component0 =
@@ -199,6 +201,7 @@ template <typename N0, typename N1 = N0> class Connection {
 			updateFT<0>();
 			updateFT<1>();
 		}
+		sc.updatedSinceLastComputeForce = false;
 	}
 
 	template <int n> void updateFT() {

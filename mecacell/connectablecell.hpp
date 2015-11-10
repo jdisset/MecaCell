@@ -23,6 +23,7 @@ namespace MecaCell {
 template <typename Derived, template <class> class Membrane = SphereMembrane>
 class ConnectableCell : public Movable, public Orientable {
 	friend class Membrane<Derived>;
+	friend typename Membrane<Derived>::CCCM;
 	/************************ ConnectableCell class template ******************************/
 	// Abstract:
 	// A ConnectableCell is the basis for every cell a user might want to use in mecacell.
@@ -47,6 +48,7 @@ class ConnectableCell : public Movable, public Orientable {
 	bool visible = true;
 
  public:
+	size_t id = 0;  // mostly for debugging, num of cell by order of addition in world
 	ConnectableCell(const Derived &c)
 	    : Movable(c.getPosition()),
 	      membrane(static_cast<Derived *>(this), c.membrane),
@@ -140,9 +142,12 @@ class ConnectableCell : public Movable, public Orientable {
 
 	string toString() const {
 		stringstream s;
-		s << "Cell " << this << " :" << endl;
-		s << " position = " << position << ", orientation = " << orientation << endl;
-		s << " velocity = " << velocity << ", angular velocity = " << angularVelocity << endl;
+		s << "Cell " << id << " :" << endl;
+		s << " position = " << hexstr(position) << ", orientation = " << orientation << endl;
+		s << " velocity = " << hexstr(velocity) << ", angular velocity = " << angularVelocity
+		  << endl;
+		s << " force = " << force << " ; " << hexstr(force) << endl;
+		s << " nbConnections = " << connectedCells.size() << endl;
 		return s.str();
 	}
 
@@ -163,7 +168,6 @@ class ConnectableCell : public Movable, public Orientable {
 	template <typename C = Derived> C *divide(const Vec &direction) {
 		setMass(getBaseMass());
 		membrane.division();
-		// membrane.updateAllConnections();
 		C *newC =
 		    new C(selfconst(), direction.normalized() * getMembraneDistance(direction) * 0.8);
 		return newC;

@@ -14,6 +14,9 @@
 
 using namespace std;
 
+#undef DBG
+#define DBG DEBUG(basicworld)
+
 namespace MecaCell {
 template <typename Cell, typename Integrator = Euler,
           template <class> class SpacePartition = Grid>
@@ -82,25 +85,35 @@ class BasicWorld {
 		}
 		return result;
 	}
-	size_t getNbOfCellCellConnections(){return getConnectedCellsList().size();}
+	size_t getNbOfCellCellConnections() { return getConnectedCellsList().size(); }
 
 	/**********************************************
 	 *             MAIN UPDATE ROUTINE            *
 	 *********************************************/
 	void update() {
 		// adding world specific forces
+		DBG << cells.size() << " cells in world" << endl;
+		DBG << cellCellConnections.size() << " connections" << endl;
 		for (auto &c : cells) {
 			c->receiveForce(-6.0 * M_PI * viscosityCoef * c->getBoundingBoxRadius() *
 			                c->getVelocity());  // friction
 			c->receiveForce(g * c->getMass());  // gravity
 		}
+		for (auto &c : cells) {
+			DBG << "after receiveForce from world : \n" << c->toString() << endl;
+		}
 		// then connections/collisions induced forces
 		Cell::updateCellCellConnections(cellCellConnections, dt);
 		Cell::updateCellModelConnections(cellModelConnections, dt);
 
+		for (auto &c : cells) {
+			c->setForce(roundN(c->getForce()));
+			DBG << "after updateConnections : \n" << c->toString() << endl;
+		}
 		// updating cells positions
 		for (auto &c : cells) {
 			c->template updatePositionsAndOrientations<Integrator>(dt);
+			c->setPosition(roundN(c->getPosition()));
 		}
 
 		// looking for connections/collisions
@@ -126,6 +139,7 @@ class BasicWorld {
 
 		// getting ready for next update
 		for (auto &c : cells) {
+			DBG << "end of update : \n" << c->toString() << endl;
 			c->updateStats();
 			c->resetForces();
 		}
@@ -182,7 +196,10 @@ class BasicWorld {
 	 *           MODELS           *
 	 ******************************/
 	void addCell(Cell *c) {
-		if (c) cells.push_back(c);
+		if (c) {
+			cells.push_back(c);
+			c->id = cells.size() - 1;
+		}
 	}
 
 	void destroyDeadCells() {
