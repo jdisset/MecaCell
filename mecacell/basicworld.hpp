@@ -100,7 +100,7 @@ class BasicWorld {
 			c->receiveForce(g * c->getMass());  // gravity
 		}
 		for (auto &c : cells) {
-			DBG << "after receiveForce from world : \n" << c->toString() << endl;
+			// DBG << "after receiveForce from world : \n" << c->toString() << endl;
 		}
 		// then connections/collisions induced forces
 		Cell::updateCellCellConnections(cellCellConnections, dt);
@@ -108,7 +108,7 @@ class BasicWorld {
 
 		for (auto &c : cells) {
 			c->setForce(roundN(c->getForce()));
-			DBG << "after updateConnections : \n" << c->toString() << endl;
+			// DBG << "after updateConnections : \n" << c->toString() << endl;
 		}
 		// updating cells positions
 		for (auto &c : cells) {
@@ -139,7 +139,7 @@ class BasicWorld {
 
 		// getting ready for next update
 		for (auto &c : cells) {
-			DBG << "end of update : \n" << c->toString() << endl;
+			//DBG << "end of update : \n" << c->toString() << endl;
 			c->updateStats();
 			c->resetForces();
 		}

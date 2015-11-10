@@ -385,7 +385,9 @@ template <typename Cell> class SphereMembrane {
 		for (const auto &c : cells) grid.insert(c);
 		auto gridCells = grid.getThreadSafeGrid();
 		for (auto &batch : gridCells) {
+			DBG << "batch.size = " << batch.size() << endl;
 			for (size_t i = 0; i < batch.size(); ++i) {
+				DBG << "batch[" << i << "].size = " << batch[i].size() << endl;
 				for (size_t j = 0; j < batch[i].size(); ++j) {
 					for (size_t k = j + 1; k < batch[i].size(); ++k) {
 						stringstream header;
@@ -393,7 +395,6 @@ template <typename Cell> class SphereMembrane {
 						header << op.first->id << "0000" << op.second->id;
 						stringstream cotest;
 						cotest << YELLOW << op.first->id << " ? " << op.second->id << endl;
-						ordered_log[std::stoi(header.str())] = cotest.str();
 						Vec AB = op.first->position - op.second->position;
 						float_t sqDistance = AB.sqlength();
 						float_t sqMaxLength = pow(
@@ -411,16 +412,15 @@ template <typename Cell> class SphereMembrane {
 								Vec dir = AB / dist;
 								auto t0 = op.first->membrane.getConnectedCellAndMembraneDistance(dir);
 								auto t1 = op.second->membrane.getConnectedCellAndMembraneDistance(-dir);
-								// ordered_log[c0->id] = get<2>(t0);
-								// ordered_log[c1->id] = get<2>(t1);
-								cotest << "| md0 =  " << hexstr(get<1>(t0)) << endl;
-								cotest << "| md1 =  " << hexstr(get<1>(t1)) << endl;
-								if (dist < get<1>(t0) + get<1>(t1)) {
+								cotest << "| md0 =  " << hexstr(roundN(get<1>(t0))) << endl;
+								cotest << "| md1 =  " << hexstr(roundN(get<1>(t1))) << endl;
+								if (dist < roundN(get<1>(t0)) + roundN(get<1>(t1))) {
 									cotest << "| OK" << endl;
 									newConnections.insert(op);
 								}
 							}
 						}
+						ordered_log[std::stoi(header.str())] = cotest.str();
 					}
 				}
 			}
