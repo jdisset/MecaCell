@@ -82,44 +82,20 @@ template <typename Cell> class SphereMembrane {
 	inline float_t getAngularStiffness() const { return angularStiffness; }
 
 	/************************ computed **************************/
-	tuple<vector<Cell *>, float_t, string> getConnectedCellAndMembraneDistance(
-	    const Vec &d) const {
+	pair<vector<Cell *>, float_t> getConnectedCellAndMembraneDistance(const Vec &d) const {
 		// /!\ assumes that d is normalized
 		vector<Cell *> closestCells;
 		float_t closestDist = correctedRadius;
-		map<int, string> ordered_log;
-		// stringstream connectedList;
-		// connectedList << " connected = ";
-		// for (auto &c : cell->connectedCells) {
-		// connectedList << c->id << " ";
-		//}
-		// ordered_log[-10] = connectedList.str();
 		for (auto &cc : cccm.cellConnections) {
 			auto &con = CCCM::getConnection(cc);
 			con.updateLengthDirection();
 			auto &otherCell = cell == con.getNode0() ? con.getNode1() : con.getNode0();
 			Vec normal = cell == con.getNode0() ? -con.getDirection() : con.getDirection();
 			float_t dot = normal.dot(d);
-			// stringstream sstr;
-			// sstr << YELLOW << p.first << " " << p.second << RESET << endl;
-			// sstr << " |: " << cccm.cellConnections.size() << " elements in
-			// ccm.cellConnections"
-			//<< endl;
-			// sstr << " |: " << cell->id << " : " << hexstr(cell->getPosition()) << endl;
-			// sstr << " |: " << otherCell->id << " : " << hexstr(otherCell->getPosition())
-			//<< endl;
-			// sstr << " |: d = " << setprecision(10) << d << endl;
-			// sstr << " |: dot =  " << setprecision(20) << dot << endl;
-			// sstr << " |: normal = " << hexstr(normal) << endl;
-			// sstr << " |: connLength =  " << con.getLength() << " (" <<
-			// hexstr(con.getLength())
-			//<< ")" << endl;
 			if (dot < 0) {
 				float_t midpoint =
 				    con.getLength() * radius / (radius + otherCell->membrane.radius);
 				float_t l = -midpoint / dot;
-				// sstr << " |: midpoint =  " << hexstr(midpoint) << endl;
-				// sstr << " |: l = " << hexstr(l) << endl;
 				if (fuzzyEqual(l, closestDist)) {
 					closestCells.push_back(otherCell);
 				} else if (l < closestDist) {
@@ -127,13 +103,8 @@ template <typename Cell> class SphereMembrane {
 					closestCells = {otherCell};
 				}
 			}
-			// ordered_log[std::stoi(title.str())] = sstr.str();
 		}
-		stringstream sstr;
-		// for (auto &m : ordered_log) {
-		// sstr << m.second << "\n";
-		//}
-		return {closestCells, closestDist, sstr.str()};
+		return {closestCells, closestDist};
 	}
 
 	inline vector<Cell *> getConnectedCell(const Vec &d) const {
@@ -204,14 +175,11 @@ template <typename Cell> class SphereMembrane {
 		Integrator::updateOrientation(*cell, dt);
 		if (volumeConservation) compensateVolumeLoss();
 		cell->markAsNotTested();
-		DBG << MAGENTA << cell->id << RESET << " pos = " << hexstr(cell->getPosition())
-		    << endl;
 	}
 
 	void computePressure() {
 		float_t surface = 4.0 * M_PI * radius * radius;
 		pressure = roundN(cell->totalForce / surface);
-		DBG << MAGENTA << cell->id << RESET << " pressure = " << hexstr(pressure) << endl;
 	}
 
 	double compensateVolumeLoss() {
@@ -227,8 +195,6 @@ template <typename Cell> class SphereMembrane {
 			    (M_PI * h / 6.0) * (3.0 * (radius * radius - midpoint * midpoint) + h * h);
 		}
 		correctedRadius = roundN(cbrt((targetVol + 1.3 * volumeLoss) / ((4.0 / 3.0) * M_PI)));
-		DBG << MAGENTA << cell->id << RESET
-		    << " correctedRadius = " << hexstr(correctedRadius) << endl;
 	}
 
 	void resetForces() {
@@ -381,63 +347,41 @@ template <typename Cell> class SphereMembrane {
 		}
 		unordered_set<ordered_pair<Cell *>> newConnections;
 		grid.clear();
-		map<int, string> ordered_log;
 		for (const auto &c : cells) grid.insert(c);
 		auto gridCells = grid.getThreadSafeGrid();
 		for (auto &batch : gridCells) {
-			DBG << "batch.size = " << batch.size() << endl;
 			for (size_t i = 0; i < batch.size(); ++i) {
-				DBG << "batch[" << i << "].size = " << batch[i].size() << endl;
 				for (size_t j = 0; j < batch[i].size(); ++j) {
 					for (size_t k = j + 1; k < batch[i].size(); ++k) {
 						stringstream header;
 						auto op = make_ordered_cell_pair(batch[i][j], batch[i][k]);
-						header << op.first->id << "0000" << op.second->id;
 						stringstream cotest;
-						cotest << YELLOW << op.first->id << " ? " << op.second->id << endl;
-						Vec AB = op.first->position - op.second->position;
+						Vec AB = roundN(op.first->position - op.second->position);
 						float_t sqDistance = AB.sqlength();
 						float_t sqMaxLength = pow(
 						    op.first->membrane.correctedRadius + op.second->membrane.correctedRadius,
 						    2);
-						cotest << "| AB = " << hexstr(AB) << endl;
-						cotest << "| sqd = " << hexstr(sqDistance) << endl;
-						cotest << "| sqMl = " << hexstr(sqMaxLength) << endl;
 						if (sqDistance <= sqMaxLength) {
-							cotest << "| sql < sqMl " << endl;
 							if (!CCCM::areConnected(op.first, op.second) && !newConnections.count(op) &&
 							    op.first != op.second) {
-								cotest << "| doesn't yet exist " << endl;
 								float_t dist = sqrt(sqDistance);
 								Vec dir = AB / dist;
-								auto t0 = op.first->membrane.getConnectedCellAndMembraneDistance(dir);
-								auto t1 = op.second->membrane.getConnectedCellAndMembraneDistance(-dir);
-								cotest << "| md0 =  " << hexstr(roundN(get<1>(t0))) << endl;
-								cotest << "| md1 =  " << hexstr(roundN(get<1>(t1))) << endl;
-								if (dist < roundN(get<1>(t0)) + roundN(get<1>(t1))) {
-									cotest << "| OK" << endl;
+								if (dist <
+								    roundN(op.first->membrane.getConnectedCellAndMembraneDistance(dir)
+								               .second) +
+								        roundN(
+								            op.second->membrane.getConnectedCellAndMembraneDistance(-dir)
+								                .second)) {
 									newConnections.insert(op);
 								}
 							}
 						}
-						ordered_log[std::stoi(header.str())] = cotest.str();
 					}
 				}
 			}
 		}
-		for (auto &m : ordered_log) {
-			DBG << m.second << endl;
-		}
-		map<int, string> orderedCon;
 		for (auto &nc : newConnections) {
-			stringstream header, txt;
-			header << nc.first->id << "0000" << nc.second->id;
-			txt << BLUE << nc.first->id << "<->" << nc.second->id << RESET;
-			orderedCon[std::stoi(header.str())] = txt.str();
 			createConnection(nc.first, nc.second, cellCellConnections);
-		}
-		for (auto &m : orderedCon) {
-			DBG << m.second << endl;
 		}
 	}
 
@@ -465,34 +409,30 @@ template <typename Cell> class SphereMembrane {
 			auto &co = CCCM::getConnection(cc);
 			co.updateLengthDirection();
 		}
-		map<int, string> ordered_log;
 		for (auto &cc : con) {
 			auto &connection = CCCM::getConnection(cc);
 			auto &c0 = connection.getNode0();
 			auto &c1 = connection.getNode1();
 			// we check if the connection still makes sense
-			auto t0 =
-			    c0->membrane.getConnectedCellAndMembraneDistance(connection.getDirection());
-			auto t1 =
-			    c1->membrane.getConnectedCellAndMembraneDistance(-connection.getDirection());
+			auto t0 = c0->membrane.getConnectedCellAndMembraneDistance(
+			    roundN(connection.getDirection()));
+			auto t1 = c1->membrane.getConnectedCellAndMembraneDistance(
+			    roundN(-connection.getDirection()));
 			auto v0 = get<0>(t0);  // c0->membrane.getConnectedCell(connection.getDirection());
 			auto v1 = get<0>(t1);  // c1->membrane.getConnectedCell(-connection.getDirection());
 			auto c1ClosestToC0 = isInVector(c1, v0);
 			auto c0ClosestToC1 = isInVector(c0, v1);
-			if (connection.getSc().length >
-			        c0->getMembrane().correctedRadius + c1->getMembrane().correctedRadius ||
+			if (connection.getSc().length > roundN(c0->getMembrane().correctedRadius +
+			                                       c1->getMembrane().correctedRadius) ||
 			    !c0ClosestToC1 || !c1ClosestToC0) {
 				toErase.push_back(
 				    tuple<Cell *, Cell *, CellCellConnectionType *>(c0, c1, &connection));
 			} else {
 				// connection still ok, we update its parameters
 				// according to contact surface and cells volumes
-				stringstream header, txt;
-				header << c0->id << "0000" << c1->id;
-				stringstream computeTxt;
 				float_t contactSurface =
-				    M_PI * (pow(connection.getSc().length, 2) +
-				            pow((c0->membrane.radius + c1->membrane.radius) / 2.0, 2));
+				    roundN(M_PI * (pow(connection.getSc().length, 2) +
+				                   pow((c0->membrane.radius + c1->membrane.radius) / 2.0, 2)));
 				connection.getFlex().first.setCurrentKCoef(contactSurface);
 				connection.getFlex().second.setCurrentKCoef(contactSurface);
 				connection.getTorsion().first.setCurrentKCoef(contactSurface);
@@ -500,32 +440,13 @@ template <typename Cell> class SphereMembrane {
 				float_t newl = getConnectionLength(
 				    c0->membrane.correctedRadius + c1->membrane.correctedRadius,
 				    (c0->getAdhesionWith(c1) + c1->getAdhesionWith(c0)) * 0.5);
-
-				connection.getSc().setRestLength(newl);
+				connection.getSc().setRestLength(roundN(newl));
 				// then we compute the forces
 				connection.computeForces(dt);
-				computeTxt << "computing con " << c0->id << " <-> " << c1->id << endl;
-				computeTxt << " |> contactSurface = " << contactSurface << endl;
-				computeTxt << " |> newl = " << newl << endl;
-				computeTxt << " |> now, l = " << connection.getSc().length << endl;
-				computeTxt << " |> now, direction = " << connection.getSc().direction << endl;
 			}
 		}
-		// for (auto &m : ordered_log) {
-		// DBG << BLUE << m.first << RESET << " : " << endl;
-		// DBG << m.second << endl;
-		//}
-
-		map<int, string> orderedCon;
 		for (auto &p : toErase) {
-			stringstream header, txt;
-			header << get<0>(p)->id << "0000" << get<1>(p)->id;
-			txt << RED << get<0>(p)->id << " X " << get<1>(p)->id << RESET;
-			orderedCon[std::stoi(header.str())] = txt.str();
 			CCCM::disconnect(con, get<0>(p), get<1>(p), get<2>(p));
-		}
-		for (auto &m : orderedCon) {
-			DBG << m.second << endl;
 		}
 	}
 
@@ -539,15 +460,16 @@ template <typename Cell> class SphereMembrane {
 	}
 
 	static void createConnection(Cell *c0, Cell *c1, CellCellConnectionContainer &con) {
-		float_t l = getConnectionLength(c0, c1);
+		float_t l = roundN(getConnectionLength(c0, c1));
 		auto &membrane0 = c0->membrane;
 		auto &membrane1 = c1->membrane;
 		float_t vol0 = membrane0.getVolume();
 		float_t vol1 = membrane1.getVolume();
-		float_t volProportion = vol0 + vol1;
-		float_t k = (membrane0.stiffness * vol0 + membrane1.stiffness * vol1) / volProportion;
+		float_t volProportion = roundN(vol0 + vol1);
+		float_t k =
+		    roundN((membrane0.stiffness * vol0 + membrane1.stiffness * vol1) / volProportion);
 		float_t dr =
-		    (membrane0.dampRatio * vol0 + membrane1.dampRatio * vol1) / volProportion;
+		    roundN((membrane0.dampRatio * vol0 + membrane1.dampRatio * vol1) / volProportion);
 
 		pair<Joint, Joint> joints = {
 		    Joint(membrane0.getAngularStiffness(),
@@ -559,9 +481,10 @@ template <typename Cell> class SphereMembrane {
 		                           membrane1.angularStiffness),
 		          membrane1.maxTeta)};
 
-		CCCM::createConnection(con, c0, c1, make_pair(c0, c1),
-		                       Spring(k, dampingFromRatio(dr, c0->mass + c1->mass, k), l),
-		                       joints, joints);
+		CCCM::createConnection(
+		    con, c0, c1, make_pair(c0, c1),
+		    Spring(k, roundN(dampingFromRatio(dr, c0->mass + c1->mass, k)), l), joints,
+		    joints);
 	}
 
 	void division() { setRadius(getBaseRadius()); }
