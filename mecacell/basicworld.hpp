@@ -46,7 +46,7 @@ class BasicWorld {
 
 	// physics parameters of the world
 	Vec g = Vec::zero();
-	float_t viscosityCoef = 0.001;
+	float_t viscosityCoef = 0.0003;
 
  public:
 	CellCellConnectionContainer cellCellConnections;
@@ -71,7 +71,24 @@ class BasicWorld {
 	void setViscosityCoef(const float_t d) { viscosityCoef = d; }
 	void disableCellCellCollisions() { cellCellCollisions = false; }
 	int getNbUpdates() const { return frame; }
-
+	vector<pair<Vec, Vec>> getAllVelocities() const {
+		vector<pair<Vec, Vec>> res;
+		res.reserve(cells.size());
+		for (auto &c : cells) {
+			auto f = c->getAllVelocities();
+			res.insert(res.begin(), f.begin(), f.end());
+		}
+		return res;
+	}
+	vector<pair<Vec, Vec>> getAllForces() const {
+		vector<pair<Vec, Vec>> res;
+		res.reserve(cells.size());
+		for (auto &c : cells) {
+			auto f = c->getAllForces();
+			res.insert(res.begin(), f.begin(), f.end());
+		}
+		return res;
+	}
 	vector<pair<Cell *, Cell *>> getConnectedCellsList() {
 		unordered_set<ordered_pair<Cell *>> uniquePairs;
 		for (auto &c : cells) {
@@ -91,19 +108,22 @@ class BasicWorld {
 	 *             MAIN UPDATE ROUTINE            *
 	 *********************************************/
 	void update() {
+		// getting ready
+		for (auto &c : cells) {
+			c->updateStats();
+			c->resetForces();
+		}
 		// adding world specific forces
 		for (auto &c : cells) {
 			c->receiveForce(-6.0 * M_PI * viscosityCoef * c->getBoundingBoxRadius() *
 			                c->getVelocity());  // friction
 			c->receiveForce(g * c->getMass());  // gravity
 		}
+
 		// then connections/collisions induced forces
 		Cell::updateCellCellConnections(cellCellConnections, dt);
 		Cell::updateCellModelConnections(cellModelConnections, dt);
 
-		for (auto &c : cells) {
-			c->setForce(roundN(c->getForce()));
-		}
 		// updating cells positions
 		for (auto &c : cells) {
 			c->template updatePositionsAndOrientations<Integrator>(dt);
@@ -131,11 +151,6 @@ class BasicWorld {
 
 		destroyDeadCells();  // cleanup
 
-		// getting ready for next update
-		for (auto &c : cells) {
-			c->updateStats();
-			c->resetForces();
-		}
 		++frame;
 	}
 

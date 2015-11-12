@@ -15,13 +15,15 @@
 #include "orientable.h"
 #include "model.h"
 #include "spheremembrane.hpp"
+#include "deformablemembrane.hpp"
 
 using namespace std;
 
 namespace MecaCell {
 
-template <typename Derived, template <class> class Membrane = SphereMembrane>
+template <typename Derived, template <class> class Membrane = DeformableMembrane>
 class ConnectableCell : public Movable, public Orientable {
+	friend class SphereMembrane<Derived>;
 	friend class Membrane<Derived>;
 	friend typename Membrane<Derived>::CCCM;
 	/************************ ConnectableCell class template ******************************/
@@ -107,6 +109,7 @@ class ConnectableCell : public Movable, public Orientable {
 	/************** GET ******************/
 	// basics
 	inline membrane_t &getMembrane() { return membrane; }
+	inline const membrane_t &getConstMembrane() const { return membrane; }
 	inline float_t getBaseVolume() const { return membrane.getBaseVolume(); }
 	inline float_t getVolume() const { return membrane.getVolume(); }
 	inline float_t getMembraneDistance(const Vec &d) const {
@@ -140,14 +143,25 @@ class ConnectableCell : public Movable, public Orientable {
 	int getNbConnections() const { return connectedCells.size(); }
 	bool getVisible() const { return visible; }
 
+	template <typename M = membrane_t>
+	vector<pair<Vec, Vec>> getAllForces(
+	    typename std::enable_if<!M::forcesOnMembrane>::type * = nullptr) const {
+		return {{getPosition(), getForce()}};
+	}
+
+	template <typename M = membrane_t>
+	vector<pair<Vec, Vec>> getAllVelocities(
+	    typename std::enable_if<!M::forcesOnMembrane>::type * = nullptr) const {
+		return {{getPosition(), getVelocity()}};
+	}
+
 	string toString() const {
 		stringstream s;
 		s << "Cell " << id << " :" << endl;
-		s << " position = " << hexstr(position) << ", orientation = " << orientation << endl;
-		s << " velocity = " << hexstr(velocity) << ", angular velocity = " << angularVelocity
-		  << endl;
-		s << " force = " << force << " ; " << hexstr(force) << endl;
-		s << " nbConnections = " << connectedCells.size() << endl;
+		s << " position = " << position << ", orientation = " << orientation << endl;
+		s << " velocity = " << velocity << ", angular velocity = " << angularVelocity << endl;
+		s << " force = " << force << " ; " << force << endl;
+		s << " nbConnections = " << connectedCells.size();
 		return s.str();
 	}
 

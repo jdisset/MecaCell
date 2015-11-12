@@ -4,6 +4,7 @@
 #include "cellgroup.hpp"
 #include "deformablecellgroup.hpp"
 #include "connectionsgroup.hpp"
+#include "arrowsgroup.hpp"
 #include "points.hpp"
 #include "camera.hpp"
 #include "model.hpp"
@@ -69,6 +70,7 @@ class Renderer : public SignalSlotRenderer {
 	BlurQuad blurTarget;
 	GridViewer gridViewer;
 	Points pointsViewer;
+	ArrowsGroup arrows;
 	unordered_map<std::string, ModelViewer<ModelType>> modelViewers;
 
 	// Events
@@ -154,6 +156,24 @@ class Renderer : public SignalSlotRenderer {
 			gridViewer.draw(scenario.getWorld().getCellGrid(), view, projection,
 			                QVector4D(0.99, 0.9, 0.4, 1.0));
 		}
+		if (gc.contains("forces")) {
+			auto f0 = scenario.getWorld().getAllForces();
+			vector<pair<QVector3D, QVector3D>> f;
+			f.reserve(f0.size());
+			for (auto &p : f0) {
+				f.push_back(make_pair(toQV3D(p.first), toQV3D(p.second)));
+			}
+			arrows.draw(f, QVector4D(0.8, 0.1, 0.94, 1.0), 1.0, view, projection);
+		}
+		if (gc.contains("velocities")) {
+			auto f0 = scenario.getWorld().getAllVelocities();
+			vector<pair<QVector3D, QVector3D>> f;
+			f.reserve(f0.size());
+			for (auto &p : f0) {
+				f.push_back(make_pair(toQV3D(p.first), toQV3D(p.second)));
+			}
+			arrows.draw(f, QVector4D(0.1, 0.94, 0.8, 1.0), 1.0, view, projection);
+		}
 		if (gc.contains("modelGrid")) {
 			gridViewer.draw(scenario.getWorld().getModelGrid(), view, projection,
 			                QVector4D(0.6, 0.1, 0.1, 1.0));
@@ -171,6 +191,11 @@ class Renderer : public SignalSlotRenderer {
 			}
 		}
 
+		if (gc.contains("connections")) {
+			connections.draw<Cell>(scenario.getWorld().getConnectedCellsList(), view,
+			                       projection);
+		}
+
 		for (auto &p : plugins_onDraw) p();
 
 		msaaFBO->release();
@@ -186,13 +211,6 @@ class Renderer : public SignalSlotRenderer {
 			cells.draw(scenario.getWorld().cells, view, projection, camera.getViewVector(),
 			           camera.getPosition(), cMode, selectedCell);
 		}
-		if (gc.contains("connections")) {
-			connections.draw<Cell>(scenario.getWorld().getConnectedCellsList(), view,
-			                              projection);
-			// connections.drawModelConnections<Cell>(scenario.getWorld().cells, view,
-			// projection);
-		}
-
 		QOpenGLFramebufferObject::blitFramebuffer(
 		    fsaaFBO.get(), QRect(QPoint(0, 0), viewportSize * screenCoef), finalFBO.get(),
 		    QRect(QPoint(0, 0), viewportSize * FSAA_COEF * screenCoef), GL_COLOR_BUFFER_BIT,
@@ -278,6 +296,7 @@ class Renderer : public SignalSlotRenderer {
 		cells.load();
 		connections.load();
 		skybox.load();
+		arrows.load();
 		ssaoTarget.load(":/shaders/dumb.vert", ":/shaders/ssao.frag");
 		blurTarget.load(":/shaders/dumb.vert", ":/shaders/blur.frag",
 		                viewportSize * screenCoef);
@@ -307,7 +326,6 @@ class Renderer : public SignalSlotRenderer {
 		GL->glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D,
 		                           depthTex, 0);
 		ssaoFBO->release();
-
 		// scenario
 	}
 

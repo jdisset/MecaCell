@@ -15,23 +15,23 @@ namespace MecaCell {
 template <typename O> class Grid {
  private:
 	float_t cellSize;  // actually it's 1/cellSize, just so we can multiply
-	unordered_map<Vec, unordered_set<O>> um;
+	unordered_map<Vec, vector<O>> um;
 
  public:
 	Grid(float_t cs) : cellSize(1.0 / cs) {}
 
 	float_t getCellSize() const { return 1.0 / cellSize; }
-	const unordered_map<Vec, unordered_set<O>> &getContent() const { return um; }
+	const unordered_map<Vec, vector<O>> &getContent() const { return um; }
 
 	array<vector<vector<O>>, 8> getThreadSafeGrid() const {
 		array<vector<vector<O>>, 8> res;
 		for (const auto &c : um) {
 			size_t color = vecToColor(c.first);
-			vector<O> v;
-			for (const auto &o : c.second) {
-				v.push_back(o);
-			}
-			res[color].push_back(v);
+			// vector<O> vec = c.second;
+			// sort(vec.begin(), vec.end());
+			// vec.erase(unique(vec.begin(), vec.end()), vec.end());
+			// res[color].push_back(vec);
+			res[color].push_back(c.second);
 		}
 		return res;
 	}
@@ -48,7 +48,7 @@ template <typename O> class Grid {
 		for (double i = minCorner.x(); i <= maxCorner.x(); ++i) {
 			for (double j = minCorner.y(); j <= maxCorner.y(); ++j) {
 				for (double k = minCorner.z(); k <= maxCorner.z(); ++k) {
-					um[Vector3D(i, j, k)].insert(obj);
+					um[Vec(i, j, k)].push_back(obj);
 				}
 			}
 		}
@@ -66,7 +66,7 @@ template <typename O> class Grid {
 			std::pair<bool, Vec> projec = projectionIntriangle(p0, p1, p2, center);
 			if ((center - projec.second).sqlength() < 0.8 * cs * cs) {
 				if (projec.first || closestDistToTriangleEdge(p0, p1, p2, center) < 0.87 * cs) {
-					um[v].insert(obj);
+					um[v].push_back(obj);
 				}
 			}
 		});

@@ -5,21 +5,36 @@
 namespace MecaCell {
 template <typename RefFrame> struct SurfaceControlPoint {
 	RefFrame *rf = nullptr;  // (can be a cell... just needs a basis)
-	Rotation<Vec> r;
-	Vec direction;
+	Rotation<Vec> restRotation, currentRotation;
+	Vec restDirection, currentDirection;
 	float_t restDist, currentDist;
 
-	SurfaceControlPoint(RefFrame *RF, Rotation<Vec> &&R, float_t rd)
-	    : rf(RF), r(std::move(R)), restDist(rd), currentDist(rd){};
+	SurfaceControlPoint(){};
+	SurfaceControlPoint(RefFrame *RF, const SurfaceControlPoint &scp)
+	    : rf(RF),
+	      restDist(scp.restDist),
+	      currentDist(restDist),
+	      restDirection(scp.restDirection),
+	      currentDirection(restDirection),
+	      restRotation(scp.restRotation),
+	      currentRotation(restRotation) {}
+
 	SurfaceControlPoint(RefFrame *RF, Vec v) : rf(RF) {
 		restDist = v.length();
 		currentDist = restDist;
-		direction = v / restDist;
-		r = rf->getOrientationRotation().inverted() +
-		    Vec::getRotation(Basis<Vec>(), Basis<Vec>(direction, direction.ortho()));
+		restDirection = v / restDist;
+		currentDirection = restDirection;
+		restRotation =
+		    rf->getOrientationRotation().inverted() +
+		    Vec::getRotation(Basis<Vec>(), Basis<Vec>(restDirection, restDirection.ortho()));
+		currentRotation = restRotation;
 	};
+
 	void updateDirection() {
-		direction = rf->getOrientation().X.rotated(r.rotated(rf->getOrientationRotation()));
+		restDirection = rf->getOrientation().X.rotated(
+		    restRotation.rotated(rf->getOrientationRotation()));
+		currentDirection = rf->getOrientation().X.rotated(
+		    currentRotation.rotated(rf->getOrientationRotation()));
 	}
 };
 }

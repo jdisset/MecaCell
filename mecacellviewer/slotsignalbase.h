@@ -109,7 +109,8 @@ class SignalSlotBase : public QQuickItem {
 			renderer->initialize();
 		}
 		renderer->setWindow(window());
-		renderer->setViewportSize(QSize(width(), height()));
+		renderer->setViewportSize(
+		    QSize(static_cast<int>(width()), static_cast<int>(height())));
 		renderer->sync(this);
 		update();
 	};

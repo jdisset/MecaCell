@@ -64,7 +64,9 @@ std::vector<QVector3D> getSpherePointsPacking(unsigned int n) {
 		double y = i * off - 1.0 + (off * 0.5);
 		double r = sqrt(1.0 - y * y);
 		double phi = i * inc;
-		p.push_back(QVector3D(cos(phi) * r, y, sin(phi) * r).normalized());
+		p.push_back(QVector3D(static_cast<float>(cos(phi) * r), static_cast<float>(y),
+		                      static_cast<float>(sin(phi) * r))
+		                .normalized());
 	}
 
 	// then perfect with a few electrostatic repulsion iterations
@@ -99,7 +101,7 @@ std::pair<double, double> updateElectrostaticPointsOnSphere(std::vector<QVector3
 		for (size_t j = 0; j < p.size(); ++j) {
 			if (i != j) {
 				QVector3D unprojected = p[i] - p[j];
-				double sql = unprojected.lengthSquared();
+				float sql = unprojected.lengthSquared();
 				if (sql != 0) {
 					unprojected /= sql;
 					force += (unprojected - QVector3D::dotProduct(unprojected, p[i]) * p[i]);
@@ -118,7 +120,7 @@ std::pair<double, double> updateElectrostaticPointsOnSphere(std::vector<QVector3
 	// now we update the position of each point;
 	for (size_t i = 1; i < p.size(); ++i) {
 		QVector3D pprev = p[i];
-		p[i] += f[i] * dt;
+		p[i] += f[i] * static_cast<float>(dt);
 		p[i].normalize();
 		totalDisplacement += (pprev - p[i]).length();
 	}

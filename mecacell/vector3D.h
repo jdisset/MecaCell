@@ -16,6 +16,9 @@ class Vector3D {
 
 	static const int dimension = 3;
 	inline Vector3D(float_t a, float_t b, float_t c) : coords{{a, b, c}} {}
+	template <typename T>
+	Vector3D(const T &otherV)
+	    : coords{{otherV.x(), otherV.y(), otherV.z()}} {}
 	inline Vector3D() : coords{{0, 0, 0}} {}
 	inline explicit Vector3D(float_t a) : coords{{a, a, a}} {}
 	inline explicit Vector3D(std::array<float_t, 3> c) : coords(c) {}
@@ -44,12 +47,12 @@ class Vector3D {
 	inline float_t x() const { return coords[0]; }
 	inline float_t y() const { return coords[1]; }
 	inline float_t z() const { return coords[2]; }
-	inline void setX(float_t f) { coords[0] = f; }
-	inline void setY(float_t f) { coords[1] = f; }
-	inline void setZ(float_t f) { coords[2] = f; }
+	inline void setX(const float_t f) { coords[0] = f; }
+	inline void setY(const float_t f) { coords[1] = f; }
+	inline void setZ(const float_t f) { coords[2] = f; }
 
 	void random();
-	Vector3D deltaDirection(float_t amount);
+	Vector3D deltaDirection(const float_t amount);
 	static Vector3D randomUnit();
 	static Vector3D zero();
 	bool isZero() const;
@@ -84,17 +87,17 @@ class Vector3D {
 
 	friend inline bool operator==(const Vector3D &v1, const Vector3D &v2);
 	friend inline bool operator!=(const Vector3D &v1, const Vector3D &v2);
-	friend inline const Vector3D operator+(const Vector3D &v1, const Vector3D &v2);
-	friend inline const Vector3D operator+(const Vector3D &v1, float_t f);
-	friend inline const Vector3D operator+(float_t f, const Vector3D &v1);
-	friend inline const Vector3D operator-(const Vector3D &v1, const Vector3D &v2);
-	friend inline const Vector3D operator-(const Vector3D &v1, float_t f);
-	friend inline const Vector3D operator-(float_t f, const Vector3D &v1);
-	friend inline const Vector3D operator*(float_t factor, const Vector3D &vector);
-	friend inline const Vector3D operator*(const Vector3D &vector, float_t factor);
-	friend inline const Vector3D operator*(const Vector3D &v1, const Vector3D &v2);
-	friend inline const Vector3D operator-(const Vector3D &vector);
-	friend inline const Vector3D operator/(const Vector3D &vector, float_t divisor);
+	friend inline Vector3D operator+(const Vector3D &v1, const Vector3D &v2);
+	friend inline Vector3D operator+(const Vector3D &v1, const float_t f);
+	friend inline Vector3D operator+(const float_t f, const Vector3D &v1);
+	friend inline Vector3D operator-(const Vector3D &v1, const Vector3D &v2);
+	friend inline Vector3D operator-(const Vector3D &v1, const float_t f);
+	friend inline Vector3D operator-(const float_t f, const Vector3D &v1);
+	friend inline Vector3D operator*(const float_t factor, const Vector3D &vector);
+	friend inline Vector3D operator*(const Vector3D &vector, const float_t factor);
+	friend inline Vector3D operator*(const Vector3D &v1, const Vector3D &v2);
+	friend inline Vector3D operator-(const Vector3D &vector);
+	friend inline Vector3D operator/(const Vector3D &vector, const float_t divisor);
 	friend inline ostream &operator<<(ostream &out, const Vector3D &v);
 
 	float_t length() const;
@@ -119,14 +122,14 @@ class Vector3D {
 	                       const Vector3D &r);
 
 	void normalize();
-	inline const Vector3D normalized() const { return Vector3D(*this / length()); }
+	inline Vector3D normalized() const { return *this / length(); }
 
-	std::string toString();
-	static int getHash(int a, int b);
-	std::size_t getHash() const;
-	inline void iterateTo(Vector3D const &v,
+	std::string toString() const;
+	static int getHash(const int a, const int b);
+	int getHash() const;
+	inline void iterateTo(const Vector3D &v,
 	                      const std::function<void(const Vector3D &)> &fun,
-	                      float_t inc = 1) {
+	                      const float_t inc = 1) const {
 		Vector3D base(floor(min(coords[0], v.coords[0])), floor(min(coords[1], v.coords[1])),
 		              floor(min(coords[2], v.coords[2])));
 		Vector3D nxt(ceil(max(coords[0], v.coords[0])), ceil(max(coords[1], v.coords[1])),
@@ -141,7 +144,7 @@ class Vector3D {
 	}
 
 	Vector3D ortho() const;
-	Vector3D ortho(Vector3D v) const;
+	Vector3D ortho(const Vector3D &v) const;
 };
 
 inline bool operator==(const Vector3D &v1, const Vector3D &v2) {
@@ -153,45 +156,45 @@ inline bool operator!=(const Vector3D &v1, const Vector3D &v2) {
 	       v1.coords[2] != v2.coords[2];
 }
 
-inline const Vector3D operator+(const Vector3D &v1, const Vector3D &v2) {
+inline Vector3D operator+(const Vector3D &v1, const Vector3D &v2) {
 	return Vector3D(v1.coords[0] + v2.coords[0], v1.coords[1] + v2.coords[1],
 	                v1.coords[2] + v2.coords[2]);
 }
-inline const Vector3D operator+(float_t f, const Vector3D &v) {
+inline Vector3D operator+(const float_t f, const Vector3D &v) {
 	return Vector3D(v.coords[0] + f, v.coords[1] + f, v.coords[2] + f);
 }
-inline const Vector3D operator+(const Vector3D &v, float_t f) {
+inline Vector3D operator+(const Vector3D &v, const float_t f) {
 	return Vector3D(v.coords[0] + f, v.coords[1] + f, v.coords[2] + f);
 }
 
-inline const Vector3D operator-(const Vector3D &v1, const Vector3D &v2) {
+inline Vector3D operator-(const Vector3D &v1, const Vector3D &v2) {
 	return Vector3D(v1.coords[0] - v2.coords[0], v1.coords[1] - v2.coords[1],
 	                v1.coords[2] - v2.coords[2]);
 }
-inline const Vector3D operator*(const Vector3D &v1, const Vector3D &v2) {
+inline Vector3D operator*(const Vector3D &v1, const Vector3D &v2) {
 	return Vector3D(v1.coords[0] * v2.coords[0], v1.coords[1] * v2.coords[1],
 	                v1.coords[2] * v2.coords[2]);
 }
 
-inline const Vector3D operator*(float_t f, const Vector3D &v) {
+inline Vector3D operator*(const float_t f, const Vector3D &v) {
 	return Vector3D(v.coords[0] * f, v.coords[1] * f, v.coords[2] * f);
 }
-inline const Vector3D operator*(const Vector3D &v, float_t f) {
+inline Vector3D operator*(const Vector3D &v, const float_t f) {
 	return Vector3D(v.coords[0] * f, v.coords[1] * f, v.coords[2] * f);
 }
 
-inline const Vector3D operator-(float_t f, const Vector3D &v) {
+inline Vector3D operator-(const float_t f, const Vector3D &v) {
 	return Vector3D(v.coords[0] - f, v.coords[1] - f, v.coords[2] - f);
 }
-inline const Vector3D operator-(const Vector3D &v, float_t f) {
+inline Vector3D operator-(const Vector3D &v, const float_t f) {
 	return Vector3D(v.coords[0] - f, v.coords[1] - f, v.coords[2] - f);
 }
 
-inline const Vector3D operator-(const Vector3D &v) {
+inline Vector3D operator-(const Vector3D &v) {
 	return Vector3D(-v.coords[0], -v.coords[1], -v.coords[2]);
 }
 
-inline const Vector3D operator/(const Vector3D &v, float_t f) {
+inline Vector3D operator/(const Vector3D &v, const float_t f) {
 	return Vector3D(v.coords[0] / f, v.coords[1] / f, v.coords[2] / f);
 }
 inline ostream &operator<<(ostream &out, const Vector3D &v) {
@@ -201,7 +204,7 @@ inline ostream &operator<<(ostream &out, const Vector3D &v) {
 }
 namespace std {
 template <> struct hash<MecaCell::Vector3D> {
-	std::size_t operator()(const MecaCell::Vector3D &v) const { return v.getHash(); }
+	int operator()(const MecaCell::Vector3D &v) const { return v.getHash(); }
 };
 }
 #endif  // VECTOR3D_H

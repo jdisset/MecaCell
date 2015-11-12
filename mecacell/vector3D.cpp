@@ -24,17 +24,17 @@ Vector3D Vector3D::randomUnit() {
 	return v;
 }
 
-Vector3D Vector3D::deltaDirection(float_t amount) {
+Vector3D Vector3D::deltaDirection(const float_t amount) {
 	std::normal_distribution<float_t> nDist(0.0, amount);
 	return Vector3D(coords[0] + nDist(globalRand), coords[1] + nDist(globalRand),
 	                coords[2] + nDist(globalRand))
 	    .normalized();
 }
 
-Vector3D Vector3D::zero() { return Vector3D(0, 0, 0); }
+Vector3D Vector3D::zero() { return Vector3D(0.0, 0.0, 0.0); }
 
 bool Vector3D::isZero() const {
-	return (coords[0] == 0 && coords[1] == 0 && coords[2] == 0);
+	return (coords[0] == 0.0 && coords[1] == 0.0 && coords[2] == 0.0);
 }
 
 float_t Vector3D::length() const {
@@ -46,7 +46,7 @@ float_t Vector3D::sqlength() const {
 
 void Vector3D::normalize() { *this /= length(); }
 
-std::string Vector3D::toString() {
+std::string Vector3D::toString() const {
 	std::stringstream s;
 	s.precision(500);
 	s << "(" << coords[0] << " , " << coords[1] << ", " << coords[2] << ")";
@@ -60,20 +60,22 @@ int Vector3D::getHash(int a, int b) {
 	return (a < 0 && b < 0) || (a >= 0 && b >= 0) ? C : -C - 1;
 }
 
-std::size_t Vector3D::getHash() const {
-	return getHash(coords[0], getHash(coords[1], coords[2]));
+int Vector3D::getHash() const {
+	return getHash(
+	    static_cast<int>(floor(coords[0])),
+	    getHash(static_cast<int>(floor(coords[1])), static_cast<int>(floor(coords[2]))));
 }
 
 Vector3D Vector3D::ortho() const {
 	if (coords[1] == 0 && coords[0] == 0) {
-		return Vector3D(0, 1, 0);
+		return Vector3D(0.0, 1.0, 0.0);
 	}
-	return Vector3D(-coords[1], coords[0], 0);
+	return Vector3D(-coords[1], coords[0], 0.0);
 }
-Vector3D Vector3D::ortho(Vector3D v) const {
-	if ((v - *this).sqlength() > 0.000000001) {
+Vector3D Vector3D::ortho(const Vector3D &v) const {
+	if ((v - *this).sqlength() > 0.000000000001) {
 		Vector3D res = cross(v);
-		if (res.sqlength() > 0.000000000001) return cross(v);
+		if (res.sqlength() > 0.0000000000001) return res;
 	}
 	return ortho();
 }
@@ -145,7 +147,7 @@ Rotation<Vector3D> Vector3D::getRotation(const Vector3D &v0, const Vector3D &v1)
 	if (cross.sqlength() == 0) {
 		cross = Vector3D(0, 1, 0);
 	}
-	res.n = cross;
+	res.n = cross.normalized();
 	return res;
 }
 

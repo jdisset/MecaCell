@@ -41,14 +41,8 @@ vector<Vec> getSpherePointsPacking(unsigned int n) {
 		avgDelta = mix(prevAvgDelta, exactDelta, 0.7);
 		prevAvgDelta = avgDelta;
 		prevminl = minl;
-		cerr << "cpt = " << cpt << ", minl = " << minl << " avgDelta = " << avgDelta
-		     << ", dt = " << dt << ", abs(avgDelta) / dt = " << abs(avgDelta) / dt << endl;
 	} while (cpt < 10 || ((prevExactDelta > 0 || exactDelta > 0) && dt > 0.000001 &&
 	                      cpt < 200 && abs(avgDelta) / dt > 0.001 * maxD));
-	cerr << "result = " << endl;
-	for (auto &v : p) {
-		cerr << v.x() << "," << v.y() << "," << v.z() << endl;
-	}
 	return p;
 }
 
@@ -249,11 +243,11 @@ string hexstr(const Vector3D &v) {
 	return buffer;
 }
 
-float_t DEFAULT_CELL_DAMP_RATIO = 0.8;
+float_t DEFAULT_CELL_DAMP_RATIO = 1.0;
 float_t DEFAULT_CELL_MASS = 1.0;
 float_t DEFAULT_CELL_RADIUS = 40.0;
-float_t DEFAULT_CELL_STIFFNESS = 45.0;
-float_t DEFAULT_CELL_ANG_STIFFNESS = 0.8;
+float_t DEFAULT_CELL_STIFFNESS = 40.0;
+float_t DEFAULT_CELL_ANG_STIFFNESS = 3.0;
 float_t MIN_CELL_ADH_LENGTH = 0.6;
 float_t MAX_CELL_ADH_LENGTH = 0.8;
 float_t ADH_THRESHOLD = 0.1;

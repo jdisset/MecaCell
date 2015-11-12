@@ -61,11 +61,20 @@ Item {
 				}
 				CheckableButton {
 					checked: false 
-					id: viewScp
-					legend: "Surface control points"
+					id: viewVelocities
+					legend: "Velocities"
 					onToggled: {
-						if (checked) pushUniqueOptionInCtrl("visibleElements", "scp");
-						else removeOptionInCtrl("visibleElements", "scp");
+						if (checked) pushUniqueOptionInCtrl("visibleElements", "velocities");
+						else removeOptionInCtrl("visibleElements", "velocities");
+					}
+				}
+				CheckableButton {
+					checked: false 
+					id: viewForces
+					legend: "Forces"
+					onToggled: {
+						if (checked) pushUniqueOptionInCtrl("visibleElements", "forces");
+						else removeOptionInCtrl("visibleElements", "forces");
 					}
 				}
 				CheckableButton {

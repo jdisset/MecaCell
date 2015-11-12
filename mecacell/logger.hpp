@@ -90,6 +90,7 @@ struct LogBuf : public std::stringbuf {
 
 	virtual int sync() {
 		cerr << header << str();
+		str(std::string());
 		return 0;
 	}
 };

@@ -23,14 +23,15 @@ struct UV {
 };
 
 struct Triangle {
-	array<unsigned int, 3> indices;
+	array<unsigned long, 3> indices;
 	Triangle() {}
-	Triangle(array<unsigned int, 3> i) : indices(i) {}
-	Triangle(unsigned int I0, unsigned int I1, unsigned int I2) : indices{{I0, I1, I2}} {}
+	Triangle(array<unsigned long, 3> i) : indices(i) {}
+	Triangle(unsigned long I0, unsigned long I1, unsigned long I2)
+	    : indices{{I0, I1, I2}} {}
 };
 
 class ObjModel {
-public:
+ public:
 	vector<Vec> vertices;
 	vector<UV> uv;
 	vector<Vec> normals;
@@ -53,17 +54,18 @@ public:
 					for (size_t i = 1; i < vs.size(); ++i) {
 						vector<string> index = splitStr(vs[i], '/');
 						if (index.size() == 3) {
-							tf["v"].indices[i - 1] = stoi(index[0]) - 1;
-							if (!index[1].empty()) tf["t"].indices[i - 1] = stoi(index[1]) - 1;
-							tf["n"].indices[i - 1] = stoi(index[2]) - 1;
+							tf["v"].indices[i - 1] = stoul(index[0]) - 1;
+							if (!index[1].empty()) tf["t"].indices[i - 1] = stoul(index[1]) - 1;
+							tf["n"].indices[i - 1] = stoul(index[2]) - 1;
 						}
 					}
 					faces.push_back(tf);
 				}
 			}
 		}
-		//std::cout << "Object loaded, vertices.size = " << vertices.size() << ", normals.size = " << normals.size()
-							//<< ", faces.size = " << faces.size() << std::endl;
+		// std::cout << "Object loaded, vertices.size = " << vertices.size() << ",
+		// normals.size = " << normals.size()
+		//<< ", faces.size = " << faces.size() << std::endl;
 	}
 };
 }

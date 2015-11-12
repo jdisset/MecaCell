@@ -1,8 +1,6 @@
 #ifndef INTEGRATORS_HPP
 #define INTEGRATORS_HPP
 #include "tools.h"
-// Integration schemes
-// using structs instead of lambda templates (c++14 feature :-/ )
 namespace MecaCell {
 
 struct Verlet {

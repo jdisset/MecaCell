@@ -16,29 +16,32 @@ template <typename Cell> struct CellCellConnectionManager_map {
 	using ModelConnectionType = CellModelConnection<Cell>;
 	using CellCellConnectionContainer = unordered_map<ordered_pair<Cell *>, ConnectionType>;
 
-	unordered_map<Cell *, ConnectionType *> cellConnections;
+	vector<ConnectionType *> cellConnections;
 	// connections creation
 	// template<typename... Args>
 	template <typename... Args>
 	static inline void createConnection(CellCellConnectionContainer &container, Cell *c0,
 	                                    Cell *c1, Args &&... connectionArgs) {
-		ordered_pair<Cell *> cells = make_ordered_pair(c0, c1);
+		ordered_pair<Cell *> cells = make_ordered_cell_pair(c0, c1);
 		container.emplace(
 		    make_pair(cells, ConnectionType(std::forward<Args>(connectionArgs)...)));
 		c0->connectedCells.insert(c1);
 		c1->connectedCells.insert(c0);
 		ConnectionType *newConnection = &container.at(cells);
-		c0->membrane.cccm.cellConnections[c1] = newConnection;
-		c1->membrane.cccm.cellConnections[c0] = newConnection;
+		c0->membrane.cccm.cellConnections.push_back(newConnection);
+		c1->membrane.cccm.cellConnections.push_back(newConnection);
+		newConnection->updateLengthDirection();
 	}
 	// deletions, should be ok...
 	static inline void disconnect(CellCellConnectionContainer &container, Cell *c0,
-	                              Cell *c1, ConnectionType * = nullptr) {
-		c0->membrane.cccm.cellConnections.erase(c1);
-		c1->membrane.cccm.cellConnections.erase(c0);
+	                              Cell *c1, ConnectionType *connection = nullptr) {
+		// c0->membrane.cccm.cellConnections.erase(c1);
+		// c1->membrane.cccm.cellConnections.erase(c0);
+		eraseFromVector(connection, c0->membrane.cccm.cellConnections);
+		eraseFromVector(connection, c1->membrane.cccm.cellConnections);
 		c0->connectedCells.erase(c1);
 		c1->connectedCells.erase(c0);
-		container.erase(make_ordered_pair(c0, c1));
+		container.erase(make_ordered_cell_pair(c0, c1));
 	}
 	// Accessors for iterations
 	static inline ConnectionType &getConnection(
@@ -48,6 +51,9 @@ template <typename Cell> struct CellCellConnectionManager_map {
 	static inline ConnectionType &getConnection(
 	    const pair<Cell *, ConnectionType *> &connIteration) {
 		return *(connIteration.second);
+	}
+	static inline ConnectionType &getConnection(ConnectionType *connIteration) {
+		return *connIteration;
 	}
 
 	static inline bool areConnected(Cell *c0, Cell *c1) {
@@ -75,7 +81,6 @@ template <typename Cell> struct CellCellConnectionManager_vector {
 		c0->membrane.cccm.cellConnections.push_back(newConnection);
 		c1->membrane.cccm.cellConnections.push_back(newConnection);
 		newConnection->updateLengthDirection();
-		assert(areConnected(c0, c1));
 	}
 	static inline void disconnect(CellCellConnectionContainer &container, Cell *c0,
 	                              Cell *c1) {

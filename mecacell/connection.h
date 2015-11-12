@@ -5,6 +5,7 @@
 #define MAX_TS_INCL \
 	0.1  // max angle before we need to reproject our torsion joint rotation
 
+#define DBG DEBUG(connection)
 namespace MecaCell {
 ////////////////////////////////////////////////////////////////////
 //                SPRING STRUCTURE
@@ -139,9 +140,11 @@ template <typename N0, typename N1 = N0> struct Connection {
 	inline Spring &getSc() { return sc; }
 	inline pair<Joint, Joint> &getFlex() { return fj; }
 	inline pair<Joint, Joint> &getTorsion() { return tj; }
+	inline const N0 &getConstNode0() const { return connected.first; }
+	inline const N1 &getConstNode1() const { return connected.second; }
 	inline N0 &getNode0() { return connected.first; }
 	inline N1 &getNode1() { return connected.second; }
-	inline float getLength() const { return sc.length; }
+	inline float_t getLength() const { return sc.length; }
 	inline Vec getDirection() const { return sc.direction; }
 
 	/**********************************************
@@ -177,9 +180,10 @@ template <typename N0, typename N1 = N0> struct Connection {
 				sc.length = minlength;
 			}
 			bool compression = x < 0;
-			float_t v = sc.length - sc.prevLength;
+			float_t v = (sc.length - sc.prevLength) / dt;
+
 			float_t k = sc.k;  // compression ? sc.k : sc.k * 0.2;
-			float_t f = (-k * x - sc.c * v / dt) / 2.0;
+			float_t f = (-k * x - sc.c * v) / 2.0;
 			ptr(connected.first)->receiveForce(f, -sc.direction, compression);
 			ptr(connected.second)->receiveForce(f, sc.direction, compression);
 			sc.prevLength = sc.length;
@@ -225,7 +229,6 @@ template <typename N0, typename N1 = N0> struct Connection {
 				                                                     fjNode.direction.ortho()));
 			}
 			// flex torque and force
-			fjNode.delta.n.normalize();
 			float_t d = scEnabled ? sc.length : (ptr(connected.first)->getPosition() -
 			                                     ptr(connected.second)->getPosition())
 			                                        .length();
@@ -259,7 +262,6 @@ template <typename N0, typename N1 = N0> struct Connection {
 			    tjOther.direction;  // we want torsion springs to stay aligned with each other
 			tjNode.updateDelta();
 			// torsion torque
-			tjNode.delta.n.normalize();
 			float_t torque =
 			    tjNode.currentK *
 			    tjNode.delta

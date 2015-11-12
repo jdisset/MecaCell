@@ -29,7 +29,7 @@ template <typename Cell> class SphereMembrane {
 	// strength proportional to the contact surface.
 
  public:
-	using CCCM = CellCellConnectionManager_vector<Cell>;
+	using CCCM = CellCellConnectionManager_map<Cell>;
 	friend CCCM;
 	using ModelConnectionType = CellModelConnection<Cell>;
 	using CellCellConnectionType = typename CCCM::ConnectionType;
@@ -37,6 +37,8 @@ template <typename Cell> class SphereMembrane {
 	using CellModelConnectionContainer =
 	    unordered_map<Model *,
 	                  unordered_map<Cell *, vector<unique_ptr<CellModelConnection<Cell>>>>>;
+	static const bool forcesOnMembrane =
+	    false;  // are forces applied directly to membrane or to the cell's center?
 
  protected:
 	Cell *cell;
@@ -51,7 +53,7 @@ template <typename Cell> class SphereMembrane {
 	float_t angularStiffness = DEFAULT_CELL_ANG_STIFFNESS;
 	float_t maxTeta = M_PI / 12.0;
 	float_t pressure = 0;
-	bool volumeConservation = true;
+	bool volumeConservation = false;
 
  public:
 	SphereMembrane(Cell *c) : cell(c){};
@@ -82,32 +84,59 @@ template <typename Cell> class SphereMembrane {
 	inline float_t getAngularStiffness() const { return angularStiffness; }
 
 	/************************ computed **************************/
-	pair<vector<Cell *>, float_t> getConnectedCellAndMembraneDistance(const Vec &d) const {
+	bool shouldDisconnect(const Cell *other,
+	                      const CellCellConnectionType &connection) const {
+		const Vec &d = other == connection.getConstNode1() ? connection.getDirection() :
+		                                                     -connection.getDirection();
+		const float_t tolerance = 0.99;
+		float_t mp = getConnectionMidpoint(cell, other, connection);
+		for (const auto &cc : cccm.cellConnections) {
+			auto &con = CCCM::getConnection(cc);
+			auto &otherCell =
+			    cell == con.getConstNode0() ? con.getConstNode1() : con.getConstNode0();
+			if (otherCell != other) {
+				Vec normal =
+				    cell == con.getConstNode0() ? -con.getDirection() : con.getDirection();
+				float_t dot = normal.dot(d);
+				if (dot < 0) {
+					float_t midpoint =
+					    con.getLength() * correctedRadius /
+					    (correctedRadius + otherCell->getConstMembrane().correctedRadius);
+					float_t l = -midpoint / dot;
+					if (l < mp * tolerance) {
+						return true;
+					}
+				}
+			}
+		}
+		return false;
+	}
+
+	pair<Cell *, float_t> getConnectedCellAndMembraneDistance(const Vec &d) const {
 		// /!\ assumes that d is normalized
-		vector<Cell *> closestCells;
+		Cell *closestCell = nullptr;
 		float_t closestDist = correctedRadius;
 		for (auto &cc : cccm.cellConnections) {
 			auto &con = CCCM::getConnection(cc);
-			con.updateLengthDirection();
 			auto &otherCell = cell == con.getNode0() ? con.getNode1() : con.getNode0();
 			Vec normal = cell == con.getNode0() ? -con.getDirection() : con.getDirection();
 			float_t dot = normal.dot(d);
 			if (dot < 0) {
 				float_t midpoint =
-				    con.getLength() * radius / (radius + otherCell->membrane.radius);
+				    con.getLength() * correctedRadius /
+				    (correctedRadius + otherCell->getConstMembrane().correctedRadius);
 				float_t l = -midpoint / dot;
-				if (fuzzyEqual(l, closestDist)) {
-					closestCells.push_back(otherCell);
-				} else if (l < closestDist) {
+				if (l < closestDist || (fuzzyEqual(l, closestDist) && closestCell &&
+				                        closestCell->id > otherCell->id)) {
 					closestDist = l;
-					closestCells = {otherCell};
+					closestCell = otherCell;
 				}
 			}
 		}
-		return {closestCells, closestDist};
+		return {closestCell, closestDist};
 	}
 
-	inline vector<Cell *> getConnectedCell(const Vec &d) const {
+	inline Cell *getConnectedCell(const Vec &d) const {
 		// /!\ multiple cells can be at the same shortest distance
 		return get<0>(getConnectedCellAndMembraneDistance(d));
 	}
@@ -116,10 +145,10 @@ template <typename Cell> class SphereMembrane {
 	}
 
 	inline float_t getVolume() const {
-		return (4.0 / 3.0) * M_PI * radius * radius * radius;
+		return roundN((4.0 / 3.0) * M_PI * radius * radius * radius);
 	}
 	inline float_t getBaseVolume() const {
-		return (4.0 / 3.0) * M_PI * baseRadius * baseRadius * baseRadius;
+		return roundN((4.0 / 3.0) * M_PI * baseRadius * baseRadius * baseRadius);
 	}
 	inline float_t getMomentOfInertia() const { return 4.0 * cell->mass * radius * radius; }
 	double getCurrentActualVolume() {
@@ -129,19 +158,20 @@ template <typename Cell> class SphereMembrane {
 		for (auto &cc : cccm.cellConnections) {
 			auto &con = CCCM::getConnection(cc);
 			auto &other = cell == con.getNode0() ? con.getNode1() : con.getNode0();
-			double midpoint = con.getLength() * radius / (radius + other->membrane.radius);
+			double midpoint =
+			    con.getLength() * radius / (radius + other->getConstMembrane().radius);
 			double h = getCorrectedRadius() - midpoint;
 			volumeLoss +=
 			    (M_PI * h / 6.0) *
 			    (3.0 * (getCorrectedRadius() * getCorrectedRadius() - midpoint * midpoint) +
 			     h * h);
 		}
-		return targetVol - volumeLoss;
+		return roundN(targetVol - volumeLoss);
 	}
 
 	static inline float_t getConnectionLength(const Cell *c0, const Cell *c1) {
 		return getConnectionLength(
-		    c0->membrane.correctedRadius + c1->membrane.correctedRadius,
+		    c0->getConstMembrane().correctedRadius + c1->getConstMembrane().correctedRadius,
 		    min(c0->getAdhesionWith(c1), c1->getAdhesionWith(c0)));
 	}
 
@@ -179,7 +209,7 @@ template <typename Cell> class SphereMembrane {
 
 	void computePressure() {
 		float_t surface = 4.0 * M_PI * radius * radius;
-		pressure = roundN(cell->totalForce / surface);
+		pressure = cell->totalForce / surface;
 	}
 
 	double compensateVolumeLoss() {
@@ -189,12 +219,13 @@ template <typename Cell> class SphereMembrane {
 		for (auto &cc : cccm.cellConnections) {
 			auto &con = CCCM::getConnection(cc);
 			auto &other = cell == con.getNode0() ? con.getNode1() : con.getNode0();
-			double midpoint = con.getLength() * radius / (radius + other->membrane.radius);
+			double midpoint = con.getLength() * correctedRadius /
+			                  (correctedRadius + other->getConstMembrane().correctedRadius);
 			double h = radius - midpoint;
 			volumeLoss +=
 			    (M_PI * h / 6.0) * (3.0 * (radius * radius - midpoint * midpoint) + h * h);
 		}
-		correctedRadius = roundN(cbrt((targetVol + 1.3 * volumeLoss) / ((4.0 / 3.0) * M_PI)));
+		correctedRadius = cbrt((targetVol + volumeLoss) / ((4.0 / 3.0) * M_PI));
 	}
 
 	void resetForces() {
@@ -243,7 +274,8 @@ template <typename Cell> class SphereMembrane {
 					// we have a potential connection. Now we consider 2 cases:
 					// 1 - brand new connection (easy)
 					// 2 - older connection	(we need to update it)
-					//  => same cell/model pair + similar bounce angle (same face or similar normal)
+					//  => same cell/model pair + similar bounce angle (same face or similar
+					//  normal)
 					currentDirection.normalize();
 					bool alreadyExist = false;
 					if (cellModelConnections.count(mf.first) &&
@@ -259,7 +291,8 @@ template <typename Cell> class SphereMembrane {
 								// first, the bounce spring
 								otherconn->bounce.getNode0().position = projec.second;
 								otherconn->bounce.getNode0().face = mf.second;
-								// then the anchor. It's just another simple spring that is always at the
+								// then the anchor. It's just another simple spring that is always at
+								// the
 								// same height as the cell (orthogonal to the bounce spring)
 								// it has a restlength of 0 and follows the cell when its length is more
 								// than the cell's radius;
@@ -268,12 +301,12 @@ template <typename Cell> class SphereMembrane {
 									const Vec &anchorDirection = otherconn->anchor.getSc().direction;
 									Vec crossp =
 									    currentDirection.cross(currentDirection.cross(anchorDirection));
-									if (crossp.sqlength() > c->membrane.radius * 0.02) {
+									if (crossp.sqlength() > c->getConstMembrane().radius * 0.02) {
 										crossp.normalize();
 										float_t projLength = min(
 										    (otherconn->anchor.getNode0().getPosition() - c->getPosition())
 										        .dot(crossp),
-										    c->membrane.radius);
+										    c->getConstMembrane().radius);
 										otherconn->anchor.getNode0().position =
 										    c->getPosition() + projLength * crossp;
 									}
@@ -285,8 +318,9 @@ template <typename Cell> class SphereMembrane {
 					if (!alreadyExist) {
 						// new connection
 						float_t adh = c->getAdhesionWithModel(mf.first->name);
-						float_t l = mix(MAX_CELL_ADH_LENGTH * c->membrane.correctedRadius,
-						                MIN_CELL_ADH_LENGTH * c->membrane.correctedRadius, adh);
+						float_t l =
+						    mix(MAX_CELL_ADH_LENGTH * c->getConstMembrane().correctedRadius,
+						        MIN_CELL_ADH_LENGTH * c->getConstMembrane().correctedRadius, adh);
 						unique_ptr<CellModelConnection<Cell>> cmc(new CellModelConnection<Cell>(
 						    Connection<SpaceConnectionPoint, Cell *>(
 						        {SpaceConnectionPoint(c->getPosition()), c},  // N0, N1
@@ -295,13 +329,14 @@ template <typename Cell> class SphereMembrane {
 						    Connection<ModelConnectionPoint, Cell *>(
 						        {ModelConnectionPoint(mf.first, projec.second, mf.second),
 						         c},  // N0, N1
-						        Spring(c->membrane.getStiffness(),
-						               dampingFromRatio(c->membrane.getDampRatio(), c->getMass(),
-						                                c->membrane.getStiffness() * 1.0),
+						        Spring(c->getConstMembrane().getStiffness(),
+						               dampingFromRatio(c->getConstMembrane().getDampRatio(),
+						                                c->getMass(),
+						                                c->getConstMembrane().getStiffness() * 1.0),
 						               l)  // bounce
 						        )));
 						cmc->anchor.tjEnabled = false;
-						c->membrane.addModelConnection(cmc.get());
+						c->getMembrane().addModelConnection(cmc.get());
 						cellModelConnections[mf.first][c].push_back(move(cmc));
 					}
 				}
@@ -312,7 +347,7 @@ template <typename Cell> class SphereMembrane {
 			for (auto &c : m.second) {
 				for (auto it = c.second.begin(); it != c.second.end();) {
 					if ((*it)->dirty) {
-						c.first->membrane.removeModelConnection(it->get());
+						c.first->getMembrane().removeModelConnection(it->get());
 						it = c.second.erase(it);
 					} else {
 						++it;
@@ -353,25 +388,19 @@ template <typename Cell> class SphereMembrane {
 			for (size_t i = 0; i < batch.size(); ++i) {
 				for (size_t j = 0; j < batch[i].size(); ++j) {
 					for (size_t k = j + 1; k < batch[i].size(); ++k) {
-						stringstream header;
 						auto op = make_ordered_cell_pair(batch[i][j], batch[i][k]);
-						stringstream cotest;
-						Vec AB = roundN(op.first->position - op.second->position);
+						Vec AB = op.second->position - op.first->position;
 						float_t sqDistance = AB.sqlength();
-						float_t sqMaxLength = pow(
-						    op.first->membrane.correctedRadius + op.second->membrane.correctedRadius,
-						    2);
-						if (sqDistance <= sqMaxLength) {
+						if (sqDistance < pow(op.first->getConstMembrane().correctedRadius +
+						                         op.second->getConstMembrane().correctedRadius,
+						                     2)) {
 							if (!CCCM::areConnected(op.first, op.second) && !newConnections.count(op) &&
 							    op.first != op.second) {
 								float_t dist = sqrt(sqDistance);
 								Vec dir = AB / dist;
-								if (dist <
-								    roundN(op.first->membrane.getConnectedCellAndMembraneDistance(dir)
-								               .second) +
-								        roundN(
-								            op.second->membrane.getConnectedCellAndMembraneDistance(-dir)
-								                .second)) {
+								auto d0 = op.first->getConstMembrane().getPreciseMembraneDistance(dir);
+								auto d1 = op.second->getConstMembrane().getPreciseMembraneDistance(-dir);
+								if (dist < 0.999999 * (d0 + d1)) {
 									newConnections.insert(op);
 								}
 							}
@@ -380,7 +409,7 @@ template <typename Cell> class SphereMembrane {
 				}
 			}
 		}
-		for (auto &nc : newConnections) {
+		for (const auto &nc : newConnections) {
 			createConnection(nc.first, nc.second, cellCellConnections);
 		}
 	}
@@ -395,52 +424,52 @@ template <typename Cell> class SphereMembrane {
 		}
 	}
 
-	inline float_t getConnectionMidpoint(const Cell *other,
-	                                     const CellCellConnectionType *connection) {
-		return connection->getLength() * radius / (radius + other->membrane.radius);
+	static inline float_t getConnectionMidpoint(const Cell *c0, const Cell *c1,
+	                                            const CellCellConnectionType &connection) {
+		return connection.getLength() * c0->getConstMembrane().correctedRadius /
+		       (c0->getConstMembrane().correctedRadius +
+		        c1->getConstMembrane().correctedRadius);
 	}
 
 	static void updateCellCellConnections(CellCellConnectionContainer &con, float_t dt) {
-		// we update forces & delete impossible connections (cells not in contact anymore...)
+		// we update forces & delete impossible connections (cells not in contact
+		// anymore...)
 		// here connections are just beams between cells centers
 
 		vector<tuple<Cell *, Cell *, CellCellConnectionType *>> toErase;
-		for (auto &cc : con) {
-			auto &co = CCCM::getConnection(cc);
-			co.updateLengthDirection();
-		}
 		for (auto &cc : con) {
 			auto &connection = CCCM::getConnection(cc);
 			auto &c0 = connection.getNode0();
 			auto &c1 = connection.getNode1();
 			// we check if the connection still makes sense
-			auto t0 = c0->membrane.getConnectedCellAndMembraneDistance(
-			    roundN(connection.getDirection()));
-			auto t1 = c1->membrane.getConnectedCellAndMembraneDistance(
-			    roundN(-connection.getDirection()));
-			auto v0 = get<0>(t0);  // c0->membrane.getConnectedCell(connection.getDirection());
-			auto v1 = get<0>(t1);  // c1->membrane.getConnectedCell(-connection.getDirection());
-			auto c1ClosestToC0 = isInVector(c1, v0);
-			auto c0ClosestToC1 = isInVector(c0, v1);
-			if (connection.getSc().length > roundN(c0->getMembrane().correctedRadius +
-			                                       c1->getMembrane().correctedRadius) ||
-			    !c0ClosestToC1 || !c1ClosestToC0) {
+			auto c1ClosestToC0 =
+			    c0->getConstMembrane().getConnectedCell(connection.getDirection()) == c1;
+			auto c0ClosestToC1 =
+			    c1->getConstMembrane().getConnectedCell(-connection.getDirection()) == c0;
+			auto shouldDisc = c0->getMembrane().shouldDisconnect(c1, connection) ||
+			                  c1->getMembrane().shouldDisconnect(c0, connection);
+			if (connection.getSc().length > c0->getConstMembrane().correctedRadius +
+			                                    c1->getConstMembrane().correctedRadius ||
+			    shouldDisc) {
 				toErase.push_back(
 				    tuple<Cell *, Cell *, CellCellConnectionType *>(c0, c1, &connection));
 			} else {
 				// connection still ok, we update its parameters
 				// according to contact surface and cells volumes
-				float_t contactSurface =
-				    roundN(M_PI * (pow(connection.getSc().length, 2) +
-				                   pow((c0->membrane.radius + c1->membrane.radius) / 2.0, 2)));
+				float_t contactSurface = roundN(
+				    M_PI *
+				    (pow(connection.getSc().length, 2) +
+				     pow((c0->getConstMembrane().radius + c1->getConstMembrane().radius) / 2.0,
+				         2)));
 				connection.getFlex().first.setCurrentKCoef(contactSurface);
 				connection.getFlex().second.setCurrentKCoef(contactSurface);
 				connection.getTorsion().first.setCurrentKCoef(contactSurface);
 				connection.getTorsion().second.setCurrentKCoef(contactSurface);
 				float_t newl = getConnectionLength(
-				    c0->membrane.correctedRadius + c1->membrane.correctedRadius,
+				    c0->getConstMembrane().correctedRadius +
+				        c1->getConstMembrane().correctedRadius,
 				    (c0->getAdhesionWith(c1) + c1->getAdhesionWith(c0)) * 0.5);
-				connection.getSc().setRestLength(roundN(newl));
+				connection.getSc().setRestLength(newl);
 				// then we compute the forces
 				connection.computeForces(dt);
 			}
@@ -460,16 +489,15 @@ template <typename Cell> class SphereMembrane {
 	}
 
 	static void createConnection(Cell *c0, Cell *c1, CellCellConnectionContainer &con) {
-		float_t l = roundN(getConnectionLength(c0, c1));
-		auto &membrane0 = c0->membrane;
-		auto &membrane1 = c1->membrane;
+		float_t l = getConnectionLength(c0, c1);
+		auto &membrane0 = c0->getMembrane();
+		auto &membrane1 = c1->getMembrane();
 		float_t vol0 = membrane0.getVolume();
 		float_t vol1 = membrane1.getVolume();
-		float_t volProportion = roundN(vol0 + vol1);
-		float_t k =
-		    roundN((membrane0.stiffness * vol0 + membrane1.stiffness * vol1) / volProportion);
+		float_t volProportion = vol0 + vol1;
+		float_t k = (membrane0.stiffness * vol0 + membrane1.stiffness * vol1) / volProportion;
 		float_t dr =
-		    roundN((membrane0.dampRatio * vol0 + membrane1.dampRatio * vol1) / volProportion);
+		    (membrane0.dampRatio * vol0 + membrane1.dampRatio * vol1) / volProportion;
 
 		pair<Joint, Joint> joints = {
 		    Joint(membrane0.getAngularStiffness(),
@@ -481,13 +509,85 @@ template <typename Cell> class SphereMembrane {
 		                           membrane1.angularStiffness),
 		          membrane1.maxTeta)};
 
-		CCCM::createConnection(
-		    con, c0, c1, make_pair(c0, c1),
-		    Spring(k, roundN(dampingFromRatio(dr, c0->mass + c1->mass, k)), l), joints,
-		    joints);
+		CCCM::createConnection(con, c0, c1, make_pair(c0, c1),
+		                       Spring(k, dampingFromRatio(dr, c0->mass + c1->mass, k), l),
+		                       joints, joints);
 	}
 
 	void division() { setRadius(getBaseRadius()); }
+
+	// void deleteOverlapingConnections() {
+	// float_t overlapCoef = 0.9;
+	// for (auto c0It = vec.begin(); c0It < vec.end();) {
+	// bool deleted = false;  // tells if c0 was deleted inside the inner loop (so we know
+	//// if we have to increment c0It)
+	// connect_type *c0 = *c0It;
+	// if (c0->getNode1() != nullptr) {  // if this is not a wall connection
+	// Vec c0dir;
+	// Cell *other0 = nullptr;
+	// float_t r0;
+	// if (c0->getNode0() == cell) {
+	// c0dir = c0->getDirection();
+	// r0 = c0->getNode1()->getRadius();
+	// other0 = c0->getNode1();
+	//} else {
+	// c0dir = -c0->getDirection();
+	// r0 = c0->getNode0()->getRadius();
+	// other0 = c0->getNode0();
+	//}
+	// Vec c0v = c0dir * c0->getLength();
+	// float_t c0SqLength = pow(c0->getLength(), 2);
+	// for (auto c1It = c0It + 1; c1It < vec.end();) {
+	// connect_type *c1 = *c1It;
+	// if (c1->getNode1() != nullptr) {
+	// Vec c1dir;
+	// Cell *other1 = nullptr;
+	// float_t r1;
+	// if (c1->getNode0() == cell) {
+	// c1dir = c1->getDirection();
+	// r1 = c1->getNode1()->getRadius();
+	// other1 = c1->getNode1();
+	//} else {
+	// c1dir = -c1->getDirection();
+	// r1 = c1->getNode0()->getRadius();
+	// other1 = c1->getNode0();
+	//}
+	// Vec c1v = c1dir * c1->getLength();
+	// float_t c1SqLength = pow(c1->getLength(), 2);
+	// float_t scal01 = c0v.dot(c1dir);
+	// float_t scal10 = c1v.dot(c0dir);
+	// if (scal01 > 0 && c0SqLength < c1SqLength &&
+	//(c0SqLength - scal01 * scal01) < r0 * r0 * overlapCoef) {
+	// c1It = vec.erase(c1It);
+	// other1->eraseConnection(c1);
+	// cell->eraseCell(other1);
+	// other1->eraseCell(cell);
+	// connections.erase(remove(connections.begin(), connections.end(), c1),
+	// connections.end());
+	// delete c1;
+	//} else if (scal10 > 0 && c1SqLength < c0SqLength &&
+	//(c1SqLength - scal10 * scal10) < r1 * r1 * overlapCoef) {
+	// c0It = vec.erase(c0It);
+	// other0->eraseConnection(c0);
+	// cell->eraseCell(other0);
+	// other0->eraseCell(cell);
+	// connections.erase(remove(connections.begin(), connections.end(), c0),
+	// connections.end());
+	// deleted = true;
+	// delete c0;
+	// break;  // we need to exit the inner loop, c0 doesn't exist
+	//// anymore.
+	//} else {
+	//++c1It;
+	//}
+	//} else {
+	//++c1It;
+	//}
+	//}
+	//}
+	// if (!deleted) ++c0It;
+	//}
+	//}
 };
 }
 

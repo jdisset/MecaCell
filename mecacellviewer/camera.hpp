@@ -37,11 +37,11 @@ class Camera : public QObject {
 	QVector3D viewVector = target - position;
 	bool adjustForAspectRatio = true;
 
-	float sensitivity = 0.2;
+	float sensitivity = 0.2f;
 	float forceIntensity = 15000;
 	float rotationSensitivity = 65;
 	float friction = 7.0f;
-	float mass = 1.5;
+	float mass = 1.5f;
 	QVector3D force;
 	QVector3D speed;
 	QVector3D torque;
@@ -106,8 +106,8 @@ class Camera : public QObject {
 		if (projectionType == Perspective && fieldOfView != 0.0f) {
 			m.perspective(fieldOfView, aspectRatio, nearPlane, farPlane);
 		} else {
-			float halfWidth = viewSize.width() / 2.0f;
-			float halfHeight = viewSize.height() / 2.0f;
+			float halfWidth = static_cast<float>(viewSize.width()) / 2.0f;
+			float halfHeight = static_cast<float>(viewSize.height()) / 2.0f;
 			if (aspectRatio > 1.0f) {
 				halfWidth *= aspectRatio;
 			} else if (aspectRatio > 0.0f && aspectRatio < 1.0f) {
@@ -149,19 +149,19 @@ class Camera : public QObject {
 	}
 
 	void moveAroundTarget(const QVector2D &v) { moveAroundTarget(v.x(), v.y()); }
-	void moveAroundTarget(qreal x, qreal y) {
+	void moveAroundTarget(float x, float y) {
 		if (mode == fps) {
 			torque +=
 			    rotationSensitivity *
 			    (upVector * x + QVector3D::crossProduct(viewVector, upVector).normalized() * y);
 		} else if (mode == centered) {
-			double distanceFromTarget = (position - target).length();
-			force += QVector3D(x, -y, 0) * rotationSensitivity * 0.05 * distanceFromTarget;
+			float distanceFromTarget = (position - target).length();
+			force += QVector3D(x, -y, 0) * rotationSensitivity * 0.05f * distanceFromTarget;
 		}
 	}
 
 	void move(QVector3D v) { translate(v * speed); }
-	void move(qreal x, qreal y, qreal z) { move(QVector3D(x, y, z)); }
+	void move(float x, float y, float z) { move(QVector3D(x, y, z)); }
 
 	void rotate(const QQuaternion &q) {
 		upVector = q.rotatedVector(upVector);
@@ -190,7 +190,7 @@ class Camera : public QObject {
 		}
 	}
 	void backward(float dt) {
-		if (dt > 1.0 / 20.0) dt = 1.0 / 20.0;
+		if (dt > 1.0f / 20.0f) dt = 1.0f / 20.0f;
 		if (mode == fps) {
 			force += -viewVector.normalized() * forceIntensity;
 		} else if (mode == centered) {
@@ -198,7 +198,7 @@ class Camera : public QObject {
 		}
 	}
 	void forward(float dt) {
-		if (dt > 1.0 / 20.0) dt = 1.0 / 20.0;
+		if (dt > 1.0f / 20.0f) dt = 1.0f / 20.0f;
 		if (mode == fps) {
 			force += viewVector.normalized() * forceIntensity;
 		} else if (mode == centered) {
@@ -207,7 +207,7 @@ class Camera : public QObject {
 	}
 
 	void updatePosition(float dt) {
-		if (dt > 1.0 / 20.0) dt = 1.0 / 20.0;
+		if (dt > 1.0f / 20.0f) dt = 1.0f / 20.0f;
 		if (mode == fps) {
 			speed += (force / mass) * dt - speed * friction * dt;
 			position += speed * dt;
@@ -221,7 +221,7 @@ class Camera : public QObject {
 			target = position + viewVector;
 		} else if (mode == centered) {
 			speed += (force / mass) * dt - speed * friction * dt;
-			double distanceFromTarget = (position - target).length();
+			float distanceFromTarget = (position - target).length();
 			distanceFromTarget += speed.z() * dt;
 			position += speed.x() * dt * getRightVector();
 			position += speed.y() * dt * getUpVector();
