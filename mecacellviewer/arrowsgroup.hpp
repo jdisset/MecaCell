@@ -7,7 +7,6 @@
 namespace MecacellViewer {
 template <typename R> class ArrowsGroup : public PaintStep<R> {
 	QOpenGLShaderProgram shader;
-	Lines lines;
 	Cube cube;
 	std::function<const vector<pair<QVector3D, QVector3D>> &(R *)> getArrows;
 	QVector4D color = QVector4D(1.0, 1.0, 1.0, 1.0);
@@ -15,7 +14,7 @@ template <typename R> class ArrowsGroup : public PaintStep<R> {
 
  public:
 	ArrowsGroup(string n, decltype(getArrows) ga, QVector4D col, double sc = 1.0)
-	    : name(n), getArrows(ga), color(col), scaleCoef(sc) {
+	    : PaintStep<R>(n), getArrows(ga), color(col), scaleCoef(sc) {
 		shader.addShaderFromSourceCode(QOpenGLShader::Vertex,
 		                               shaderWithHeader(":/shaders/mvp.vert"));
 		shader.addShaderFromSourceCode(QOpenGLShader::Fragment,
@@ -24,7 +23,7 @@ template <typename R> class ArrowsGroup : public PaintStep<R> {
 		cube.load(shader);
 	}
 
-	void draw(R *r) {
+	void call(R *r) {
 		const auto &arrows = getArrows(r);
 		const auto &view = r->getViewMatrix();
 		const auto &projection = r->getProjectionMatrix();

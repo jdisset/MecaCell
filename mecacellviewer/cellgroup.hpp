@@ -5,13 +5,14 @@
 
 namespace MecacellViewer {
 template <typename R> class CellGroup : public PaintStep<R> {
+	using C = typename R::Cell;
 	QOpenGLShaderProgram shader;
 	unique_ptr<QOpenGLTexture> normalMap = nullptr;
 	IcoSphere sphere;
 
  public:
 	cellMode drawMode = plain;
-	CellGroup() : name("cells") {
+	CellGroup() : PaintStep<R>("cells") {
 		shader.addShaderFromSourceCode(QOpenGLShader::Vertex,
 		                               shaderWithHeader(":/shaders/cell.vert"));
 		shader.addShaderFromSourceCode(QOpenGLShader::Fragment,
@@ -26,12 +27,12 @@ template <typename R> class CellGroup : public PaintStep<R> {
 	}
 
 	void call(R *r) {
-		const auto &cells = r->getScenario()->getWorld().cells;
+		const auto &cells = r->getScenario().getWorld().cells;
 		if (cells.size() > 0) {
 			const QMatrix4x4 view = r->getViewMatrix();
 			const QMatrix4x4 projection = r->getViewMatrix();
 			const auto &viewV = r->getCamera().getViewVector();
-			const auto &capPos = r->getCamera().getPosition();
+			const auto &camPos = r->getCamera().getPosition();
 			const auto *selected = r->getSelectedCell();
 			shader.bind();
 			sphere.vao.bind();

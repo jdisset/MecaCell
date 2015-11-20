@@ -5,6 +5,9 @@ template <typename RendererType> struct PaintStep {
 	std::string name = "generic name";
 	std::string category = "Visual elements";
 	bool checkable = true;
-	virtual void call(RendererType* ) = 0;
+	PaintStep() {}
+	PaintStep(const std::string& n, const std::string& c = "Visual elements")
+	    : name(n), category(c) {}
+	virtual void call(RendererType*) = 0;
 };
 #endif

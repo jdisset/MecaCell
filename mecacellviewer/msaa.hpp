@@ -7,13 +7,15 @@
 #include <QOpenGLFramebufferObject>
 #include <QOpenGLFramebufferObjectFormat>
 
+namespace MecacellViewer {
 template <typename R> class MSAA : public ScreenManager<R> {
  private:
 	std::unique_ptr<QOpenGLFramebufferObject> fbo;
 	QOpenGLFramebufferObjectFormat format;
 
  public:
-	MSAA(const QSize& viewportSize, int nbS = 4) : name("msaaStart"), checkable(false) {
+	MSAA(const QSize& viewportSize, int nbS = 4) : ScreenManager<R>("msaaStart") {
+		this->checkable = false;
 		format.setAttachment(QOpenGLFramebufferObject::Depth);
 		format.setSamples(nbS);
 		fbo = unique_ptr<QOpenGLFramebufferObject>(
@@ -31,4 +33,5 @@ template <typename R> class MSAA : public ScreenManager<R> {
 		                                       format));
 	}
 };
+}
 #endif

@@ -1,6 +1,7 @@
 #ifndef BLURQUAD_HPP
 #define BLURQUAD_HPP
 #include "viewtools.h"
+#include "renderquad.hpp"
 #include "primitives/quad.hpp"
 #include <QOpenGLFramebufferObject>
 

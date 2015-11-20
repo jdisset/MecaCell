@@ -11,7 +11,7 @@ template <typename R> class Skybox : public PaintStep<R> {
 	IcoSphere sky;
 
  public:
-	Skybox() : name("Skybox") {
+	Skybox() : PaintStep<R>("Skybox") {
 		shader.addShaderFromSourceCode(QOpenGLShader::Vertex,
 		                               shaderWithHeader(":/shaders/skybox.vert"));
 		shader.addShaderFromSourceCode(QOpenGLShader::Fragment,
@@ -27,11 +27,11 @@ template <typename R> class Skybox : public PaintStep<R> {
 	void call(R *r) {
 		const QMatrix4x4 &view = r->getViewMatrix();
 		const QMatrix4x4 &projection = r->getProjectionMatrix();
-		const Camera &camera = r - getCamera();
+		const Camera &camera = r->getCamera();
 		QMatrix4x4 model;
 		model.translate(camera.getPosition());
-		float r = camera.getFarPlane() - camera.getNearPlane() - 1;
-		model.scale(QVector3D(r, r, r));
+		float scale = camera.getFarPlane() - camera.getNearPlane() - 1;
+		model.scale(QVector3D(scale, scale, scale));
 		shader.bind();
 		sky.vao.bind();
 		texture->bind(0);

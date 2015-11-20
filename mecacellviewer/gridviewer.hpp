@@ -9,14 +9,14 @@
 #include <QVector4D>
 
 namespace MecacellViewer {
-template <typename R, typename G> class GridViewer : public PaintStep {
+template <typename R, typename G> class GridViewer : public PaintStep<R> {
 	QOpenGLShaderProgram shader;
 	Cube cube;
 	std::function<const G &(R *r)> getGrid;
 
  public:
 	GridViewer(string n, decltype(getGrid) gg, const QString &vs, const QString &fs)
-	    : name(n), getGrid(gg) {
+	    : PaintStep<R>(n), getGrid(gg) {
 		shader.addShaderFromSourceCode(QOpenGLShader::Vertex, shaderWithHeader(vs));
 		shader.addShaderFromSourceCode(QOpenGLShader::Fragment, shaderWithHeader(fs));
 		shader.link();

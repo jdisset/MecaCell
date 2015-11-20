@@ -1,7 +1,10 @@
 #ifndef SCREENMANAGER_HPP
 #define SCREENMANAGER_HPP
 #include "paintstep.hpp"
+#include <string>
 template <typename R> struct ScreenManager : public PaintStep<R> {
-	virtual void screenChanged(R* r) = 0;
+	ScreenManager() {}
+	ScreenManager(const std::string& s) : PaintStep<R>(s) {}
+	virtual void screenChanged(R*){};
 };
 #endif

@@ -22,6 +22,16 @@ template <typename RendererType> class Button {
 	       ButtonType bt = ButtonType::rectangular, bool chk = false)
 	    : name(n), menu(m), label(l), onClicked(c), type(bt), checked(chk){};
 
+	QColor getColor() { return color; }
+	bool getChecked() { return checked; }
+	QString getName() { return name; }
+	QString getMenu() { return menu; }
+	QString getLabel() { return label; }
+	void setLabel(QString l) { label = l; }
+	void setMenu(QString m) { menu = m; }
+
+	bool needsToBeUpdated() { return updt; }
+	void updateOK() { updt = true; }
 	void clicked(RendererType *r) {
 		if (type == ButtonType::check_squared || type == ButtonType::check_rectangular) {
 			checked = !checked;

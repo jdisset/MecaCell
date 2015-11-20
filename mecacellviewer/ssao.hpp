@@ -1,17 +1,20 @@
 #ifndef SSAO_HPP
 #define SSAO_HPP
 #include "viewtools.h"
+#include "renderquad.hpp"
 #include "screenmanager.hpp"
 #include <memory>
 #include <QSize>
 #include <QOpenGLFramebufferObject>
 #include <QOpenGLFramebufferObjectFormat>
 
-template <typename R> class MSAA : public ScreenManager<R> {
+namespace MecacellViewer {
+template <typename R> class SSAO : public ScreenManager<R> {
  private:
 	std::unique_ptr<QOpenGLFramebufferObject> fbo;
 	QOpenGLFramebufferObjectFormat format;
 	GLuint depthTex;
+	RenderQuad ssaoTarget;
 	// depth texture initialisation
 	void genDepthTexture(QSize s, GLuint& t) {
 		GL->glGenTextures(1, &t);
@@ -25,9 +28,11 @@ template <typename R> class MSAA : public ScreenManager<R> {
 	}
 
  public:
-	MSAA(R* r) : name("ssaoStart"), checkable(false) {
+	SSAO(R* r) : ScreenManager<R>("ssaoStart") {
+		this->checkable = false;
 		format.setAttachment(QOpenGLFramebufferObject::Depth);
 		format.setSamples(0);
+		ssaoTarget.load(":/shaders/dumb.vert", ":/shaders/ssao.frag");
 		screenChanged(r);
 	}
 	void call(R* r) {
@@ -38,8 +43,8 @@ template <typename R> class MSAA : public ScreenManager<R> {
 			    fbo.get(), current, GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 			r->setCurrentFBO(fbo.get());
 			fbo->bind();
-			ssaoTarget.draw(fbo->texture(), depthTex, camera.getNearPlane(),
-			                camera.getFarPlane());
+			ssaoTarget.draw(fbo->texture(), depthTex, r->getCamera().getNearPlane(),
+			                r->getCamera().getFarPlane());
 		}
 	}
 	void screenChanged(R* r) {
@@ -47,11 +52,12 @@ template <typename R> class MSAA : public ScreenManager<R> {
 		                                       format));
 		fbo->setAttachment(QOpenGLFramebufferObject::Depth);
 		GL->glDeleteTextures(1, &depthTex);
-		genDepthTexture(FSAA_COEF * viewportSize * screenCoef, depthTex);
+		genDepthTexture(r->getViewportSize() * r->getScreenCoef(), depthTex);
 		fbo->bind();
 		GL->glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D,
 		                           depthTex, 0);
 		fbo->release();
 	}
 };
+}
 #endif
