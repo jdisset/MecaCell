@@ -5,12 +5,15 @@
 #include <algorithm>
 #include <map>
 #include <cstdlib>
+#include "tools.h"
 #include "connection.h"
 #include "grid.hpp"
 #include "model.h"
 #include "integrators.hpp"
 #include "modelconnection.hpp"
 #include <cstdint>
+#include <typeinfo>
+#include <cxxabi.h>
 
 using namespace std;
 
@@ -18,6 +21,8 @@ using namespace std;
 #define DBG DEBUG(basicworld)
 
 namespace MecaCell {
+CREATE_METHOD_CHECKS(updateBehavior)
+
 template <typename Cell, typename Integrator = Euler,
           template <class> class SpacePartition = Grid>
 class BasicWorld {
@@ -104,9 +109,29 @@ class BasicWorld {
 	}
 	size_t getNbOfCellCellConnections() { return getConnectedCellsList().size(); }
 
+	static constexpr bool behaviorsEnabled =
+	    has_updateBehavior_signatures<Cell, Cell *(float), Cell *(double),
+	                                  Cell *(const float &), Cell *(const double &)>::value;
+	template <typename T = Cell>
+	void updateBehaviors(const typename enable_if<behaviorsEnabled, T *>::type = nullptr) {
+		vector<Cell *> newCells;
+		for (auto &c : cells) {
+			Cell *nc = c->updateBehavior(dt);
+			if (nc) {
+				newCells.push_back(nc);
+			}
+		}
+		for (auto &nc : newCells) {
+			addCell(nc);
+		}
+	}
+	template <typename T = Cell>
+	inline void updateBehaviors(
+	    const typename enable_if<!behaviorsEnabled, T *>::type = nullptr) {}
 	/**********************************************
 	 *             MAIN UPDATE ROUTINE            *
 	 *********************************************/
+
 	void update() {
 		// getting ready
 		for (auto &c : cells) {
@@ -137,18 +162,7 @@ class BasicWorld {
 			Cell::checkForCellModelConnections(cells, models, cellModelConnections,
 			                                   modelSpacePartition);
 
-		// cell behavior returns a new cell or nullptr
-		vector<Cell *> newCells;
-		for (auto &c : cells) {
-			Cell *nc = c->updateBehavior(dt);
-			if (nc) {
-				newCells.push_back(nc);
-			}
-		}
-		for (auto &nc : newCells) {
-			addCell(nc);
-		}
-
+		updateBehaviors();
 		destroyDeadCells();  // cleanup
 
 		++frame;

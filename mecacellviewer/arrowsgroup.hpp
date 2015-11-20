@@ -3,16 +3,19 @@
 #include "viewtools.h"
 #include "primitives/cube.hpp"
 #include <vector>
+
 namespace MecacellViewer {
-class ArrowsGroup {
+template <typename R> class ArrowsGroup : public PaintStep<R> {
 	QOpenGLShaderProgram shader;
 	Lines lines;
 	Cube cube;
+	std::function<const vector<pair<QVector3D, QVector3D>> &(R *)> getArrows;
+	QVector4D color = QVector4D(1.0, 1.0, 1.0, 1.0);
+	double scaleCoef = 1.0;
 
  public:
-	ArrowsGroup() {}
-
-	void load() {
+	ArrowsGroup(string n, decltype(getArrows) ga, QVector4D col, double sc = 1.0)
+	    : name(n), getArrows(ga), color(col), scaleCoef(sc) {
 		shader.addShaderFromSourceCode(QOpenGLShader::Vertex,
 		                               shaderWithHeader(":/shaders/mvp.vert"));
 		shader.addShaderFromSourceCode(QOpenGLShader::Fragment,
@@ -21,9 +24,10 @@ class ArrowsGroup {
 		cube.load(shader);
 	}
 
-	void draw(const vector<pair<QVector3D, QVector3D>> &arrows, const QVector4D &color,
-	          const double scaleCoef, const QMatrix4x4 &view,
-	          const QMatrix4x4 &projection) {
+	void draw(R *r) {
+		const auto &arrows = getArrows(r);
+		const auto &view = r->getViewMatrix();
+		const auto &projection = r->getProjectionMatrix();
 		shader.bind();
 		cube.vao.bind();
 		shader.setUniformValue(shader.uniformLocation("color"), color);

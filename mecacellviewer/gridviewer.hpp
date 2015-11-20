@@ -2,29 +2,35 @@
 #define GRIDVIEWER_HPP
 #include "viewtools.h"
 #include "primitives/cube.hpp"
+#include "paintstep.hpp"
+#include <functional>
+#include <string>
+#include <QMatrix4x4>
+#include <QVector4D>
 
 namespace MecacellViewer {
-class GridViewer {
+template <typename R, typename G> class GridViewer : public PaintStep {
 	QOpenGLShaderProgram shader;
 	Cube cube;
+	std::function<const G &(R *r)> getGrid;
 
  public:
-	GridViewer(){};
-	void load(const QString &vs, const QString &fs) {
+	GridViewer(string n, decltype(getGrid) gg, const QString &vs, const QString &fs)
+	    : name(n), getGrid(gg) {
 		shader.addShaderFromSourceCode(QOpenGLShader::Vertex, shaderWithHeader(vs));
 		shader.addShaderFromSourceCode(QOpenGLShader::Fragment, shaderWithHeader(fs));
 		shader.link();
 		cube.load(shader);
 	}
 
-	template <typename G>
-	void draw(const G &g, const QMatrix4x4 &view, const QMatrix4x4 &projection,
-	          const QVector4D &color) {
+	void call(R *r) {
+		const G &g = getGrid(r);
+		const QMatrix4x4 &view = r->getViewMatrix();
+		const QMatrix4x4 &projection = r->getProjectionMatrix();
 		shader.bind();
 		cube.vao.bind();
 		shader.setUniformValue(shader.uniformLocation("projection"), projection);
 		shader.setUniformValue(shader.uniformLocation("view"), view);
-
 		double cellSize = g.getCellSize();
 		for (const auto &c : g.getContent()) {
 			QMatrix4x4 model;

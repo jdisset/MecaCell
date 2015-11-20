@@ -4,24 +4,30 @@
 #include "primitives/sphere.hpp"
 #include "camera.hpp"
 
-namespace MecacellViewer{
-class Skybox {
+namespace MecacellViewer {
+template <typename R> class Skybox : public PaintStep<R> {
 	QOpenGLShaderProgram shader;
 	unique_ptr<QOpenGLTexture> texture = nullptr;
 	IcoSphere sky;
 
-public:
-	void load() {
-		shader.addShaderFromSourceCode(QOpenGLShader::Vertex, shaderWithHeader(":/shaders/skybox.vert"));
-		shader.addShaderFromSourceCode(QOpenGLShader::Fragment, shaderWithHeader(":/shaders/skybox.frag"));
+ public:
+	Skybox() : name("Skybox") {
+		shader.addShaderFromSourceCode(QOpenGLShader::Vertex,
+		                               shaderWithHeader(":/shaders/skybox.vert"));
+		shader.addShaderFromSourceCode(QOpenGLShader::Fragment,
+		                               shaderWithHeader(":/shaders/skybox.frag"));
 		shader.link();
-		texture = unique_ptr<QOpenGLTexture>(new QOpenGLTexture(QImage(":/textures/background.jpg").mirrored()));
+		texture = unique_ptr<QOpenGLTexture>(
+		    new QOpenGLTexture(QImage(":/textures/background.jpg").mirrored()));
 		texture->setMinificationFilter(QOpenGLTexture::LinearMipMapLinear);
 		texture->setMagnificationFilter(QOpenGLTexture::Linear);
 		sky.load(shader);
 	}
 
-	void draw(const QMatrix4x4 &view, const QMatrix4x4 &projection, const Camera &camera) {
+	void call(R *r) {
+		const QMatrix4x4 &view = r->getViewMatrix();
+		const QMatrix4x4 &projection = r->getProjectionMatrix();
+		const Camera &camera = r - getCamera();
 		QMatrix4x4 model;
 		model.translate(camera.getPosition());
 		float r = camera.getFarPlane() - camera.getNearPlane() - 1;

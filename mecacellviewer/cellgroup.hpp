@@ -4,16 +4,14 @@
 #include "primitives/sphere.hpp"
 
 namespace MecacellViewer {
-template <typename C> class CellGroup {
+template <typename R> class CellGroup : public PaintStep<R> {
 	QOpenGLShaderProgram shader;
 	unique_ptr<QOpenGLTexture> normalMap = nullptr;
 	IcoSphere sphere;
 
  public:
 	cellMode drawMode = plain;
-	CellGroup() {}
-
-	void load() {
+	CellGroup() : name("cells") {
 		shader.addShaderFromSourceCode(QOpenGLShader::Vertex,
 		                               shaderWithHeader(":/shaders/cell.vert"));
 		shader.addShaderFromSourceCode(QOpenGLShader::Fragment,
@@ -27,10 +25,14 @@ template <typename C> class CellGroup {
 		sphere.load(shader);
 	}
 
-	void draw(const vector<C *> &cells, const QMatrix4x4 &view,
-	          const QMatrix4x4 &projection, const QVector3D &viewV, const QVector3D &camPos,
-	          const colorMode &cm, const C *selected = nullptr) {
+	void call(R *r) {
+		const auto &cells = r->getScenario()->getWorld().cells;
 		if (cells.size() > 0) {
+			const QMatrix4x4 view = r->getViewMatrix();
+			const QMatrix4x4 projection = r->getViewMatrix();
+			const auto &viewV = r->getCamera().getViewVector();
+			const auto &capPos = r->getCamera().getPosition();
+			const auto *selected = r->getSelectedCell();
 			shader.bind();
 			sphere.vao.bind();
 			normalMap->bind(0);
@@ -61,11 +63,6 @@ template <typename C> class CellGroup {
 						model.scale(QVector3D(2.0, 2.0, 2.0));
 					}
 					QVector3D color(c->getColor(0), c->getColor(1), c->getColor(2));
-					if (cm == pressure) {
-						QColor co;
-						co.setHsvF(mix(0.0, 0.7, 1.0 - c->getNormalizedPressure()), 0.8, 0.8);
-						color = QVector3D(co.redF(), co.greenF(), co.blueF());
-					}
 					if (c == selected) color = QVector3D(1.0, 1.0, 1.0);
 					QMatrix4x4 nmatrix = (model).inverted().transposed();
 					shader.setUniformValue(shader.uniformLocation("model"), model);

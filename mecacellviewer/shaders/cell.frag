@@ -1,8 +1,7 @@
-
 uniform sampler2D nmap;
-uniform vec3 color;
 uniform mat4 normalMatrix;
 
+in vec4 vertColor;
 in vec2 texCoordVar;
 in vec3 objectSpaceNormal;
 in vec3 objectSpaceTangent;
@@ -68,7 +67,7 @@ void main() {
 	// perturbées
 	// (éclairage caméra)
 
-	vec3 surfaceColor = color;
+	vec3 surfaceColor = vertColor.rgb;
 
 	/*[>vec3 reducedColor = mixV3(surfaceColor,surfaceColor*surfaceColor -
 	 * vec3(0.15),max(0.0,min(0.8,diffuseCoef))) ; // dégradé couleur clair sur les bords ->
@@ -109,6 +108,6 @@ void main() {
 	}
 
 	/*[>FragColor =  vec4(final,0.0 + diffuseCoef*diffuseCoef) ;<]*/
-	FragColor = vec4(mixV3(final , final+ final*colorLinear.rgb, 0.5), 1.0);
+	FragColor = vec4(mixV3(final , final+ final*colorLinear.rgb, 0.5), vertColor.a);
 	/*FragColor.rgb = (FragColor.rgb - 0.5) * 1.05 + 0.5;*/
 }

@@ -29,9 +29,15 @@ template <typename C> class DeformableCellGroup {
 		sphere.load(shader);
 	}
 
+	vector<QVector4D> getColorVector(const C *c, bool selected) {
+		QVector4D color(c->getColor(0), c->getColor(1), c->getColor(2), 1.0);
+		if (selected) color = QVector4D(1.0, 1.0, 1.0, 1.0);
+		return vector<QVector4D>(sphere.vert.size(), color);
+	}
+
 	void draw(const vector<C *> &cells, const QMatrix4x4 &view,
 	          const QMatrix4x4 &projection, const QVector3D &viewV, const QVector3D &camPos,
-	          const colorMode &cm, const C *selected = nullptr) {
+	          const C *selected = nullptr) {
 		if (cells.size() > 0) {
 			shader.bind();
 			sphere.vao.bind();
@@ -58,21 +64,13 @@ template <typename C> class DeformableCellGroup {
 							decltype((*cells.begin())->getPosition()) d(v.x(), v.y(), v.z());
 							v *= c->getMembraneDistance(-d);
 						}
-						sphere.update(newvert, shader);
+						sphere.update(newvert, getColorVector(c, selected == c), shader);
 					} else {
 						model.scale(QVector3D(0.1, 0.1, 0.1));
 					}
-					QVector3D color(c->getColor(0), c->getColor(1), c->getColor(2));
-					if (cm == pressure) {
-						QColor co;
-						co.setHsvF(mix(0.0, 0.7, 1.0 - c->getNormalizedPressure()), 0.8, 0.8);
-						color = QVector3D(co.redF(), co.greenF(), co.blueF());
-					}
-					if (c == selected) color = QVector3D(1.0, 1.0, 1.0);
 					QMatrix4x4 nmatrix = (model).inverted().transposed();
 					shader.setUniformValue(shader.uniformLocation("model"), model);
 					shader.setUniformValue(shader.uniformLocation("normalMatrix"), nmatrix);
-					shader.setUniformValue(shader.uniformLocation("color"), color);
 					GL->glDrawElements(GL_TRIANGLES, sphere.indices.size(), GL_UNSIGNED_INT, 0);
 				}
 			}

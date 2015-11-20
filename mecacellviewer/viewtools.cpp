@@ -1,5 +1,4 @@
 #include "viewtools.h"
-
 #include <QString>
 #include <QFile>
 #include <QTextStream>

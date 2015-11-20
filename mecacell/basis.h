@@ -9,6 +9,8 @@ template <typename V> struct Basis {
 	Basis() {}
 	Basis(const V &x, const V &y) : X(x), Y(y) {}
 
+	V getZ() { return X.cross(Y).normalized(); }
+
 	void updateWithRotation(const Rotation<V> &r) {
 		X = V(1, 0, 0).rotated(r).normalized();
 		Y = V(0, 1, 0).rotated(r).normalized();
@@ -25,9 +27,12 @@ template <typename V> struct Basis {
 		Y.normalize();
 	}
 
-	Basis rotated(const Rotation<V> &r) { return Basis(X.rotated(r).normalized(), Y.rotated(r).normalized()); }
+	Basis rotated(const Rotation<V> &r) {
+		return Basis(X.rotated(r).normalized(), Y.rotated(r).normalized());
+	}
 
-	template <typename T> friend std::ostream &operator<<(std::ostream &out, const Basis<T> &b);
+	template <typename T>
+	friend std::ostream &operator<<(std::ostream &out, const Basis<T> &b);
 };
 }
 #endif

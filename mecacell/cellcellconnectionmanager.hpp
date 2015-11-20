@@ -20,16 +20,17 @@ template <typename Cell> struct CellCellConnectionManager_map {
 	// connections creation
 	// template<typename... Args>
 	template <typename... Args>
-	static inline void createConnection(CellCellConnectionContainer &container, Cell *c0,
-	                                    Cell *c1, Args &&... connectionArgs) {
-		ordered_pair<Cell *> cells = make_ordered_cell_pair(c0, c1);
+	static inline void createConnection(CellCellConnectionContainer &container,
+	                                    ordered_pair<Cell *> cells,
+	                                    Args &&... connectionArgs) {
 		container.emplace(
-		    make_pair(cells, ConnectionType(std::forward<Args>(connectionArgs)...)));
-		c0->connectedCells.insert(c1);
-		c1->connectedCells.insert(c0);
+		    make_pair(cells, ConnectionType(make_pair(cells.first, cells.second),
+		                                    std::forward<Args>(connectionArgs)...)));
+		cells.first->connectedCells.insert(cells.second);
+		cells.second->connectedCells.insert(cells.first);
 		ConnectionType *newConnection = &container.at(cells);
-		c0->membrane.cccm.cellConnections.push_back(newConnection);
-		c1->membrane.cccm.cellConnections.push_back(newConnection);
+		cells.first->membrane.cccm.cellConnections.push_back(newConnection);
+		cells.second->membrane.cccm.cellConnections.push_back(newConnection);
 		newConnection->updateLengthDirection();
 	}
 	// deletions, should be ok...

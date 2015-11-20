@@ -20,6 +20,14 @@
 
 namespace MecaCell {
 template <typename Cell> class SphereMembrane {
+	CREATE_METHOD_CHECKS(getAdhesionWith);
+	static constexpr bool hasPreciseAdhesion = has_getAdhesionWith_signatures<
+	    Cell, double(Cell *, double, double), float(Cell *, float, float),
+	    double(const Cell *, double, double), float(const Cell *, float, float)>::value;
+	static constexpr bool hasAdhesion =
+	    has_getAdhesionWith_signatures<Cell, double(Cell *), float(Cell *),
+	                                   double(const Cell *), float(const Cell *)>::value;
+
 	/********************** SphereMembrane class template **********************/
 	// Abstract :
 	// A sphere membrane is a very crude membrane approximation where a cell is
@@ -169,13 +177,15 @@ template <typename Cell> class SphereMembrane {
 		return roundN(targetVol - volumeLoss);
 	}
 
-	static inline float_t getConnectionLength(const Cell *c0, const Cell *c1) {
-		return getConnectionLength(
-		    c0->getConstMembrane().correctedRadius + c1->getConstMembrane().correctedRadius,
-		    min(c0->getAdhesionWith(c1), c1->getAdhesionWith(c0)));
+	static inline float_t getConnectionLength(const ordered_pair<Cell *> cells) {
+		Vec dir = (cells.second->getPosition() - cells.first->getPosition()).normalized();
+		return getConnectionLength(cells.first->getConstMembrane().correctedRadius +
+		                               cells.second->getConstMembrane().correctedRadius,
+		                           min(getAdhesion(cells.first, cells.second, dir),
+		                               getAdhesion(cells.second, cells.first, -dir)));
 	}
 
-	static float_t getConnectionLength(const float_t l, const float_t adh) {
+	static float_t getConnectionLength(float_t l, float_t adh) {
 		if (adh > ADH_THRESHOLD)
 			return mix(MAX_CELL_ADH_LENGTH * l, MIN_CELL_ADH_LENGTH * l, adh);
 		return l;
@@ -410,7 +420,7 @@ template <typename Cell> class SphereMembrane {
 			}
 		}
 		for (const auto &nc : newConnections) {
-			createConnection(nc.first, nc.second, cellCellConnections);
+			createConnection(nc, cellCellConnections);
 		}
 	}
 
@@ -465,10 +475,14 @@ template <typename Cell> class SphereMembrane {
 				connection.getFlex().second.setCurrentKCoef(contactSurface);
 				connection.getTorsion().first.setCurrentKCoef(contactSurface);
 				connection.getTorsion().second.setCurrentKCoef(contactSurface);
-				float_t newl = getConnectionLength(
-				    c0->getConstMembrane().correctedRadius +
-				        c1->getConstMembrane().correctedRadius,
-				    (c0->getAdhesionWith(c1) + c1->getAdhesionWith(c0)) * 0.5);
+
+				float_t newl =
+				    getConnectionLength(c0->getConstMembrane().correctedRadius +
+				                            c1->getConstMembrane().correctedRadius,
+				                        (getAdhesion(c1, c0, -connection.getDirection()) +
+				                         getAdhesion(c0, c1, connection.getDirection())) *
+				                            0.5);
+
 				connection.getSc().setRestLength(newl);
 				// then we compute the forces
 				connection.computeForces(dt);
@@ -479,19 +493,45 @@ template <typename Cell> class SphereMembrane {
 		}
 	}
 
+	// different precision level for getAdhesionWith
+	// precise : takes a pointer to the other cell + the orientation of the connection
+	template <typename T = float_t>
+	static inline typename enable_if<hasPreciseAdhesion, T>::type getAdhesion(
+	    const T *a, const T *b, const Vec &ABnorm) {
+		const auto B = a->getOrientation();
+		bool zNeg = ABnorm.dot(B.X.cross(B.Y)) < 0;
+		double phi = acos(ABnorm.dot(B.Y));
+		double teta = zNeg ? acos(ABnorm.dot(B.X)) : M_PI * 2.0 - acos(ABnorm.dot(B.X));
+		return a->getAdhesionWith(b, teta, phi);
+	}
+	// not precise: takes a pointer to the other cell
+	template <typename T = float_t, typename... Whatever>
+	static inline typename enable_if<!hasPreciseAdhesion && hasAdhesion, T>::type
+	    getAdhesion(const T *a, const T *b, Whatever...) {
+		return a->getAdhesionWith(b);
+	}
+	// not even declared: always 0
+	template <typename T = float_t, typename... Whatever>
+	static inline
+	    typename enable_if<!hasPreciseAdhesion && !hasAdhesion, T>::type getAdhesion(
+	        Whatever...) {
+		return 0.0;
+	}
+
 	static inline void disconnectAndDeleteAllConnections(Cell *c0,
 	                                                     CellCellConnectionContainer &con) {
-		// TODO: handle model connections
 		auto cop = c0->connectedCells;
 		for (auto &c1 : cop) {
 			CCCM::disconnect(con, c0, c1);
 		}
 	}
 
-	static void createConnection(Cell *c0, Cell *c1, CellCellConnectionContainer &con) {
-		float_t l = getConnectionLength(c0, c1);
-		auto &membrane0 = c0->getMembrane();
-		auto &membrane1 = c1->getMembrane();
+	static void createConnection(ordered_pair<Cell *> cells,
+	                             CellCellConnectionContainer &con) {
+		float_t l = getConnectionLength(cells);
+
+		auto &membrane0 = cells.first->getMembrane();
+		auto &membrane1 = cells.second->getMembrane();
 		float_t vol0 = membrane0.getVolume();
 		float_t vol1 = membrane1.getVolume();
 		float_t volProportion = vol0 + vol1;
@@ -509,9 +549,10 @@ template <typename Cell> class SphereMembrane {
 		                           membrane1.angularStiffness),
 		          membrane1.maxTeta)};
 
-		CCCM::createConnection(con, c0, c1, make_pair(c0, c1),
-		                       Spring(k, dampingFromRatio(dr, c0->mass + c1->mass, k), l),
-		                       joints, joints);
+		CCCM::createConnection(
+		    con, cells,
+		    Spring(k, dampingFromRatio(dr, cells.first->mass + cells.second->mass, k), l),
+		    joints, joints);
 	}
 
 	void division() { setRadius(getBaseRadius()); }
@@ -519,7 +560,8 @@ template <typename Cell> class SphereMembrane {
 	// void deleteOverlapingConnections() {
 	// float_t overlapCoef = 0.9;
 	// for (auto c0It = vec.begin(); c0It < vec.end();) {
-	// bool deleted = false;  // tells if c0 was deleted inside the inner loop (so we know
+	// bool deleted = false;  // tells if c0 was deleted inside the inner loop (so we
+	// know
 	//// if we have to increment c0It)
 	// connect_type *c0 = *c0It;
 	// if (c0->getNode1() != nullptr) {  // if this is not a wall connection

@@ -17,8 +17,6 @@
 #include "spheremembrane.hpp"
 #include "deformablemembrane.hpp"
 
-using namespace std;
-
 namespace MecaCell {
 
 template <typename Derived, template <class> class Membrane = DeformableMembrane>
@@ -125,10 +123,7 @@ class ConnectableCell : public Movable, public Orientable {
 	}
 	inline float_t getPressure() const { return membrane.getPressure(); }
 
-	// Don't forget to implement this method in the derived class
-	inline float_t getAdhesionWith(const Derived *d) const {
-		return selfconst().getAdhesionWith(d);
-	}
+
 	inline float_t getAdhesionWithModel(const string &) const { return 0.7; }
 
 	// computed
@@ -212,8 +207,9 @@ class ConnectableCell : public Movable, public Orientable {
 
 	void updateStats() { membrane.updateStats(); }
 
-	Derived *updateBehavior(float_t dt) { return self().updateBehavior(dt); }
-
+	/************************************
+	 * optional users class methods
+	 **********************************/
 	void die() { dead = true; }
 	bool isDead() { return dead; }
 

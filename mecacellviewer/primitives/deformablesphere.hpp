@@ -14,11 +14,13 @@ using namespace std;
 namespace MecacellViewer {
 struct DeformableSphere {
 	QOpenGLVertexArrayObject vao;
-	QOpenGLBuffer vbuf, nbuf, tanbuf, tbuf, bitanbuf, ibuf;
+	QOpenGLBuffer vbuf, cbuf, nbuf, tanbuf, tbuf, bitanbuf, ibuf;
 
 	vector<QVector3D> vert;
+	vector<QVector4D> col;
 	vector<QVector3D> faceNormals;
 	vector<float> vertices;
+	vector<float> colors;
 	vector<float> normals;
 	vector<float> tangents;
 	vector<float> bitangents;
@@ -130,7 +132,9 @@ struct DeformableSphere {
 	}
 
 	DeformableSphere(){};
-	DeformableSphere(size_t n) : ibuf(QOpenGLBuffer(QOpenGLBuffer::IndexBuffer)) {
+	DeformableSphere(size_t n)
+	    : ibuf(QOpenGLBuffer(QOpenGLBuffer::IndexBuffer)),
+	      col(n, QVector4D(1.0, 1.0, 1.0, 1.0)) {
 		vert = getSpherePointsPacking(n);
 		for (auto& v : vert) {
 			v.normalize();
@@ -159,6 +163,12 @@ struct DeformableSphere {
 			vec.erase(unique(vec.begin(), vec.end()), vec.end());
 		}
 
+		for (auto& c : col) {
+			colors.push_back(c.x());
+			colors.push_back(c.y());
+			colors.push_back(c.z());
+			colors.push_back(c.w());
+		}
 		for (auto& v : vert) {
 			vertices.push_back(v.x());
 			vertices.push_back(v.y());
@@ -187,9 +197,12 @@ struct DeformableSphere {
 		}
 	}
 
-	void update(const vector<QVector3D>& nv, QOpenGLShaderProgram& shader) {
+	void update(const vector<QVector3D>& nv, const vector<QVector4D>& nc,
+	            QOpenGLShaderProgram& shader) {
 		assert(nv.size() == vert.size());
+		assert(nc.size() == col.size());
 		vertices.clear();
+		colors.clear();
 		normals.clear();
 		tangents.clear();
 		bitangents.clear();
@@ -197,6 +210,13 @@ struct DeformableSphere {
 			vertices.push_back(v.x());
 			vertices.push_back(v.y());
 			vertices.push_back(v.z());
+		}
+		for (auto& c : nc) {
+			//qDebug() << "c = " << c;
+			colors.push_back(c.x());
+			colors.push_back(c.y());
+			colors.push_back(c.z());
+			colors.push_back(c.w());
 		}
 		// normals
 		// first we compute face normals
@@ -228,6 +248,8 @@ struct DeformableSphere {
 		vao.bind();
 		vbuf.bind();
 		vbuf.allocate(&vertices[0], vertices.size() * sizeof(float));
+		cbuf.bind();
+		cbuf.allocate(&colors[0], colors.size() * sizeof(float));
 		nbuf.bind();
 		nbuf.allocate(&normals[0], normals.size() * sizeof(float));
 	}
@@ -243,6 +265,13 @@ struct DeformableSphere {
 		vbuf.allocate(&vertices[0], vertices.size() * sizeof(float));
 		shader.enableAttributeArray("position");
 		shader.setAttributeBuffer("position", GL_FLOAT, 0, 3);
+
+		cbuf.create();
+		cbuf.bind();
+		cbuf.setUsagePattern(QOpenGLBuffer::StreamDraw);
+		cbuf.allocate(&colors[0], colors.size() * sizeof(float));
+		shader.enableAttributeArray("color");
+		shader.setAttributeBuffer("color", GL_FLOAT, 0, 4);
 
 		nbuf.create();
 		nbuf.bind();

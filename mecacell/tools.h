@@ -1,16 +1,17 @@
 #ifndef TOOLS_H
 #define TOOLS_H
 #define TERMINAL_COLORS
+#include "macros.h"
 #include "logger.hpp"
 #include "vector3D.h"
 #include "assert.h"
+#include "instrospect.hpp"
 #include <random>
 #include <string>
 #include <vector>
 #include <deque>
 #include <iostream>
 #include <stdio.h>
-#define dispV(v) "(" << v.x << "," << v.y << "," << v.z << ")"
 namespace MecaCell {
 typedef Vector3D Vec;
 

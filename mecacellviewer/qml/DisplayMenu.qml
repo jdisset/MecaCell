@@ -96,48 +96,48 @@ Item {
 					}
 				}
 			}
-			VerticalSpacer {}
-			SubTitle {
-				txt: "CELLS COLOR"
-			}
-			Column {
-				id: viewMenu2
-				anchors.left: parent.left
-				anchors.leftMargin: 25
-				spacing: 10
-				ExclusiveStuff {
-					id: colorMode
-					objectsInGroup: [pressureColor, ownColor]
-				}
-				CheckableButton {
-					checked: true
-					id: ownColor
-					group: colorMode
-					legend: "Own color"
-					onCheck: {
-						if (chk) {
-							setCtrl("colorMode", "owncolor");
-							checked = true
-						} else {
-							checked = false
-						}
-					}
-				}
-				CheckableButton {
-					checked: false
-					group: colorMode
-					id: pressureColor
-					legend: "Pressure"
-					onCheck: {
-						if (chk) {
-							setCtrl("colorMode", "pressure");
-							checked = true
-						} else {
-							checked = false
-						}
-					}
-				}
-			}
+			//VerticalSpacer {}
+			//SubTitle {
+				//txt: "CELLS COLOR"
+			//}
+			//Column {
+				//id: viewMenu2
+				//anchors.left: parent.left
+				//anchors.leftMargin: 25
+				//spacing: 10
+				//ExclusiveStuff {
+					//id: colorMode
+					//objectsInGroup: [pressureColor, ownColor]
+				//}
+				//CheckableButton {
+					//checked: true
+					//id: ownColor
+					//group: colorMode
+					//legend: "Own color"
+					//onCheck: {
+						//if (chk) {
+							//setCtrl("colorMode", "owncolor");
+							//checked = true
+						//} else {
+							//checked = false
+						//}
+					//}
+				//}
+				//CheckableButton {
+					//checked: false
+					//group: colorMode
+					//id: pressureColor
+					//legend: "Pressure"
+					//onCheck: {
+						//if (chk) {
+							//setCtrl("colorMode", "pressure");
+							//checked = true
+						//} else {
+							//checked = false
+						//}
+					//}
+				//}
+
 			VerticalSpacer {}
 			SubTitle {
 				txt: "GUI OPTIONS"
