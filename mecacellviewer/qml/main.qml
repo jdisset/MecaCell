@@ -6,10 +6,14 @@ import "javascript.js" as Logic
 Item{
 
 	//property var guictrl: renderer.getGuiCtrl();
-	//property var btnArray: new Object();
+	property var btnArray: new Object();
+	property var paintStepsCategories: new Object();
+	property var paintStepsElem: new Object();
 	width: 1000
 	height: 700
 	id: main
+	function addPaintStepComponent(a,b,c){Logic.addPaintStepComponent(a,b,c);}
+	function addButton(a,b,c,d){Logic.addButton(a,b,c,d);}
 	Renderer {
 		objectName: "renderer"
 		id: renderer
@@ -116,7 +120,7 @@ Item{
 			anchors.topMargin: 10
 		}
 		DisplayMenu {
-			id: displayLoader
+			id: displayMenu
 			width: parent.width
 			anchors.top: menuChooser.bottom
 			anchors.bottom: player.top

@@ -1,12 +1,12 @@
 #ifndef PAINTSTEP_HPP
 #define PAINTSTEP_HPP
-#include <string>
+#include <QString>
 template <typename RendererType> struct PaintStep {
-	std::string name = "generic name";
-	std::string category = "Visual elements";
+	QString name = "generic name";
+	QString category = "Visual elements";
 	bool checkable = true;
 	PaintStep() {}
-	PaintStep(const std::string& n, const std::string& c = "Visual elements")
+	PaintStep(const QString& n, const QString& c = "Visual elements")
 	    : name(n), category(c) {}
 	virtual void call(RendererType*) = 0;
 };

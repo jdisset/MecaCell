@@ -68,11 +68,13 @@ class SignalSlotBase : public QQuickItem {
 
 	// Keyboard
 	virtual void keyPressEvent(QKeyEvent *event) {
-		keyDown.insert(static_cast<Qt::Key>(event->key()));
-		keyPress.insert(static_cast<Qt::Key>(event->key()));
+		if (!event->isAutoRepeat()) {
+			keyPress.insert(static_cast<Qt::Key>(event->key()));
+			keyDown.insert(static_cast<Qt::Key>(event->key()));
+		}
 	}
 	virtual void keyReleaseEvent(QKeyEvent *event) {
-		keyPress.erase(static_cast<Qt::Key>(event->key()));
+		keyDown.erase(static_cast<Qt::Key>(event->key()));
 	}
 
  signals:

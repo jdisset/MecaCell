@@ -14,32 +14,61 @@
 		return container;
 	}
 
+
+	function createNewComponent(file, container, obj) {
+		console.log("asked to create obj " + obj);
+		console.log(" in container " + container);
+		var component;
+		var elem;
+		var finishCreation = function() {
+			if (component.status == Component.Ready) {
+				elem = component.createObject(container, obj);
+			} else if (component.status == Component.Error) {
+				console.log("Error loading component:", component.errorString());
+			}
+		};
+		component = Qt.createComponent(file);
+		if (component.status == Component.Ready)
+			finishCreation();
+		else
+			component.statusChanged.connect(finishCreation);
+		return elem;
+	}
+
+
+	function addPaintStepComponent(name, category, isChecked) {
+		if (paintStepsCategories[category] == undefined) {
+			paintStepsCategories[category] = createNewComponent("ColumnItem.qml", displayMenu.mainColumn, {
+				"legend": category
+			});
+		}
+		var id = category + name;
+		if (paintStepsElem[id] != undefined) {
+			paintStepsElem[id].legend = name;
+			paintStepsElem[id].checked = isChecked;
+		} else {
+			paintStepsElem[id] = createNewComponent("CheckableButton.qml", paintStepsCategories[category].column, {
+				"legend": name,
+				"checked": isChecked,
+				"onToggled": function() {
+					if (elem.checked) pushUniqueOptionInCtrl("visibleElements", elem.legend)
+					else removeOptionInCtrl("visibleElements", elem.legend)
+				}
+			})
+		}
+	}
+
 	function addButton(id, menu, label, col) {
 		if (btnArray[id] != undefined) {
-			// update, not creation
 			btnArray[id].text = label;
 			btnArray[id].notpressedColor = col;
 		} else {
-			var container = getContainer(menu);
-			var component;
-			var finishCreation = function() {
-				if (component.status == Component.Ready) {
-					var btn = component.createObject(container, {
-						"name": id,
-						"text": label,
-						"menu": menu,
-						"notpressedColor": col
-					});
-					btnArray[id] = btn;
-				} else if (component.status == Component.Error) {
-					console.log("Error loading component:", component.errorString());
-				}
-			};
-			component = Qt.createComponent("MVButton.qml");
-			if (component.status == Component.Ready)
-				finishCreation();
-			else
-				component.statusChanged.connect(finishCreation);
+			btnArray[id] = createNewComponent("MVButton.qml", getContainer(menu), {
+				"name": id,
+				"text": label,
+				"menu": menu,
+				"notpressedColor": col
+			});
 		}
 	}
 

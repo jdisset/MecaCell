@@ -1,6 +1,8 @@
 #ifndef QTVIEWER_H
 #define QTVIEWER_H
 #include "signalslotbase.h"
+#include "keyboardmanager.hpp"
+#include "mousemanager.hpp"
 #include "paintstep.hpp"
 #include "screenmanager.hpp"
 #include "camera.hpp"
@@ -64,7 +66,12 @@ template <typename Scenario> class Viewer : public SignalSlotRenderer {
 		QSurfaceFormat::setDefaultFormat(f);
 #endif
 #endif
+		registerPlugin(km);
+		registerPlugin(mm);
 	};
+	// default "plugins"
+	KeyboardManager km;
+	MouseManager mm;
 
 	int argc;
 	char **argv;
@@ -116,6 +123,9 @@ template <typename Scenario> class Viewer : public SignalSlotRenderer {
 	// paint steps : ordered list of callable paint actions
 	// (draw objects, set up effects...)
 	std::vector<unique_ptr<PaintStep<R>>> paintSteps;
+	std::set<QString> enabledPaintSteps;
+	bool paintStepsNeedsUpdate =
+	    true;  // do we need to refresh the list of checkable paint steps?
 
 	// screen managers might affect the display. Usually manipulate fbos
 	// Inherit from paintStep because they also usually need to be called
@@ -180,6 +190,14 @@ template <typename Scenario> class Viewer : public SignalSlotRenderer {
 				bt.updateOK();
 			}
 		}
+		if (paintStepsNeedsUpdate) {
+			for (auto &ps : paintSteps) {
+				QMetaObject::invokeMethod(
+				    root, "addPaintStepComponent", Q_ARG(QVariant, ps->name),
+				    Q_ARG(QVariant, ps->category), Q_ARG(QVariant, ps->checkable));
+			}
+			paintStepsNeedsUpdate = false;
+		}
 	}
 	// called after every frame, thread safe
 	// synchronization between Qt threads
@@ -241,13 +259,13 @@ template <typename Scenario> class Viewer : public SignalSlotRenderer {
 		// keyboard press (only once per key press)
 		for (auto &k : keyPress) {
 			if (keyPressMethods.count(k)) {
-				keyPressMethods[k](this);
+				keyPressMethods.at(k)(this);
 			}
 		}
 		// keyboard down (key is down)
 		for (auto &k : keyDown) {
-			if (keyPressMethods.count(k)) {
-				keyDownMethods[k](this);
+			if (keyDownMethods.count(k)) {
+				keyDownMethods.at(k)(this);
 			}
 		}
 		// buttons
@@ -269,33 +287,7 @@ template <typename Scenario> class Viewer : public SignalSlotRenderer {
 		}
 		return res;
 	}
-	void dragCell() {
-		if (selectedCell) {
-			QVector2D mouseNDC(
-			    2.0 * mousePosition.x() / (float)viewportSize.width() - 1.0,
-			    -((2.0 * (float)mousePosition.y()) / (float)viewportSize.height() - 1.0));
-			QVector4D rayEye = camera.getProjectionMatrix((float)viewportSize.width() /
-			                                              (float)viewportSize.height())
-			                       .inverted() *
-			                   QVector4D(mouseNDC, -1.0, 1.0);
-			rayEye = QVector4D(rayEye.x(), rayEye.y(), -1.0, 0.0);
-			QVector4D ray = camera.getViewMatrix().inverted() * rayEye;
-			QVector3D l(ray.x(), ray.y(), ray.z());
-			QVector3D l0 = camera.getPosition();
-			QVector3D p0 = toQV3D(selectedCell->getPosition());
-			QVector3D n = camera.getOrientation();
-			if (QVector3D::dotProduct(l, n) != 0) {
-				float d = (QVector3D::dotProduct((p0 - l0), n)) / QVector3D::dotProduct(l, n);
-				QVector3D projectedPos = l0 + d * l;
-				decltype(selectedCell->getPosition()) newPos(projectedPos.x(), projectedPos.y(),
-				                                             projectedPos.z());
-				selectedCell->setPosition(newPos);
-				selectedCell->resetVelocity();
-			}
-		}
-	}
 
-	// paint method, called for every frame.
 	virtual void paint() {
 		processEvents();
 		viewMatrix = camera.getViewMatrix();
@@ -310,11 +302,19 @@ template <typename Scenario> class Viewer : public SignalSlotRenderer {
 		for (auto &p : plugins_preDraw) p(this);
 
 		for (auto &s : paintSteps) {
-			s->call(this);
+			if (enabledPaintSteps.count(s->name)) s->call(this);
 		}
 
 		for (auto &p : plugins_postDraw) p(this);
 
+		updateStats();
+		if (window) {
+			window->resetOpenGLState();
+			window->update();
+		}
+	}
+
+	void updateStats() {
 		auto t1 = std::chrono::high_resolution_clock::now();
 		auto fpsDt = t1 - tfps;
 		nbFramesSinceLastTick++;
@@ -333,10 +333,6 @@ template <typename Scenario> class Viewer : public SignalSlotRenderer {
 		t0 = std::chrono::high_resolution_clock::now();
 		camera.updatePosition(viewDt);
 		++frame;
-		if (window) {
-			window->resetOpenGLState();
-			window->update();
-		}
 	}
 
 	// called on redimensioning events.
@@ -358,13 +354,11 @@ template <typename Scenario> class Viewer : public SignalSlotRenderer {
 	}
 
  public:
-	// Ugly but allows to create a new instance from QSGRenderThread
-	// and bypass Qt template restrictions...
-
 	/**************************
 	 *           SET
 	 **************************/
 	void setCurrentFBO(QOpenGLFramebufferObject *fbo) { currentFBO = fbo; }
+	void setSelectedCell(Cell *c) { selectedCell = c; }
 	/**************************
 	 *           GET
 	 **************************/
@@ -388,11 +382,16 @@ template <typename Scenario> class Viewer : public SignalSlotRenderer {
 	/*************************
 	 *    UI ADDITIONS
 	 *************************/
-	template <typename P> void registerPlugin(P &p) { loadPluginHooks(this, p); }
+	template <typename P> void registerPlugin(P &p) {
+		qDebug() << "registering a plugin";
+		loadPluginHooks(this, p);
+	}
 	void addKeyDownMethod(Qt::Key k, Rfunc f) { keyDownMethods[k] = f; }
 	void addKeyPressMethod(Qt::Key k, Rfunc f) { keyPressMethods[k] = f; }
 	void addMouseDragMethod(Qt::MouseButton b, Rfunc f) { mouseDragMethods[b] = f; }
 	void addMouseClickMethod(Qt::MouseButton b, Rfunc f) { mouseClickMethods[b] = f; }
+	QPointF getMousePosition() { return mousePosition; }
+	QPointF getPreviousMousePosition() { return mousePrevPosition; }
 	void addButton(Button<R> b) { buttons[b.getName()] = b; }
 	void addButton(std::string name, std::string menu, std::string label,
 	               std::function<void(R *, Button<R> *)> onClicked) {
@@ -407,7 +406,6 @@ template <typename Scenario> class Viewer : public SignalSlotRenderer {
 		QQuickView view;
 		view.setFlags(Qt::Window | Qt::CustomizeWindowHint | Qt::WindowMinMaxButtonsHint |
 		              Qt::WindowTitleHint | Qt::WindowCloseButtonHint |
-		              // Qt::MaximizeUsingFullscreenGeometryHint |
 		              Qt::WindowFullscreenButtonHint);
 		view.setSurfaceType(QSurface::OpenGLSurface);
 		view.setColor(QColor(Qt::transparent));

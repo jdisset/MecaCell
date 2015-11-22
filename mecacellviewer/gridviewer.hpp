@@ -4,7 +4,7 @@
 #include "primitives/cube.hpp"
 #include "paintstep.hpp"
 #include <functional>
-#include <string>
+#include <QString>
 #include <QMatrix4x4>
 #include <QVector4D>
 
@@ -15,7 +15,7 @@ template <typename R, typename G> class GridViewer : public PaintStep<R> {
 	std::function<const G *(R *r)> getGrid;
 
  public:
-	GridViewer(string n, decltype(getGrid) gg, const QString &vs, const QString &fs)
+	GridViewer(QString n, decltype(getGrid) gg, const QString &vs, const QString &fs)
 	    : PaintStep<R>(n), getGrid(gg) {
 		shader.addShaderFromSourceCode(QOpenGLShader::Vertex, shaderWithHeader(vs));
 		shader.addShaderFromSourceCode(QOpenGLShader::Fragment, shaderWithHeader(fs));

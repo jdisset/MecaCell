@@ -4,7 +4,7 @@
 #include <string>
 template <typename R> struct ScreenManager : public PaintStep<R> {
 	ScreenManager() {}
-	ScreenManager(const std::string& s) : PaintStep<R>(s) {}
+	ScreenManager(const QString& s) : PaintStep<R>(s, "Post processing") {}
 	virtual void screenChanged(R*){};
 };
 #endif

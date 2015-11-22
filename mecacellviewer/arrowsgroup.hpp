@@ -14,7 +14,7 @@ template <typename R> class ArrowsGroup : public PaintStep<R> {
 	double scaleCoef = 1.0;
 
  public:
-	ArrowsGroup(string n, decltype(getArrows) ga, QVector4D col, double sc = 1.0)
+	ArrowsGroup(QString n, decltype(getArrows) ga, QVector4D col, double sc = 1.0)
 	    : PaintStep<R>(n), getArrows(ga), color(col), scaleCoef(sc) {
 		shader.addShaderFromSourceCode(QOpenGLShader::Vertex,
 		                               shaderWithHeader(":/shaders/mvp.vert"));
