@@ -1,49 +1,31 @@
-#ifndef SLOTSIGNALBASE_H
-#define SLOTSIGNALBASE_H
-#include <QOpenGLContext>
-#include <QOpenGLFunctions>
-#include <QQuickView>
+#ifndef SIGNALSLOTBASE_H
+#define SIGNALSLOTBASE_H
 #include <QQuickItem>
-#include <QVariant>
-#include <QString>
+#include <QQuickWindow>
+#include <memory>
+#include <unordered_set>
+#include <set>
 #include <iostream>
-#include <map>
-#include <set>
-#include <QThread>
-#include "viewtools.h"
-#include <set>
-#include <unordered_map>
-#include <functional>
-
-using namespace std;
-
 namespace MecacellViewer {
 class SignalSlotBase;
-
-enum colorMode { owncolor, pressure };
 class SignalSlotRenderer : public QObject {
 	Q_OBJECT
+	friend class SignalSlotBase;
 
  protected:
-	QSize viewportSize;
 	QQuickWindow *window = nullptr;
-	virtual void paint(){};
+	virtual void paint() = 0;
 
  public:
 	explicit SignalSlotRenderer() {}
-	virtual void sync(SignalSlotBase *){};
-	virtual void initialize(){};
-	void setWindow(QQuickWindow *w) { window = w; }
+	virtual void sync(SignalSlotBase *) = 0;
+	virtual void initialize() = 0;
+	virtual void setViewportSize(const QSize &) = 0;
  public slots:
-	virtual void cleanupSlot() {}
-	virtual void setViewportSize(const QSize &s) { viewportSize = s; };
-	virtual void paintSlot() { paint(); };
-	virtual SignalSlotRenderer *clone() { return new SignalSlotRenderer(); }
+	void paintSlot() { paint(); };
+	void cleanupSlot(){};
 };
 
-/***********************************
- *       QML INTERFACE CLASS       *
- ***********************************/
 class SignalSlotBase : public QQuickItem {
 	Q_OBJECT
  public:
@@ -52,79 +34,76 @@ class SignalSlotBase : public QQuickItem {
 		        SLOT(handleWindowChanged(QQuickWindow *)));
 		setAcceptedMouseButtons(Qt::AllButtons);
 		setFlags(ItemClipsChildrenToShape | ItemAcceptsInputMethod | ItemHasContents);
-		guiCtrl["tool"] = "move";
 	}
 
 	Q_PROPERTY(QVariantMap stats READ getStats WRITE setStats NOTIFY statsChanged)
-	Q_PROPERTY(QVariantMap guiCtrl READ getGuiCtrl WRITE setGuiCtrl NOTIFY GuiCtrlChanged)
 
-	QVariantMap stats, guiCtrl;
+	QVariantMap stats;
 	bool worldUpdate = true;
 	bool loopStep = false;
-	set<int> pressedKeys;
-	set<int> inputKeys;
+	std::set<Qt::Key> keyDown, keyPress;
 	int mouseWheel = 0;
-	unique_ptr<SignalSlotRenderer> renderer = nullptr;
+	SignalSlotRenderer *renderer = nullptr;
 	bool initialized = false;
 	QMouseEvent lastMouseEvent = QMouseEvent(QEvent::None, QPointF(0, 0), Qt::NoButton,
 	                                         Qt::NoButton, Qt::NoModifier);
 	QFlags<Qt::MouseButtons> mouseClickedButtons, mouseDblClickedButtons;
 	std::set<QString> clickedButtons;
 
+	/******************************
+	 *            INPUTS
+	 *****************************/
+	// Mouse
 	virtual void mouseMoveEvent(QMouseEvent *event) { lastMouseEvent = *event; }
 	virtual void mousePressEvent(QMouseEvent *event) {
-		qDebug() << event;
 		lastMouseEvent = *event;
 		mouseClickedButtons |= event->button();
 	}
-
 	virtual void mouseReleaseEvent(QMouseEvent *event) { lastMouseEvent = *event; }
 	virtual void mouseDoubleClickEvent(QMouseEvent *event) {
 		mouseDblClickedButtons |= event->button();
 	}
 	virtual void wheelEvent(QWheelEvent *) {}
+	void buttonClick(QString name) { clickedButtons.insert(name); }
 
+	// Keyboard
 	virtual void keyPressEvent(QKeyEvent *event) {
-		pressedKeys.insert(event->key());
-		inputKeys.insert(event->key());
+		keyDown.insert(static_cast<Qt::Key>(event->key()));
+		keyPress.insert(static_cast<Qt::Key>(event->key()));
 	}
-	virtual void keyReleaseEvent(QKeyEvent *event) { pressedKeys.erase(event->key()); }
+	virtual void keyReleaseEvent(QKeyEvent *event) {
+		keyPress.erase(static_cast<Qt::Key>(event->key()));
+	}
 
  signals:
 	void statsChanged();
-	void GuiCtrlChanged();
 
  public slots:
-	/**************************
-	 *      Qt events
-	 *************************/
+	//*************************Qt events ***********************
 	virtual void sync() {
 		if (!initialized) {
 			initialized = true;
-			renderer.reset(renderer->clone());
-			connect(window(), SIGNAL(beforeRendering()), renderer.get(), SLOT(paintSlot()),
+			connect(window(), SIGNAL(beforeRendering()), renderer, SLOT(paintSlot()),
 			        Qt::DirectConnection);
-			connect(window(), SIGNAL(sceneGraphInvalidated()), renderer.get(),
-			        SLOT(cleanupSlot()), Qt::DirectConnection);
+			connect(window(), SIGNAL(sceneGraphInvalidated()), renderer, SLOT(cleanupSlot()),
+			        Qt::DirectConnection);
 			renderer->initialize();
 		}
-		renderer->setWindow(window());
+		renderer->window = window();
 		renderer->setViewportSize(
 		    QSize(static_cast<int>(width()), static_cast<int>(height())));
 		renderer->sync(this);
 		update();
 	};
 
-	void init(unique_ptr<SignalSlotRenderer> &r) { renderer = move(r); }
+	void init(SignalSlotRenderer *r) { renderer = r; }
 
 	void callUpdate() {
 		if (window()) window()->update();
 	}
 
 	void step() { loopStep = true; }
-
 	void setWorldUpdate(bool u) { worldUpdate = u; }
-
 	virtual void handleWindowChanged(QQuickWindow *win) {
 		if (win) {
 			connect(win, SIGNAL(beforeSynchronizing()), this, SLOT(sync()),
@@ -133,18 +112,10 @@ class SignalSlotBase : public QQuickItem {
 		}
 	}
 
-	void buttonClick(QString name) { clickedButtons.insert(name); }
-
-	/**************************
-	 *      basic stats
-	 *************************/
-	QVariant getGuiCtrl(QString k) { return guiCtrl.count(k) ? guiCtrl[k] : 0; }
-	QVariantMap getGuiCtrl() { return guiCtrl; }
 	QVariantMap getStats() { return stats; }
 	QVariant getStat(const QString &name) {
 		return stats.count(name) ? stats[name] : QVariant();
 	}
-	void setGuiCtrl(QVariantMap c) { guiCtrl = c; }
 	void setStats(QVariantMap s) { stats = s; }
 };
 }

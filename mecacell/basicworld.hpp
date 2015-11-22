@@ -68,10 +68,10 @@ class BasicWorld {
 	Vec getG() const { return g; }
 	void setG(const Vec &v) { g = v; }
 	void setDt(float_t d) { dt = d; }
-	const SpacePartition<Cell *> &getCellGrid() { return cellSpacePartition; }
-	const SpacePartition<pair<model_type *, size_t>> &getModelGrid() {
-		return modelSpacePartition;
-	}
+	const decltype(cellSpacePartition) &getCellGrid() { return cellSpacePartition; }
+	const decltype(cellSpacePartition) *getCellGridPtr() { return &cellSpacePartition; }
+	const decltype(modelSpacePartition) &getModelGrid() { return modelSpacePartition; }
+	const decltype(modelSpacePartition) *getModelGridPtr() { return &modelSpacePartition; }
 	float_t getViscosityCoef() const { return viscosityCoef; }
 	void setViscosityCoef(const float_t d) { viscosityCoef = d; }
 	void disableCellCellCollisions() { cellCellCollisions = false; }

@@ -2,18 +2,24 @@ import SceneGraphRendering 1.0
 import QtQuick 2.0
 import QtGraphicalEffects 1.0
 import QtQuick.Controls 1.2
+import "javascript.js" as Logic
 Item{
 
-	property var guictrl: renderer.getGuiCtrl();
-	property var btnArray: new Object();
+	//property var guictrl: renderer.getGuiCtrl();
+	//property var btnArray: new Object();
 	width: 1000
 	height: 700
 	id: main
-
-	Component.onCompleted: {
-		guictrl["visibleElements"] = new Array();
-		guictrl["visibleElements"].push("cells");
-		renderer.setGuiCtrl(guictrl);
+	Renderer {
+		objectName: "renderer"
+		id: renderer
+		anchors.left: leftMenu.right
+		anchors.top: parent.top
+		anchors.bottom: parent.bottom
+		anchors.right: parent.right
+		//anchors.fill: parent
+		focus: true
+		z: -1
 	}
 
 	property color mecaYellow: "#F2DC83"
@@ -167,7 +173,7 @@ Item{
 						hoverEnabled: true
 						onClicked: {
 							parent.playing = !parent.playing
-							setCtrl("playing", parent.playing);
+							Logic.setCtrl(main,"playing", parent.playing);
 							glview.setWorldUpdate(parent.playing);
 						}
 					}
@@ -205,7 +211,7 @@ Item{
 				spacing: 10
 				ValueWatcher {
 					label: "FPS"
-					value: getStat("fps").toFixed(0)
+					value: Logic.getStat(main,"fps").toFixed(0)
 				}
 				RowSpacer {
 					color: "#20FFFFFF"
@@ -213,7 +219,7 @@ Item{
 				}
 				ValueWatcher {
 					label: "CELLS"
-					value: getStat("nbCells")
+					value: Logic.getStat(main,"nbCells")
 				}
 				RowSpacer {
 					color: "#20FFFFFF"
@@ -221,22 +227,9 @@ Item{
 				}
 				ValueWatcher {
 					label: "UPDATE"
-					value: getStat("nbUpdates")
+					value: Logic.getStat(main,"nbUpdates")
 				}
 			}
 		}
 	}
-
-	Renderer {
-		objectName: "renderer"
-		id: renderer
-		anchors.left: leftMenu.right
-		anchors.top: parent.top
-		anchors.bottom: parent.bottom
-		anchors.right: parent.right
-		anchors.fill: parent
-		focus: true
-		z: -1
-	}
-
 }

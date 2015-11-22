@@ -37,7 +37,7 @@ template <typename RendererType> class Button {
 			checked = !checked;
 			updt = true;
 		}
-		onClicled(r, this);
+		onClicked(r, this);
 	}
 	void setLabel(const QString &l) {
 		label = l;

@@ -12,7 +12,7 @@ namespace MecacellViewer {
 template <typename R, typename G> class GridViewer : public PaintStep<R> {
 	QOpenGLShaderProgram shader;
 	Cube cube;
-	std::function<const G &(R *r)> getGrid;
+	std::function<const G *(R *r)> getGrid;
 
  public:
 	GridViewer(string n, decltype(getGrid) gg, const QString &vs, const QString &fs)
@@ -24,7 +24,7 @@ template <typename R, typename G> class GridViewer : public PaintStep<R> {
 	}
 
 	void call(R *r) {
-		const G &g = getGrid(r);
+		const G &g = *getGrid(r);
 		const QMatrix4x4 &view = r->getViewMatrix();
 		const QMatrix4x4 &projection = r->getProjectionMatrix();
 		shader.bind();

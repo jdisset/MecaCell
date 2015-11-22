@@ -14,13 +14,13 @@
 		return container;
 	}
 
-	function addButton(gui, id, menu, label, col) {
-		if (gui.btnArray[id] != undefined) {
+	function addButton(id, menu, label, col) {
+		if (btnArray[id] != undefined) {
 			// update, not creation
-			gui.btnArray[id].text = label;
-			gui.btnArray[id].notpressedColor = col;
+			btnArray[id].text = label;
+			btnArray[id].notpressedColor = col;
 		} else {
-			var container = getContainer(gui, menu);
+			var container = getContainer(menu);
 			var component;
 			var finishCreation = function() {
 				if (component.status == Component.Ready) {
@@ -30,7 +30,7 @@
 						"menu": menu,
 						"notpressedColor": col
 					});
-					gui.btnArray[id] = btn;
+					btnArray[id] = btn;
 				} else if (component.status == Component.Error) {
 					console.log("Error loading component:", component.errorString());
 				}
@@ -43,51 +43,51 @@
 		}
 	}
 
-	function removeCtrl(gui, k) {
-		if (gui.guictrl[k] != undefined) {
-			delete gui.guictrl[k];
-			gui.renderer.setGuiCtrl(guictrl);
+	function removeCtrl(k) {
+		if (guictrl[k] != undefined) {
+			delete guictrl[k];
+			renderer.setGuiCtrl(guictrl);
 		}
 	}
 
-	function setCtrl(gui, k, v) {
-		gui.guictrl[k] = v;
-		gui.renderer.setGuiCtrl(guictrl);
+	function setCtrl(k, v) {
+		guictrl[k] = v;
+		renderer.setGuiCtrl(guictrl);
 	}
 
-	function removeOptionInCtrl(gui, k, v) {
-		if (gui.guictrl[k] != undefined) {
-			for (var i = 0; i < gui.guictrl[k].length; ++i) {
-				if (gui.guictrl[k][i] == v) {
-					gui.guictrl[k].splice(i, 1);
+	function removeOptionInCtrl(k, v) {
+		if (guictrl[k] != undefined) {
+			for (var i = 0; i < guictrl[k].length; ++i) {
+				if (guictrl[k][i] == v) {
+					guictrl[k].splice(i, 1);
 					break;
 				}
 			}
 		}
-		gui.renderer.setGuiCtrl(guictrl);
+		renderer.setGuiCtrl(guictrl);
 	}
 
-	function pushUniqueOptionInCtrl(gui, k, v) {
+	function pushUniqueOptionInCtrl(k, v) {
 		var exists = false;
-		if (gui.guictrl[k] != undefined) {
-			for (var i = 0; i < gui.guictrl[k].length; ++i) {
-				if (gui.guictrl[k][i] == v) {
+		if (guictrl[k] != undefined) {
+			for (var i = 0; i < guictrl[k].length; ++i) {
+				if (guictrl[k][i] == v) {
 					exists = true;
 				}
 			}
 		} else {
-			gui.guictrl[k] = new Array();
+			guictrl[k] = new Array();
 		}
 		if (!exists) {
-			gui.guictrl[k].push(v);
-			gui.renderer.setGuiCtrl(guictrl);
+			guictrl[k].push(v);
+			renderer.setGuiCtrl(guictrl);
 		}
 	}
 
-	function statAvail(gui, k) {
-		return gui.renderer.stats[k] ? true : false;
+	function statAvail(k) {
+		return renderer.stats[k] ? true : false;
 	}
 
-	function getStat(gui, k) {
-		return gui.renderer.stats[k] ? gui.renderer.stats[k] : 0;
+	function getStat(k) {
+		return renderer.stats[k] ? renderer.stats[k] : 0;
 	}

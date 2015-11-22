@@ -3,12 +3,13 @@
 #include "viewtools.h"
 #include "primitives/cube.hpp"
 #include <vector>
+#include <QDebug>
 
 namespace MecacellViewer {
 template <typename R> class ArrowsGroup : public PaintStep<R> {
 	QOpenGLShaderProgram shader;
 	Cube cube;
-	std::function<const vector<pair<QVector3D, QVector3D>> &(R *)> getArrows;
+	std::function<const vector<pair<QVector3D, QVector3D>>(R *)> getArrows;
 	QVector4D color = QVector4D(1.0, 1.0, 1.0, 1.0);
 	double scaleCoef = 1.0;
 
