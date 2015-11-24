@@ -10,30 +10,31 @@
 namespace MecacellViewer {
 template <typename R> class MenuBlur : public ScreenManager<R> {
  private:
-	std::unique_ptr<QOpenGLFramebufferObject> fbo;
-	QOpenGLFramebufferObjectFormat format;
 	BlurQuad blurTarget;
 
  public:
 	MenuBlur(R* r) : ScreenManager<R>("menuBlur") {
 		this->checkable = false;
-		format.setAttachment(QOpenGLFramebufferObject::Depth);
-		format.setSamples(0);
-		blurTarget.load(":/shaders/dumb.vert", ":/shaders/blur.frag",
-		                r->getViewportSize() * r->getScreenCoef());
-		screenChanged(r);
+		auto* wdw = r->getWindow();
+		auto vps = r->getViewportSize() * wdw->devicePixelRatio();
+		qDebug() << "vps = " << vps;
+		blurTarget.load(":/shaders/dumb.vert", ":/shaders/blur.frag", vps);
 	}
+
 	void call(R* r) {
-		auto vps = r->getViewportSize();
-		auto sc = r->getScreenCoef();
+		auto* wdw = r->getWindow();
+		auto vps = r->getViewportSize() * wdw->devicePixelRatio();
 		if (r->getCurrentFBO()) {
-			GL->glViewport(0, 0, vps.width() * sc, vps.height() * sc);  // viewport reset
+			GL->glViewport(0, 0, vps.width(), vps.height());  // viewport reset
 			blurTarget.draw(
-			    r->getCurrentFBO()->texture(), 5, vps * sc,
-			    QRect(QPoint(0, 0), QSize(r->isFullscreen() ? 0 : r->getLeftMenuSize() * sc,
-			                              vps.height() * sc)));
+			    r->getCurrentFBO()->texture(), 5, vps,
+			    QRect(QPoint(0, 0), QSize(r->isFullscreen() ? 0 : r->getLeftMenuSize() *
+			                                                          wdw->devicePixelRatio(),
+			                              vps.height())));
 		}
 	}
+
+	void screenChanged(R* r) {}
 };
 }
 #endif

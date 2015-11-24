@@ -12,7 +12,7 @@ template <typename RendererType> class Button {
 	ButtonType type = ButtonType::rectangular;
 	QString name, menu, label;
 	std::function<void(RendererType *, Button *)> onClicked;
-	QColor color = QColor(255, 255, 255);
+	QColor color = QColor(45, 85, 120, 150);
 	bool checked = false;
 	bool updt = true;  // needs to be updated
 
@@ -27,11 +27,10 @@ template <typename RendererType> class Button {
 	QString getName() { return name; }
 	QString getMenu() { return menu; }
 	QString getLabel() { return label; }
-	void setLabel(QString l) { label = l; }
 	void setMenu(QString m) { menu = m; }
 
 	bool needsToBeUpdated() { return updt; }
-	void updateOK() { updt = true; }
+	void updateOK() { updt = false; }
 	void clicked(RendererType *r) {
 		if (type == ButtonType::check_squared || type == ButtonType::check_rectangular) {
 			checked = !checked;
@@ -47,16 +46,8 @@ template <typename RendererType> class Button {
 		onClicked = f;
 		updt = true;
 	}
-	void setColor(const int r, const int g, const int b) {
-		color = QColor(r, g, b);
-		updt = true;
-	}
-	void setColor(const QColor &c) {
-		color = c;
-		updt = true;
-	}
-	void setColor(const double r, const double g, const double b) {
-		color = QColor::fromRgbF(r, g, b);
+	template <typename... Args> void setColor(Args... args) {
+		color = QColor(std::forward<Args>(args)...);
 		updt = true;
 	}
 };

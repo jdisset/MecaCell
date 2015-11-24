@@ -4,7 +4,7 @@ import QtQuick.Controls 1.2
 Item {
 	width: parent.width
 	height: parent.height
-	property alias mainColumn: mainColumn 
+	property alias column:column
 	Title {
 		id: titre
 		txt: "View"
@@ -15,11 +15,13 @@ Item {
 		anchors.top: titre.bottom
 		anchors.horizontalCenter: parent.horizontalCenter
 		width: parent.width
-		height: childrenRect.height + 40
+		height: parent.height
 		color: lightMecaBlue
 		Column {
-			id: mainColumn 
+			id: column 
+			width:parent.width
 			anchors.horizontalCenter: parent.horizontalCenter
+			height: childrenRect.height +15 
 			anchors.left: parent.left
 			spacing: 5
 			anchors.top: parent.top

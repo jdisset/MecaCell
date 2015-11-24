@@ -6,21 +6,19 @@
 
 namespace MecacellViewer {
 
-template <typename C> class DeformableCellGroup {
+template <typename R> class DeformableCellGroup : public PaintStep<R> {
+	using C = typename R::Cell;
 	QOpenGLShaderProgram shader;
 	unique_ptr<QOpenGLTexture> normalMap = nullptr;
 	DeformableSphere sphere;
 
  public:
 	cellMode drawMode = plain;
-	DeformableCellGroup() : sphere(150) {}
-
-	void load() {
+	DeformableCellGroup() : PaintStep<R>("Cells"), sphere(150) {
 		shader.addShaderFromSourceCode(QOpenGLShader::Vertex,
 		                               shaderWithHeader(":/shaders/cell.vert"));
 		shader.addShaderFromSourceCode(QOpenGLShader::Fragment,
 		                               shaderWithHeader(":/shaders/cell.frag"));
-		shader.link();
 		shader.link();
 		normalMap = unique_ptr<QOpenGLTexture>(
 		    new QOpenGLTexture(QImage(":/textures/cellNormalMap.jpg").mirrored()));
@@ -35,10 +33,14 @@ template <typename C> class DeformableCellGroup {
 		return vector<QVector4D>(sphere.vert.size(), color);
 	}
 
-	void draw(const vector<C *> &cells, const QMatrix4x4 &view,
-	          const QMatrix4x4 &projection, const QVector3D &viewV, const QVector3D &camPos,
-	          const C *selected = nullptr) {
+	void call(R *r, const QString &s) {
+		const auto &cells = r->getScenario().getWorld().cells;
 		if (cells.size() > 0) {
+			const QMatrix4x4 view = r->getViewMatrix();
+			const QMatrix4x4 projection = r->getProjectionMatrix();
+			const auto viewV = r->getCamera().getViewVector();
+			const auto camPos = r->getCamera().getPosition();
+			const auto *selected = r->getSelectedCell();
 			shader.bind();
 			sphere.vao.bind();
 			normalMap->bind(0);

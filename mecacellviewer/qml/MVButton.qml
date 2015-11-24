@@ -8,7 +8,9 @@ Button {
 	property string name : ""
 
 	text: "A button"
-	width: parent.width
+	width: parent.width * 0.8
+	anchors.left: parent.left
+	anchors.leftMargin : parent.width * 0.1
 	height: 30
 	onClicked: {
 		renderer.buttonClick(name);

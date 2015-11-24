@@ -107,7 +107,8 @@ void main() {
 			lights[i].intensity;
 	}
 
-	/*[>FragColor =  vec4(final,0.0 + diffuseCoef*diffuseCoef) ;<]*/
+	/*FragColor =  vec4(final,0.0 + diffuseCoef*diffuseCoef) ;*/
 	FragColor = vec4(mixV3(final , final+ final*colorLinear.rgb, 0.5), vertColor.a);
-	/*FragColor.rgb = (FragColor.rgb - 0.5) * 1.05 + 0.5;*/
+
+	/*FragColor = vec4(1.0,0.2,0.3,1.0);*/
 }

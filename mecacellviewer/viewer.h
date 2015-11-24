@@ -10,6 +10,7 @@
 #include "viewtools.h"
 #include "arrowsgroup.hpp"
 #include "cellgroup.hpp"
+#include "deformableCellGroup.hpp"
 #include "gridviewer.hpp"
 #include "plugins.hpp"
 #include "skybox.hpp"
@@ -51,6 +52,7 @@ template <typename Scenario> class Viewer : public SignalSlotRenderer {
 	using ModelType = typename World::model_type;
 	using R = Viewer<Scenario>;
 	using Rfunc = std::function<void(R *)>;
+	using ButtonType = Button<R>;
 
 	Viewer(int c, char **v) : argc(c), argv(v) {
 #if __APPLE__
@@ -93,7 +95,6 @@ template <typename Scenario> class Viewer : public SignalSlotRenderer {
 	QFlags<Qt::MouseButtons> mouseClickedButtons, mouseDblClickedButtons,
 	    mousePressedButtons;
 	std::set<Qt::Key> keyDown, keyPress;
-	std::set<QString> clickedButtons;
 
 	// Stats
 	std::chrono::time_point<std::chrono::high_resolution_clock> t0, tfps;
@@ -104,7 +105,12 @@ template <typename Scenario> class Viewer : public SignalSlotRenderer {
 	bool worldUpdate = true;
 	bool loopStep = true;
 	double fpsRefreshRate = 0.4;
-	QVariantMap stats;
+	QVariantMap guiCtrl, stats;
+	QList<QVariant> enabledPaintSteps;
+	std::vector<std::pair<QList<QVariant>, bool>> displayMenuToggled;
+
+	MenuElement<R> displayMenu;
+	bool displayMenuChanged = true;
 
  public:
 	std::vector<Rfunc> plugins_onLoad;
@@ -120,10 +126,12 @@ template <typename Scenario> class Viewer : public SignalSlotRenderer {
 	std::map<Qt::MouseButton, Rfunc> mouseClickMethods;
 	std::map<QString, Button<R>> buttons;
 
-	// paint steps : ordered list of callable paint actions
-	// (draw objects, set up effects...)
-	std::vector<unique_ptr<PaintStep<R>>> paintSteps;
-	std::set<QString> enabledPaintSteps;
+	// this is just so we can store paint steps instances without making a mess
+	std::map<QString, unique_ptr<PaintStep<R>>> paintSteps;
+
+	// the actual paint steps method to be called
+	std::map<int, Rfunc> paintStepsMethods;
+
 	bool paintStepsNeedsUpdate =
 	    true;  // do we need to refresh the list of checkable paint steps?
 
@@ -135,46 +143,81 @@ template <typename Scenario> class Viewer : public SignalSlotRenderer {
 
 	// init function for the renderer. Create all the defaults paint steps and
 	// screen managers, initializes scenario and users additions.
-	virtual void initialize() {
+	using psptr = std::unique_ptr<PaintStep<R>>;
+	virtual void initialize(QQuickWindow *wdw) {
+		MenuElement<R> cellsMenu = {
+		    "Cells",
+		    {{"Mesh type",
+		      elementType::exclusiveGroup,
+		      {{"None", false},
+		       {"Centers only", false},
+		       {"Sphere", false},
+		       {"Deformable mesh", true}}},
+		     {"Colors", elementType::exclusiveGroup, {{"Normal", true}, {"Pressure", false}}},
+		     {"Display forces", false},
+		     {"Display velocities", false}}};
+
+		cellsMenu.print();
+		qDebug() << cellsMenu.toJSON();
+		this->window = wdw;
+		viewportSize = QSize(static_cast<int>(wdw->width()), static_cast<int>(wdw->height()));
 		scenario.init(argc, argv);
 		GL = QOpenGLContext::currentContext()->functions();
 		GL->initializeOpenGLFunctions();
 		////////////////////////////////
 		// list of default paint steps
 		/////////////////////////////////
-		paintSteps.emplace_back(new MSAA<R>(viewportSize));
-		paintSteps.emplace_back(new Skybox<R>());
-		paintSteps.emplace_back(new CellGroup<R>());
-		paintSteps.emplace_back(new ArrowsGroup<R>("Forces", [](R *r) {
-			auto f0 = r->scenario.getWorld().getAllForces();
-			vector<pair<QVector3D, QVector3D>> f;
-			f.reserve(f0.size());
-			for (auto &p : f0) {
-				f.push_back(make_pair(toQV3D(p.first), toQV3D(p.second)));
+		paintSteps.emplace("MSAA", psptr(new MSAA<R>(this)));
+		paintSteps.emplace("Skybox", psptr(new Skybox<R>()));
+		paintSteps.emplace("Cells", psptr(new DeformableCellGroup<R>()));
+		paintSteps.emplace("Arrows", psptr(new ArrowsGroup<R>()));
+		paintSteps.emplace(
+		    "Grids", psptr(new GridViewer<R>(":shaders/mvp.vert", ":/shaders/flat.frag")));
+		paintSteps.emplace("SSAO", psptr(new SSAO<R>(this)));
+		paintSteps.emplace("Blur", psptr(new MenuBlur<R>(this)));
+		screenManagers.push_back(dynamic_cast<ScreenManager<R> *>(paintSteps["MSAA"].get()));
+		screenManagers.push_back(dynamic_cast<ScreenManager<R> *>(paintSteps["SSAO"].get()));
+		screenManagers.push_back(dynamic_cast<ScreenManager<R> *>(paintSteps["Blur"].get()));
+
+		// TODO: absolutely TERRIBLE performance wise, cool ease-of-use wise. Enhance!
+		cellsMenu.onToggled = [&](R *r, MenuElement<R> *me) {
+			if (me->isChecked()) {
+				if (me->at("Colors").at("Normal").isChecked()) {
+					paintStepsMethods[10] = [&](R *r) {
+						DeformableCellGroup<R> *cells =
+						    dynamic_cast<DeformableCellGroup<R> *>(paintSteps["Cells"].get());
+						cells->call(r, "normal");
+					};
+				} else {
+					paintStepsMethods[10] = [&](R *r) {
+						DeformableCellGroup<R> *cells =
+						    dynamic_cast<DeformableCellGroup<R> *>(paintSteps["Cells"].get());
+						cells->call(r, "pressure");
+					};
+				}
+			} else {
+				paintStepsMethods.erase(10);
 			}
-			return f;
-		}, QVector4D(1.0, 0.7, 0.1, 1.0)));
-		paintSteps.emplace_back(new ArrowsGroup<R>("Velocities", [](R *r) {
-			auto f0 = r->scenario.getWorld().getAllVelocities();
-			vector<pair<QVector3D, QVector3D>> f;
-			f.reserve(f0.size());
-			for (auto &p : f0) {
-				f.push_back(make_pair(toQV3D(p.first), toQV3D(p.second)));
+		};
+		cellsMenu.at("Display forces").onToggled = [&](R *r, MenuElement<R> *me) {
+			if (me->isChecked()) {
+				paintStepsMethods[15] = [&](R *r) {
+					ArrowsGroup<R> *arrows =
+					    dynamic_cast<ArrowsGroup<R> *>(paintSteps["Arrows"].get());
+					auto f0 = r->scenario.getWorld().getAllForces();
+					vector<pair<QVector3D, QVector3D>> f;
+					f.reserve(f0.size());
+					for (auto &p : f0) {
+						f.push_back(make_pair(toQV3D(p.first), toQV3D(p.second)));
+					}
+					arrows->call(r, f, QVector4D(1.0, 0.3, 0.6, 1.0));
+				};
+			} else {
+				paintStepsMethods.erase(15);
 			}
-			return f;
-		}, QVector4D(1.0, 0.7, 0.1, 1.0)));
-		paintSteps.emplace_back(
-		    new GridViewer<R, typename remove_reference<decltype(
-		                          getScenario().getWorld().getCellGrid())>::type>(
-		        "Cells grid", [](R *r) {
-			        return r->getScenario().getWorld().getCellGridPtr();
-			      }, ":shaders/mvp.vert", ":/shaders/flat.frag"));
-		paintSteps.emplace_back(
-		    new GridViewer<R, typename remove_reference<decltype(
-		                          getScenario().getWorld().getModelGrid())>::type>(
-		        "Models grid", [](R *r) {
-			        return r->getScenario().getWorld().getModelGridPtr();
-			      }, ":shaders/mvp.vert", ":/shaders/flat.frag"));
+		};
+		displayMenu = cellsMenu;
+		displayMenu.callAll(this);  // init
 		for (auto &p : plugins_onLoad) p(this);
 	}
 
@@ -190,13 +233,10 @@ template <typename Scenario> class Viewer : public SignalSlotRenderer {
 				bt.updateOK();
 			}
 		}
-		if (paintStepsNeedsUpdate) {
-			for (auto &ps : paintSteps) {
-				QMetaObject::invokeMethod(
-				    root, "addPaintStepComponent", Q_ARG(QVariant, ps->name),
-				    Q_ARG(QVariant, ps->category), Q_ARG(QVariant, ps->checkable));
-			}
-			paintStepsNeedsUpdate = false;
+		if (displayMenuChanged) {
+			QMetaObject::invokeMethod(root, "createDisplayMenu",
+			                          Q_ARG(QVariant, displayMenu.toJSON()));
+			displayMenuChanged = false;
 		}
 	}
 	// called after every frame, thread safe
@@ -209,6 +249,8 @@ template <typename Scenario> class Viewer : public SignalSlotRenderer {
 		loopStep = b->loopStep;
 		b->loopStep = false;
 
+		guiCtrl = b->getGuiCtrl();
+
 		// stats
 		if (selectedCell)
 			stats["selectedCell"] = cellToQVMap(selectedCell);
@@ -216,6 +258,12 @@ template <typename Scenario> class Viewer : public SignalSlotRenderer {
 			stats.remove("selectedCell");
 		b->setStats(stats);
 		b->statsChanged();
+
+		// menu
+		displayMenuToggled = b->displayMenuToggled;
+		b->displayMenuToggled.clear();
+		displayMenu.updateCheckedFromList(this, displayMenuToggled);
+		if (displayMenuToggled.size() > 0) displayMenu.callAll(this);
 
 		// mouse
 		mouseClickedButtons = b->mouseClickedButtons;
@@ -235,13 +283,14 @@ template <typename Scenario> class Viewer : public SignalSlotRenderer {
 		keyPress = b->keyPress;
 		keyDown = b->keyDown;
 		b->keyPress.clear();
+		processEvents(b);
 	}
 
 	/***********************************
 	 *              EVENTS              *
 	 ***********************************/
 	// events handling routine
-	void processEvents() {
+	void processEvents(SignalSlotBase *b) {
 		const vector<Qt::MouseButton> acceptedButtons = {
 		    {Qt::LeftButton, Qt::RightButton, Qt::MiddleButton}};
 		// mouse drag (mouse down)
@@ -269,11 +318,12 @@ template <typename Scenario> class Viewer : public SignalSlotRenderer {
 			}
 		}
 		// buttons
-		for (auto &bName : clickedButtons) {
+		for (auto &bName : b->clickedButtons) {
 			if (buttons.count(bName)) {
 				buttons[bName].clicked(this);
 			}
 		}
+		b->clickedButtons.clear();
 	}
 
 	QVariantMap cellToQVMap(Cell *c) {
@@ -288,21 +338,24 @@ template <typename Scenario> class Viewer : public SignalSlotRenderer {
 		return res;
 	}
 
+	/***************************************************
+	 * ** ** ** ** *         PAINT       * ** ** ** ** *
+	 **************************************************/
 	virtual void paint() {
-		processEvents();
 		viewMatrix = camera.getViewMatrix();
 		projectionMatrix = camera.getProjectionMatrix((float)viewportSize.width() /
 		                                              (float)viewportSize.height());
 		updateScenario();
+		// default paint Methods
+		paintStepsMethods[0] = [&](R *r) { paintSteps["MSAA"]->call(r); };
+		paintStepsMethods[5] = [&](R *r) { paintSteps["Skybox"]->call(r); };
+		paintStepsMethods[1000000] = [&](R *r) { paintSteps["SSAO"]->call(r); };
+		paintStepsMethods[2000000] = [&](R *r) { paintSteps["Blur"]->call(r); };
 
-		GL->glDepthMask(true);
-		GL->glClearColor(1.0, 1.0, 1.0, 1.0);
-		GL->glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-		GL->glEnable(GL_DEPTH_TEST);
 		for (auto &p : plugins_preDraw) p(this);
 
-		for (auto &s : paintSteps) {
-			if (enabledPaintSteps.count(s->name)) s->call(this);
+		for (auto &s : paintStepsMethods) {
+			s.second(this);
 		}
 
 		for (auto &p : plugins_postDraw) p(this);
@@ -338,7 +391,7 @@ template <typename Scenario> class Viewer : public SignalSlotRenderer {
 	// called on redimensioning events.
 	void setViewportSize(const QSize &s) {
 		viewportSize = s;
-		if (window) screenScaleCoef = window->devicePixelRatio();
+		screenScaleCoef = 1.0;  // window->devicePixelRatio();
 		for (auto &sm : screenManagers) {
 			sm->screenChanged(this);
 		}
@@ -382,23 +435,30 @@ template <typename Scenario> class Viewer : public SignalSlotRenderer {
 	/*************************
 	 *    UI ADDITIONS
 	 *************************/
-	template <typename P> void registerPlugin(P &p) {
-		qDebug() << "registering a plugin";
-		loadPluginHooks(this, p);
-	}
+	template <typename P> void registerPlugin(P &p) { loadPluginHooks(this, p); }
 	void addKeyDownMethod(Qt::Key k, Rfunc f) { keyDownMethods[k] = f; }
 	void addKeyPressMethod(Qt::Key k, Rfunc f) { keyPressMethods[k] = f; }
 	void addMouseDragMethod(Qt::MouseButton b, Rfunc f) { mouseDragMethods[b] = f; }
 	void addMouseClickMethod(Qt::MouseButton b, Rfunc f) { mouseClickMethods[b] = f; }
 	QPointF getMousePosition() { return mousePosition; }
 	QPointF getPreviousMousePosition() { return mousePrevPosition; }
-	void addButton(Button<R> b) { buttons[b.getName()] = b; }
-	void addButton(std::string name, std::string menu, std::string label,
-	               std::function<void(R *, Button<R> *)> onClicked) {
+	Button<R> *addButton(Button<R> b) {
+		buttons[b.getName()] = b;
+		return &buttons[b.getName()];
+	}
+	Button<R> *addButton(std::string name, std::string menu, std::string label,
+	                     std::function<void(R *, Button<R> *)> onClicked) {
 		Button<R> b(QString::fromStdString(name), QString::fromStdString(menu),
 		            QString::fromStdString(label), onClicked);
 		buttons[QString::fromStdString(name)] = b;
+		return &buttons[b.getName()];
 	}
+	Button<R> *getButton(std::string name) {
+		if (buttons.count(QString::fromStdString(name)))
+			return &buttons[QString::fromStdString(name)];
+		return nullptr;
+	}
+	QQuickWindow *getWindow() { return window; }
 
 	int exec() {
 		QGuiApplication app(argc, argv);

@@ -3,21 +3,29 @@
 		obj.leftMenu.visible = !f;
 	}
 
-	function getContainer(obj, menu) {
-		var container = obj.controlsMenu.selectedCellActions;
-		if (menu == "SELECTEDCELL_MENU") {
-			container = obj.controlsMenu.selectedCellActions;
-		}
-		if (menu == "GENERALACTIONS_MENU") {
-			container = obj.controlsMenu.generalActions;
-		}
+	function getContainer(menu) {
+		var container = controlsMenu.generalActions;
 		return container;
 	}
 
+	function isEmpty(str) {
+		return (!str || 0 === str.length);
+	}
+
+	function forEach(obj, callback) {
+		for (var key in menu) {
+			if (validation_messages.hasOwnProperty(key)) {
+				var obj = validation_messages[key];
+				for (var prop in obj) {
+					if (obj.hasOwnProperty(prop)) {
+						func(key, obj);
+					}
+				}
+			}
+		}
+	}
 
 	function createNewComponent(file, container, obj) {
-		console.log("asked to create obj " + obj);
-		console.log(" in container " + container);
 		var component;
 		var elem;
 		var finishCreation = function() {
@@ -35,27 +43,112 @@
 		return elem;
 	}
 
+	var MenuElement = function(n, t) {
+		this.name = n;
+		this.type = t;
+		this.qmlItem = new Object();
+		this.children = new Array();
+		this.parent = null;
+	}
 
-	function addPaintStepComponent(name, category, isChecked) {
+	var displayMenuContainer = new MenuElement("root", "checkable");
+
+	var elemToggled = function(elem) {
+		return function() {
+			// on construit l'arborescence qui mène jusqu'à cet élément
+			// et on s'arrête si jamais on trouve un élément non checked
+			var p = elem.parent;
+			var arbo = new Array();
+			arbo.push(elem);
+			do {
+				arbo.push(p);
+				p = p.parent;
+			} while (p != null);
+			if (arbo.length > 0 && arbo[arbo.length - 1].name == "root") {
+				//on est bien remonté jusqu'à la racine
+				// on rempile dans l'ordre
+				var res = new Array();
+				for (var i = arbo.length - 2; i >= 0; i--) {
+					res.push(arbo[i].name);
+				}
+				renderer.displayMenuElementToggled(res, elem.qmlItem.checked);
+			}
+		}
+	};
+
+	function createMenuElement(elems, parent) {
+
+		for (var i = 0; i < elems.length; ++i) {
+			// we first create our new Elem
+			var newElem = new MenuElement(elems[i].name, elems[i].type);
+			newElem.parent = parent;
+			var toggledFunc = function() {}
+			console.log("parent = " + parent.name)
+			console.log("parent.qmlItem.column = " + parent.qmlItem.column)
+			if (elems[i].type === "exclusiveGroup") {
+				newElem.qmlItem = createNewComponent("ExclusiveColumn.qml", parent.qmlItem.column, {
+					"legend": newElem.name
+				});
+			} else if (elems[i].type === "checkable") {
+				newElem.qmlItem = createNewComponent("CheckableButton.qml", parent.qmlItem.column, {
+					"legend": newElem.name,
+					"checked": elems[i].checked,
+					"group": parent && parent.type === "checkable" ? null : parent.qmlItem,
+					"toggledFunc": elemToggled(newElem)
+				})
+			}
+			// we continue to unrol the list of elements
+			createMenuElement(elems[i].elems, newElem);
+			// we add it to its parent's children
+			parent.children.push(newElem);
+		}
+	}
+
+	function createDisplayMenu(menujs) {
+		displayMenuContainer.qmlItem = displayMenu;
+		var elems = new Array();
+		elems.push(JSON.parse(menujs));
+		createMenuElement(elems, displayMenuContainer);
+	}
+
+
+	function addPaintStepComponent(name, category, subgroup, isChecked) {
 		if (paintStepsCategories[category] == undefined) {
 			paintStepsCategories[category] = createNewComponent("ColumnItem.qml", displayMenu.mainColumn, {
 				"legend": category
 			});
+		}
+		var container = paintStepsCategories[category].column;
+		if (!isEmpty(subgroup)) {
+			//create an exclusivegroup
+			if (paintStepsSubgroups[subgroup] == undefined) {
+				paintStepsSubgroups[subgroup] = createNewComponent("ExclusiveColumn.qml", container, {
+					"legend": subgroup
+				})
+			}
+			container = paintStepsSubgroups[subgroup].column;
 		}
 		var id = category + name;
 		if (paintStepsElem[id] != undefined) {
 			paintStepsElem[id].legend = name;
 			paintStepsElem[id].checked = isChecked;
 		} else {
-			paintStepsElem[id] = createNewComponent("CheckableButton.qml", paintStepsCategories[category].column, {
+			var hash = category + subgroup + name;
+			if (isChecked) pushUniqueOptionInCtrl("enabledPaintSteps", hash);
+			paintStepsElem[id] = createNewComponent("CheckableButton.qml", container, {
 				"legend": name,
 				"checked": isChecked,
-				"onToggled": function() {
-					if (elem.checked) pushUniqueOptionInCtrl("visibleElements", elem.legend)
-					else removeOptionInCtrl("visibleElements", elem.legend)
+				"group": isEmpty(subgroup) ? null : paintStepsSubgroups[subgroup],
+				"toggledFunc": function() {
+					if (this.checked) pushUniqueOptionInCtrl("enabledPaintSteps", hash)
+					else removeOptionInCtrl("enabledPaintSteps", hash)
 				}
 			})
 		}
+	}
+
+	function sayHello() {
+		console.log("hello");
 	}
 
 	function addButton(id, menu, label, col) {
@@ -81,6 +174,7 @@
 
 	function setCtrl(k, v) {
 		guictrl[k] = v;
+		console.log("asking to set ctrl to " + guictrl);
 		renderer.setGuiCtrl(guictrl);
 	}
 

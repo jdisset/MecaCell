@@ -6,22 +6,19 @@
 using namespace std;
 
 // checks if a plugin p of type P has a hName methods, and registers it.
-#define HOOKCHECK(hName)                                                            \
-	template <typename T = R>                                                         \
-	static void register_##hName(                                                     \
-	    const typename std::enable_if<has_##hName##_signatures<P, void(R *)>::value,  \
-	                                  T *>::type r,                                   \
-	    P &p) {                                                                       \
-		qDebug() << #hName << " available";                                             \
-		r->plugins_##hName.push_back([&](R *view) { p.hName(view); });                  \
-	}                                                                                 \
-	template <typename T = R>                                                         \
-	static void register_##hName(                                                     \
-	    const typename std::enable_if<!has_##hName##_signatures<P, void(R *)>::value, \
-	                                  T *>::type,                                     \
-	    P &) {                                                                        \
-		qDebug() << #hName << " absent";                                                \
-	}
+#define HOOKCHECK(hName)                                                         \
+	template <typename T = R>                                                      \
+	static void register_##hName(                                                  \
+	    const typename std::enable_if<is_##hName##_callable<P, void(R *)>::value,  \
+	                                  T *>::type r,                                \
+	    P &p) {                                                                    \
+		r->plugins_##hName.push_back([&](R *view) { p.hName(view); });               \
+	}                                                                              \
+	template <typename T = R>                                                      \
+	static void register_##hName(                                                  \
+	    const typename std::enable_if<!is_##hName##_callable<P, void(R *)>::value, \
+	                                  T *>::type,                                  \
+	    P &) {}
 
 CREATE_METHOD_CHECKS(onLoad);
 CREATE_METHOD_CHECKS(draw);

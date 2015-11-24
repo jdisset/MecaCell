@@ -19,7 +19,7 @@ class SignalSlotRenderer : public QObject {
  public:
 	explicit SignalSlotRenderer() {}
 	virtual void sync(SignalSlotBase *) = 0;
-	virtual void initialize() = 0;
+	virtual void initialize(QQuickWindow *) = 0;
 	virtual void setViewportSize(const QSize &) = 0;
  public slots:
 	void paintSlot() { paint(); };
@@ -36,13 +36,15 @@ class SignalSlotBase : public QQuickItem {
 		setFlags(ItemClipsChildrenToShape | ItemAcceptsInputMethod | ItemHasContents);
 	}
 
+	Q_PROPERTY(QVariantMap guiCtrl READ getGuiCtrl WRITE setGuiCtrl NOTIFY guiCtrlChanged)
 	Q_PROPERTY(QVariantMap stats READ getStats WRITE setStats NOTIFY statsChanged)
 
-	QVariantMap stats;
+	QVariantMap stats, guiCtrl;
 	bool worldUpdate = true;
 	bool loopStep = false;
 	std::set<Qt::Key> keyDown, keyPress;
 	int mouseWheel = 0;
+	QSize viewportSize;
 	SignalSlotRenderer *renderer = nullptr;
 	bool initialized = false;
 	QMouseEvent lastMouseEvent = QMouseEvent(QEvent::None, QPointF(0, 0), Qt::NoButton,
@@ -64,7 +66,6 @@ class SignalSlotBase : public QQuickItem {
 		mouseDblClickedButtons |= event->button();
 	}
 	virtual void wheelEvent(QWheelEvent *) {}
-	void buttonClick(QString name) { clickedButtons.insert(name); }
 
 	// Keyboard
 	virtual void keyPressEvent(QKeyEvent *event) {
@@ -77,28 +78,42 @@ class SignalSlotBase : public QQuickItem {
 		keyDown.erase(static_cast<Qt::Key>(event->key()));
 	}
 
+	std::vector<std::pair<QList<QVariant>,bool>> displayMenuToggled;
  signals:
 	void statsChanged();
+	void guiCtrlChanged();
 
  public slots:
+	void displayMenuElementToggled(QVariant l, bool c) {
+		displayMenuToggled.emplace_back(l.toList(), c);
+	}
+	void buttonClick(QString name) { clickedButtons.insert(name); }
 	//*************************Qt events ***********************
 	virtual void sync() {
-		if (!initialized) {
-			initialized = true;
-			connect(window(), SIGNAL(beforeRendering()), renderer, SLOT(paintSlot()),
-			        Qt::DirectConnection);
-			connect(window(), SIGNAL(sceneGraphInvalidated()), renderer, SLOT(cleanupSlot()),
-			        Qt::DirectConnection);
-			renderer->initialize();
+		if (initialized) {
+			renderer->window = window();
+			renderer->sync(this);
+			QSize vs = QSize(static_cast<int>(width()), static_cast<int>(height()));
+			if (vs != viewportSize) {
+				viewportSize = vs;
+				renderer->setViewportSize(vs);
+			}
+			update();
 		}
-		renderer->window = window();
-		renderer->setViewportSize(
-		    QSize(static_cast<int>(width()), static_cast<int>(height())));
-		renderer->sync(this);
-		update();
 	};
 
-	void init(SignalSlotRenderer *r) { renderer = r; }
+	void initRenderer() {
+		renderer->initialize(window());
+		initialized = true;
+	}
+
+	void init(SignalSlotRenderer *r) {
+		renderer = r;
+		connect(window(), SIGNAL(beforeRendering()), renderer, SLOT(paintSlot()),
+		        Qt::DirectConnection);
+		connect(window(), SIGNAL(sceneGraphInvalidated()), renderer, SLOT(cleanupSlot()),
+		        Qt::DirectConnection);
+	}
 
 	void callUpdate() {
 		if (window()) window()->update();
@@ -108,12 +123,19 @@ class SignalSlotBase : public QQuickItem {
 	void setWorldUpdate(bool u) { worldUpdate = u; }
 	virtual void handleWindowChanged(QQuickWindow *win) {
 		if (win) {
+			connect(win, SIGNAL(sceneGraphInitialized()), this, SLOT(initRenderer()),
+			        Qt::DirectConnection);
 			connect(win, SIGNAL(beforeSynchronizing()), this, SLOT(sync()),
 			        Qt::DirectConnection);
 			win->setClearBeforeRendering(false);
 		}
 	}
 
+	QVariantMap getGuiCtrl() { return guiCtrl; }
+	QVariant getGuiCtrl(const QString &name) {
+		return guiCtrl.count(name) ? guiCtrl[name] : QVariant();
+	}
+	void setGuiCtrl(QVariantMap s) { guiCtrl = s; }
 	QVariantMap getStats() { return stats; }
 	QVariant getStat(const QString &name) {
 		return stats.count(name) ? stats[name] : QVariant();

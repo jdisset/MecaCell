@@ -14,8 +14,7 @@ template <typename R> class ArrowsGroup : public PaintStep<R> {
 	double scaleCoef = 1.0;
 
  public:
-	ArrowsGroup(QString n, decltype(getArrows) ga, QVector4D col, double sc = 1.0)
-	    : PaintStep<R>(n), getArrows(ga), color(col), scaleCoef(sc) {
+	ArrowsGroup(double sc = 1.0) : scaleCoef(sc) {
 		shader.addShaderFromSourceCode(QOpenGLShader::Vertex,
 		                               shaderWithHeader(":/shaders/mvp.vert"));
 		shader.addShaderFromSourceCode(QOpenGLShader::Fragment,
@@ -24,8 +23,8 @@ template <typename R> class ArrowsGroup : public PaintStep<R> {
 		cube.load(shader);
 	}
 
-	void call(R *r) {
-		const auto &arrows = getArrows(r);
+	void call(R *r, vector<pair<QVector3D, QVector3D>> &arrows, QVector4D c) {
+		color = c;
 		const auto &view = r->getViewMatrix();
 		const auto &projection = r->getProjectionMatrix();
 		shader.bind();

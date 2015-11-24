@@ -5,23 +5,25 @@ import QtQuick.Controls 1.2
 import "javascript.js" as Logic
 Item{
 
-	//property var guictrl: renderer.getGuiCtrl();
+	property var guictrl: renderer.getGuiCtrl();
 	property var btnArray: new Object();
 	property var paintStepsCategories: new Object();
+	property var paintStepsSubgroups: new Object();
 	property var paintStepsElem: new Object();
 	width: 1000
 	height: 700
 	id: main
-	function addPaintStepComponent(a,b,c){Logic.addPaintStepComponent(a,b,c);}
+	function createDisplayMenu(m){Logic.createDisplayMenu(m);} 
+	function addPaintStepComponent(a,b,c,d){Logic.addPaintStepComponent(a,b,c,d);}
 	function addButton(a,b,c,d){Logic.addButton(a,b,c,d);}
 	Renderer {
 		objectName: "renderer"
 		id: renderer
-		anchors.left: leftMenu.right
-		anchors.top: parent.top
-		anchors.bottom: parent.bottom
-		anchors.right: parent.right
-		//anchors.fill: parent
+		anchors.fill:parent
+		//anchors.left: leftMenu.right
+		//anchors.top: parent.top
+		//anchors.bottom: parent.bottom
+		//anchors.right: parent.right
 		focus: true
 		z: -1
 	}
@@ -110,7 +112,6 @@ Item{
 				}
 			}
 		}
-
 		ParamsMenu {
 			id: controlsMenu
 			width: parent.width

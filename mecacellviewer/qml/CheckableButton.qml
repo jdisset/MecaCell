@@ -9,12 +9,14 @@ Rectangle {
 	property color selecColor: "#FFFFFFFF";
 	property color notselecColor: "#FFFFFFFF";
 	property color notselecIconColor: "#40000000";
+	property alias column:column
+	property var toggledFunc: null
 	signal toggled()
-	signal check(bool chk)
 	height: 25
 	width: 70
 	color: "transparent"
 	id: me
+	onToggled: {toggledFunc();}
 	Rectangle {
 		anchors.top: parent.top
 		height: parent.height
@@ -42,7 +44,7 @@ Rectangle {
 	MouseArea {
 		id: mouseArea
 		acceptedButtons: Qt.LeftButton
-		anchors.fill: parent
+		anchors.fill:lbl 
 		hoverEnabled: true
 		onClicked: {
 			if (group) group.toggled(me)
@@ -51,5 +53,13 @@ Rectangle {
 				me.toggled()
 			}
 		}
+	}
+	Column {
+		visible:checked
+		id: column 
+		anchors.topMargin:20
+		anchors.top: parent.top
+		anchors.left: parent.left
+		anchors.leftMargin: 10 
 	}
 }

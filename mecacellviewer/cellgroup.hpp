@@ -12,7 +12,7 @@ template <typename R> class CellGroup : public PaintStep<R> {
 
  public:
 	cellMode drawMode = plain;
-	CellGroup() : PaintStep<R>("cells") {
+	CellGroup() : PaintStep<R>("Cells") {
 		shader.addShaderFromSourceCode(QOpenGLShader::Vertex,
 		                               shaderWithHeader(":/shaders/cell.vert"));
 		shader.addShaderFromSourceCode(QOpenGLShader::Fragment,
@@ -26,7 +26,8 @@ template <typename R> class CellGroup : public PaintStep<R> {
 		sphere.load(shader);
 	}
 
-	void call(R *r) {
+	void call(R *r, QString colorMode = "normal") {
+		qDebug() << "cells called with colorMode = " << colorMode;
 		const auto &cells = r->getScenario().getWorld().cells;
 		if (cells.size() > 0) {
 			const QMatrix4x4 view = r->getViewMatrix();
@@ -42,15 +43,7 @@ template <typename R> class CellGroup : public PaintStep<R> {
 			shader.setUniformValue(shader.uniformLocation("nmap"), 0);
 			shader.setUniformValue(shader.uniformLocation("projection"), projection);
 			shader.setUniformValue(shader.uniformLocation("view"), view);
-			vector<C *> sortedCells = cells;
-			decltype((*cells.begin())->getPosition()) viewVec(viewV.x(), viewV.y(), viewV.z());
-			decltype((*cells.begin())->getPosition()) camVec(camPos.x(), camPos.y(),
-			                                                 camPos.z());
-			std::sort(sortedCells.begin(), sortedCells.end(), [&](C *a, C *b) {
-				return (a->getPosition() - camVec).sqlength() >
-				       (b->getPosition() - camVec).sqlength();
-			});
-			for (auto &c : sortedCells) {
+			for (auto &c : cells) {
 				if (c->getVisible()) {
 					QMatrix4x4 model;
 					double radius = c->getBoundingBoxRadius();
@@ -64,6 +57,9 @@ template <typename R> class CellGroup : public PaintStep<R> {
 						model.scale(QVector3D(2.0, 2.0, 2.0));
 					}
 					QVector3D color(c->getColor(0), c->getColor(1), c->getColor(2));
+					if (colorMode == "pressure") {
+						color = QVector3D(0.4, 1.0, 0.2);
+					}
 					if (c == selected) color = QVector3D(1.0, 1.0, 1.0);
 					QMatrix4x4 nmatrix = (model).inverted().transposed();
 					shader.setUniformValue(shader.uniformLocation("model"), model);
@@ -71,9 +67,9 @@ template <typename R> class CellGroup : public PaintStep<R> {
 					shader.setUniformValue(shader.uniformLocation("color"), color);
 					GL->glDrawElements(GL_TRIANGLES, sphere.indices.size(), GL_UNSIGNED_INT, 0);
 				}
+				sphere.vao.release();
+				shader.release();
 			}
-			sphere.vao.release();
-			shader.release();
 		}
 	}
 };
