@@ -90,12 +90,12 @@
 					"legend": newElem.name
 				});
 			} else if (elems[i].type === "checkable") {
-				newElem.qmlItem = createNewComponent("CheckableButton.qml", parent.qmlItem.column, {
-					"legend": newElem.name,
-					"checked": elems[i].checked,
-					"group": parent && parent.type === "checkable" ? null : parent.qmlItem,
-					"toggledFunc": elemToggled(newElem)
-				})
+					newElem.qmlItem = createNewComponent("CheckableButton.qml", parent.qmlItem.column, {
+						"legend": newElem.name,
+						"checked": elems[i].checked,
+						"group": parent && parent.type === "checkable" ? null : parent.qmlItem,
+						"toggledFunc": elemToggled(newElem)
+					})
 			}
 			// we continue to unrol the list of elements
 			createMenuElement(elems[i].elems, newElem);

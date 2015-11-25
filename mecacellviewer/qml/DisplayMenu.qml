@@ -5,6 +5,7 @@ Item {
 	width: parent.width
 	height: parent.height
 	property alias column:column
+	property bool checked : true
 	Title {
 		id: titre
 		txt: "View"

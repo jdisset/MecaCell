@@ -5,8 +5,10 @@ Rectangle{
 	property alias column: column 
 	signal toggled(var o)
 	color: "#25000000"
-	width : 160 
-	height: childrenRect.height +15 
+	width : parent.width - 10 
+	anchors.left : parent.left
+	anchors.leftMargin: 10 
+	height : visible? column.height + sbtl.height:0
 	onToggled:{
 		for (var i = 0; i < column.children.length; i++){
 			if (column.children[i] != o){
@@ -18,17 +20,47 @@ Rectangle{
 		o.toggled();
 	}
 	SubTitle{
-		anchors.top: column.top
-		anchors.topMargin:-15
+		id : sbtl
+		width:parent.width
+		anchors.left: parent.left
+		anchors.top: parent.top
 		txt : parent.legend;
+		height : 20
 	}
 	Column {
 		id: column 
-		anchors.topMargin:20
-		anchors.top: parent.top
+		anchors.top : sbtl.bottom
 		anchors.left: parent.left
-		anchors.leftMargin: 10 
-		//spacing: 5 
+		width:parent.width
+		visible: parent.visible
 	}
+	state: parent.visible ? "enabled" : "disabled"
+	states: [
+		State { name: "enabled"
+		PropertyChanges {
+			target: column 
+			visible :true 
+			height: childrenRect.height
+		}
+		PropertyChanges {
+			visible :true 
+		}
+	},
+	State { name: "disabled"
+	PropertyChanges {
+		target: column 
+		visible : false
+		height:0
+	}
+	PropertyChanges {
+		visible : false
+	}
+}
+]
+transitions: [
+	Transition {
+		NumberAnimation { properties: "height" }
+	}
+]
 }
 

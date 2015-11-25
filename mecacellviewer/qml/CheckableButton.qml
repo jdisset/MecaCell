@@ -12,14 +12,22 @@ Rectangle {
 	property alias column:column
 	property var toggledFunc: null
 	signal toggled()
-	height: 25
-	width: 70
-	color: "transparent"
+	//color: "transparent"
+	color: "#25000000"
+
+
 	id: me
+	width : parent.width - anchors.leftMargin 
+	anchors.left: parent.left
+	anchors.leftMargin: 10 
+	anchors.topMargin: 5
+	height : visible ?column.height + lbl.height + anchors.topMargin : 0
+	visible: parent.visible
 	onToggled: {toggledFunc();}
 	Rectangle {
+		anchors.left : parent.left
 		anchors.top: parent.top
-		height: parent.height
+		height: 20
 		color: "transparent"
 		width: height
 		id: lbl
@@ -33,13 +41,16 @@ Rectangle {
 		}
 	}
 	Text {
+		id : txtbox
+		height : lbl.height
+		width: 130
 		text: legend
 		color: selecColor
 		font.family: opensans.name
 		font.pointSize: 13
-		anchors.verticalCenter: parent.verticalCenter
 		anchors.left: lbl.right
 		anchors.leftMargin: 3
+		anchors.top: lbl.top
 	}
 	MouseArea {
 		id: mouseArea
@@ -54,12 +65,32 @@ Rectangle {
 			}
 		}
 	}
+	state: checked && parent.visible ? "enabled" : "disabled"
 	Column {
-		visible:checked
+		width :parent.width  
 		id: column 
-		anchors.topMargin:20
-		anchors.top: parent.top
+		anchors.top: txtbox.bottom
 		anchors.left: parent.left
-		anchors.leftMargin: 10 
 	}
+	states: [
+		State { name: "enabled"
+		PropertyChanges {
+			target: column 
+			visible :true 
+			height: childrenRect.height
+		}
+	},
+	State { name: "disabled"
+	PropertyChanges {
+		target: column 
+		visible : false
+		height:0
+	}
+}
+]
+transitions: [
+	Transition {
+		NumberAnimation { properties: "height,visible" }
+	}
+]
 }

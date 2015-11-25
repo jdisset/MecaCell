@@ -157,7 +157,6 @@ template <typename Scenario> class Viewer : public SignalSlotRenderer {
 		     {"Display forces", false},
 		     {"Display velocities", false}}};
 
-		cellsMenu.print();
 		qDebug() << cellsMenu.toJSON();
 		this->window = wdw;
 		viewportSize = QSize(static_cast<int>(wdw->width()), static_cast<int>(wdw->height()));
@@ -217,8 +216,12 @@ template <typename Scenario> class Viewer : public SignalSlotRenderer {
 			}
 		};
 		displayMenu = cellsMenu;
-		displayMenu.callAll(this);  // init
+		qDebug() << "before onload :";
+		displayMenu.print();
 		for (auto &p : plugins_onLoad) p(this);
+		qDebug() << "after onload :";
+		displayMenu.print();
+		displayMenu.callAll(this);
 	}
 
 	void applyInterfaceAdditions(SignalSlotBase *b) {
@@ -431,6 +434,7 @@ template <typename Scenario> class Viewer : public SignalSlotRenderer {
 		return (std::find(scenario.getWorld().cells.begin(), scenario.getWorld().cells.end(),
 		                  selectedCell) != scenario.getWorld().cells.end());
 	}
+	MenuElement<R> *getDisplayMenu() { return &displayMenu; }
 
 	/*************************
 	 *    UI ADDITIONS

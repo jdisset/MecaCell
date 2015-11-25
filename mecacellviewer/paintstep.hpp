@@ -38,6 +38,7 @@ template <typename R> struct MenuElement {
 		return 0;
 	}
 	MenuElement<R>& at(const QString& n) {
+		qDebug() << name << " trying to access " << n;
 		assert(count(n));
 		for (auto& e : elems) {
 			if (e.name == n) return e;
