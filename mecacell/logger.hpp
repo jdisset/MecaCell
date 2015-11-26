@@ -88,9 +88,9 @@ struct LogBuf : public std::stringbuf {
 	LogLvl lvl;
 	string func;
 
-	LogBuf(const LogBuf& lb)
-	    : header(lb.header), name(lb.name), lvl(lb.lvl), func(lb.func) {}
-	LogBuf(const string&& n, const LogLvl l, const string&& f)
+	explicit LogBuf(const LogBuf& lb)
+	    : std::stringbuf(), header(lb.header), name(lb.name), lvl(lb.lvl), func(lb.func) {}
+	LogBuf(const string&& n, const LogLvl& l, const string&& f)
 	    : name(std::move(n)), lvl(l), func(std::move(f)) {
 		std::transform(name.begin(), name.end(), name.begin(), ::toupper);
 		std::stringstream headerstream;

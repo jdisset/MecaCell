@@ -19,8 +19,9 @@
 
 namespace MecaCell {
 
-template <typename Derived, template <class> class Membrane = DeformableMembrane>
+template <typename Derived, template <class> class Membrane = SphereMembrane>
 class ConnectableCell : public Movable, public Orientable {
+	CREATE_METHOD_CHECKS(setColor);
 	friend class SphereMembrane<Derived>;
 	friend class Membrane<Derived>;
 	friend typename Membrane<Derived>::CCCM;
@@ -122,7 +123,6 @@ class ConnectableCell : public Movable, public Orientable {
 		return connectedCells;
 	}
 	inline float_t getPressure() const { return membrane.getPressure(); }
-
 
 	inline float_t getAdhesionWithModel(const string &) const { return 0.7; }
 

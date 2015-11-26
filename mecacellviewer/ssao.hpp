@@ -15,6 +15,7 @@ template <typename R> class SSAO : public ScreenManager<R> {
 	QOpenGLFramebufferObjectFormat ssaoformat, renderformat;
 	GLuint depthTex;
 	RenderQuad ssaoTarget;
+	RenderQuad dumbTarget;
 	// depth texture initialisation
 	void genDepthTexture(QSize s) {
 		GL->glDeleteTextures(1, &depthTex);
@@ -36,7 +37,19 @@ template <typename R> class SSAO : public ScreenManager<R> {
 		renderformat.setAttachment(QOpenGLFramebufferObject::NoAttachment);
 		renderformat.setSamples(0);
 		ssaoTarget.load(":/shaders/dumb.vert", ":/shaders/ssao.frag");
+		dumbTarget.load(":/shaders/dumb.vert", ":/shaders/dumb.frag");
 		screenChanged(r);
+	}
+	void callDumb(R* r) {
+		QOpenGLFramebufferObject* current = r->getCurrentFBO();
+		if (current) {
+			current->release();
+			r->setCurrentFBO(renderfbo.get());
+			renderfbo->bind();
+			QOpenGLFramebufferObject::blitFramebuffer(
+			    ssaofbo.get(), current, GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+			dumbTarget.draw(ssaofbo->texture());
+		}
 	}
 	void call(R* r) {
 		QOpenGLFramebufferObject* current = r->getCurrentFBO();

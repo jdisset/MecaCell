@@ -52,13 +52,13 @@ TEST_CASE("Vectors & trigo") {
 	                 sqrt(1.0 + 1.3 * 1.3)));
 }
 
-class Cell1 : public MecaCell::ConnectableCell<Cell1, SphereMembrane> {
- public:
-	using Base = MecaCell::ConnectableCell<Cell1, SphereMembrane>;
-	using Base::Base;
-	double getAdhesionWith(const Cell1*) const { return 0.8; }
-	Cell1* updateBehavior(double) { return nullptr; }
-};
+//class Cell1 : public MecaCell::ConnectableCell<Cell1, SphereMembrane> {
+ //public:
+	//using Base = MecaCell::ConnectableCell<Cell1, SphereMembrane>;
+	//using Base::Base;
+	//double getAdhesionWith(const Cell1*) const { return 0.8; }
+	//Cell1* updateBehavior(double) { return nullptr; }
+//};
 
 // class Cell2 : public MecaCell::ConnectableCell<Cell2, VectorSphereMembrane> {
 // public:
@@ -68,65 +68,65 @@ class Cell1 : public MecaCell::ConnectableCell<Cell1, SphereMembrane> {
 // Cell2* updateBehavior(double) { return nullptr; }
 //};
 
-template <typename CellType>
-void testAdhesionAndCopyBetween2Cells(Vec initialPosition, Vec direction) {
-	Vec dir = direction.normalized();
-	CellType c(initialPosition);
-	// checking construction && membrane
-	REQUIRE(c.getPosition() == initialPosition);
-	REQUIRE(c.getMembraneDistance(initialPosition) == c.getBoundingBoxRadius());
-	REQUIRE(c.getMembrane().getCell() == &c);
-	c.getMembrane().setStiffness(c.getMembrane().getStiffness() * 1.1);
-	c.getMembrane().setAngularStiffness(c.getMembrane().getAngularStiffness() * 1.1);
-	c.getMembrane().setBaseRadius(c.getMembrane().getRadius() * 1.1);
-	double r = c.getBoundingBoxRadius();
-	CellType c2(c, r * dir);
-	// checking copy constructor
-	REQUIRE(
-	    doubleEq((c2.getPosition() - c.getPosition()).dot(r * dir), (r * dir).sqlength()));
-	REQUIRE(c2.getMembrane().getCell() == &c2);
-	REQUIRE(c2.getMembrane().getBaseRadius() == c.getMembrane().getBaseRadius());
-	REQUIRE(c2.getMembrane().getRadius() == c.getMembrane().getRadius());
-	REQUIRE(c2.getMembrane().getCorrectedRadius() == c.getMembrane().getCorrectedRadius());
-	REQUIRE(c2.getMembrane().getStiffness() == c.getMembrane().getStiffness());
-	REQUIRE(c2.getMembrane().getDampRatio() == c.getMembrane().getDampRatio());
-	REQUIRE(c2.getMembrane().getAngularStiffness() ==
-	        c.getMembrane().getAngularStiffness());
-	vector<CellType*> cells;
-	cells.push_back(&c);
-	cells.push_back(&c2);
-	typename CellType::CellCellConnectionContainer connections;
-	Grid<CellType*> cellGrid(200);
-	cellGrid.clear();
-	cellGrid.insert(&c);
-	cellGrid.insert(&c2);
-	// TODO: test grid;
-	CellType::checkForCellCellConnections(cells, connections, cellGrid);
-	REQUIRE(connections.size() == 1);
-	REQUIRE(c.getConnectedCells().size() == 1);
-	REQUIRE(c2.getConnectedCells().size() == 1);
-	REQUIRE(*(c.getConnectedCells().begin()) == &c2);
-	REQUIRE(*(c2.getConnectedCells().begin()) == &c);
-	REQUIRE(c.getMembraneDistance(-dir) == c.getBoundingBoxRadius());
-	REQUIRE(c2.getMembraneDistance(dir) == c2.getBoundingBoxRadius());
-	REQUIRE(c.getMembraneDistance(dir.ortho()) == c.getBoundingBoxRadius());
-	REQUIRE(c2.getMembraneDistance(dir.ortho()) == c2.getBoundingBoxRadius());
-	REQUIRE(c.getMembraneDistance(dir) < c.getBoundingBoxRadius());
-	REQUIRE(c2.getMembraneDistance(-dir) < c2.getBoundingBoxRadius());
-	REQUIRE(c.getMembraneDistance(dir) == c2.getMembraneDistance(-dir));
+//template <typename CellType>
+//void testAdhesionAndCopyBetween2Cells(Vec initialPosition, Vec direction) {
+	//Vec dir = direction.normalized();
+	//CellType c(initialPosition);
+	//// checking construction && membrane
+	//REQUIRE(c.getPosition() == initialPosition);
+	//REQUIRE(c.getMembraneDistance(initialPosition) == c.getBoundingBoxRadius());
+	//REQUIRE(c.getMembrane().getCell() == &c);
+	//c.getMembrane().setStiffness(c.getMembrane().getStiffness() * 1.1);
+	//c.getMembrane().setAngularStiffness(c.getMembrane().getAngularStiffness() * 1.1);
+	//c.getMembrane().setBaseRadius(c.getMembrane().getRadius() * 1.1);
+	//double r = c.getBoundingBoxRadius();
+	//CellType c2(c, r * dir);
+	//// checking copy constructor
+	//REQUIRE(
+			//doubleEq((c2.getPosition() - c.getPosition()).dot(r * dir), (r * dir).sqlength()));
+	//REQUIRE(c2.getMembrane().getCell() == &c2);
+	//REQUIRE(c2.getMembrane().getBaseRadius() == c.getMembrane().getBaseRadius());
+	//REQUIRE(c2.getMembrane().getRadius() == c.getMembrane().getRadius());
+	//REQUIRE(c2.getMembrane().getCorrectedRadius() == c.getMembrane().getCorrectedRadius());
+	//REQUIRE(c2.getMembrane().getStiffness() == c.getMembrane().getStiffness());
+	//REQUIRE(c2.getMembrane().getDampRatio() == c.getMembrane().getDampRatio());
+	//REQUIRE(c2.getMembrane().getAngularStiffness() ==
+					//c.getMembrane().getAngularStiffness());
+	//vector<CellType*> cells;
+	//cells.push_back(&c);
+	//cells.push_back(&c2);
+	//typename CellType::CellCellConnectionContainer connections;
+	//Grid<CellType*> cellGrid(200);
+	//cellGrid.clear();
+	//cellGrid.insert(&c);
+	//cellGrid.insert(&c2);
+	//// TODO: test grid;
+	//CellType::checkForCellCellConnections(cells, connections, cellGrid);
+	//REQUIRE(connections.size() == 1);
+	//REQUIRE(c.getConnectedCells().size() == 1);
+	//REQUIRE(c2.getConnectedCells().size() == 1);
+	//REQUIRE(*(c.getConnectedCells().begin()) == &c2);
+	//REQUIRE(*(c2.getConnectedCells().begin()) == &c);
+	//REQUIRE(c.getMembraneDistance(-dir) == c.getBoundingBoxRadius());
+	//REQUIRE(c2.getMembraneDistance(dir) == c2.getBoundingBoxRadius());
+	//REQUIRE(c.getMembraneDistance(dir.ortho()) == c.getBoundingBoxRadius());
+	//REQUIRE(c2.getMembraneDistance(dir.ortho()) == c2.getBoundingBoxRadius());
+	//REQUIRE(c.getMembraneDistance(dir) < c.getBoundingBoxRadius());
+	//REQUIRE(c2.getMembraneDistance(-dir) < c2.getBoundingBoxRadius());
+	//REQUIRE(c.getMembraneDistance(dir) == c2.getMembraneDistance(-dir));
 	//REQUIRE(c.getMembrane().getConnectedCell(dir) == &c2);
 	//REQUIRE(c2.getMembrane().getConnectedCell(-dir) == &c);
-}
+//}
 
-TEST_CASE("SphereMembrane") {
-	testAdhesionAndCopyBetween2Cells<Cell1>(Vec(0, 0, 0), Vec(1, 0, 0));
-	testAdhesionAndCopyBetween2Cells<Cell1>(Vec(-10, -340, 0), Vec(-1, 1, 0));
-	testAdhesionAndCopyBetween2Cells<Cell1>(
-	    Vec(-12314240, 0.0000000000000001, 1234823483.2342342342),
-	    Vec(23131.4, -231231230, 12222.12342343420));
-	// testAdhesionAndCopyBetween2Cells<Cell2>(Vec(0, 0, 0), Vec(1, 0, 0));
-	// testAdhesionAndCopyBetween2Cells<Cell2>(Vec(-10, -340, 0), Vec(-1, 1, 0));
-	// testAdhesionAndCopyBetween2Cells<Cell2>(
-	// Vec(-12314240, 0.0000000000000001, 1234823483.2342342342),
-	// Vec(23131.4, -231231230, 12222.12342343420));
-}
+//TEST_CASE("SphereMembrane") {
+	//testAdhesionAndCopyBetween2Cells<Cell1>(Vec(0, 0, 0), Vec(1, 0, 0));
+	//testAdhesionAndCopyBetween2Cells<Cell1>(Vec(-10, -340, 0), Vec(-1, 1, 0));
+	//testAdhesionAndCopyBetween2Cells<Cell1>(
+			//Vec(-12314240, 0.0000000000000001, 1234823483.2342342342),
+			//Vec(23131.4, -231231230, 12222.12342343420));
+	//// testAdhesionAndCopyBetween2Cells<Cell2>(Vec(0, 0, 0), Vec(1, 0, 0));
+	//// testAdhesionAndCopyBetween2Cells<Cell2>(Vec(-10, -340, 0), Vec(-1, 1, 0));
+	//// testAdhesionAndCopyBetween2Cells<Cell2>(
+	//// Vec(-12314240, 0.0000000000000001, 1234823483.2342342342),
+	//// Vec(23131.4, -231231230, 12222.12342343420));
+/*}*/

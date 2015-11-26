@@ -35,14 +35,14 @@ template <typename R, typename P> struct HookChecker {
 	template <typename T = R>
 	static void register_draw(
 	    const typename std::enable_if<
-	        has_draw_signatures<P, void(R *), void(const R *)>::value, T *>::type r,
+	        has_draw_signatures<P, void(R *), void(const R *)>::value(), T *>::type r,
 	    P &p) {
 		r->drawMethods[P::visualObjectName] = std::bind(&P::template draw<R>, &p, r);
 	}
 	template <typename T = R>
 	static void register_draw(
 	    const typename std::enable_if<
-	        !has_draw_signatures<P, void(R *), void(const R *)>::value, T *>::type,
+	        !has_draw_signatures<P, void(R *), void(const R *)>::value(), T *>::type,
 	    P &) {}
 };
 

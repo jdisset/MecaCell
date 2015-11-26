@@ -21,7 +21,7 @@ using namespace std;
 #define DBG DEBUG(basicworld)
 
 namespace MecaCell {
-CREATE_METHOD_CHECKS(updateBehavior)
+CREATE_METHOD_CHECKS(updateBehavior);
 
 template <typename Cell, typename Integrator = Euler,
           template <class> class SpacePartition = Grid>
@@ -42,8 +42,8 @@ class BasicWorld {
 	    SpacePartition<Cell *>(4.5 * DEFAULT_CELL_RADIUS);
 
 	// space partition hashmap for 3Dobj faces
-	SpacePartition<std::pair<model_type *, size_t>> modelSpacePartition =
-	    SpacePartition<std::pair<model_type *, size_t>>(100);
+	SpacePartition<std::pair<model_type *, unsigned long>> modelSpacePartition =
+	    SpacePartition<std::pair<model_type *, unsigned long>>(100);
 
 	// enabled collisions & connections checks
 	bool cellCellCollisions = true;
@@ -111,7 +111,8 @@ class BasicWorld {
 
 	static constexpr bool behaviorsEnabled =
 	    has_updateBehavior_signatures<Cell, Cell *(float), Cell *(double),
-	                                  Cell *(const float &), Cell *(const double &)>::value;
+	                                  Cell *(const float &),
+	                                  Cell *(const double &)>::value();
 	template <typename T = Cell>
 	void updateBehaviors(const typename enable_if<behaviorsEnabled, T *>::type = nullptr) {
 		vector<Cell *> newCells;

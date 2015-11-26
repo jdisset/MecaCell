@@ -35,6 +35,7 @@
 #include <set>
 #include <utility>
 #include <functional>
+#include <chrono>
 
 #define MECACELL_VIEWER
 #include "macros.h"
@@ -215,11 +216,27 @@ template <typename Scenario> class Viewer : public SignalSlotRenderer {
 				paintStepsMethods.erase(15);
 			}
 		};
-		displayMenu = cellsMenu;
-		qDebug() << "before onload :";
-		displayMenu.print();
+		MenuElement<R> ssaoPostproc = {"SSAO"};
+		ssaoPostproc.onToggled = [&](R *r, MenuElement<R> *me) {
+			if (me->isChecked()) {
+				paintStepsMethods[1000000] = [&](R *r) { paintSteps["SSAO"]->call(r); };
+			} else {
+				paintStepsMethods[1000000] = [&](R *r) {
+					dynamic_cast<SSAO<R> *>(paintSteps["SSAO"].get())->callDumb(r);
+				};
+			}
+		};
+		MenuElement<R> menublurPostproc = {"Blurred menu"};
+		menublurPostproc.onToggled = [&](R *r, MenuElement<R> *me) {
+			if (me->isChecked()) {
+				paintStepsMethods[2000000] = [&](R *r) { paintSteps["Blur"]->call(r); };
+			} else {
+				paintStepsMethods.erase(2000000);
+			}
+		};
+		MenuElement<R> postProcMenu = {"Post processing", {ssaoPostproc, menublurPostproc}};
+		displayMenu = {"Rendered elements", {cellsMenu, postProcMenu}};
 		for (auto &p : plugins_onLoad) p(this);
-		qDebug() << "after onload :";
 		displayMenu.print();
 		displayMenu.callAll(this);
 	}
@@ -352,8 +369,6 @@ template <typename Scenario> class Viewer : public SignalSlotRenderer {
 		// default paint Methods
 		paintStepsMethods[0] = [&](R *r) { paintSteps["MSAA"]->call(r); };
 		paintStepsMethods[5] = [&](R *r) { paintSteps["Skybox"]->call(r); };
-		paintStepsMethods[1000000] = [&](R *r) { paintSteps["SSAO"]->call(r); };
-		paintStepsMethods[2000000] = [&](R *r) { paintSteps["Blur"]->call(r); };
 
 		for (auto &p : plugins_preDraw) p(this);
 
@@ -435,6 +450,10 @@ template <typename Scenario> class Viewer : public SignalSlotRenderer {
 		                  selectedCell) != scenario.getWorld().cells.end());
 	}
 	MenuElement<R> *getDisplayMenu() { return &displayMenu; }
+	void addPaintStepsMethods(int priority, Rfunc f) {
+		paintStepsMethods[priority] = std::move(f);
+	}
+	void erasePaintStepsMethods(int priority) { paintStepsMethods.erase(priority); }
 
 	/*************************
 	 *    UI ADDITIONS

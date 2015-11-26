@@ -222,7 +222,7 @@ template <typename Cell> class SphereMembrane {
 		pressure = cell->totalForce / surface;
 	}
 
-	double compensateVolumeLoss() {
+	void compensateVolumeLoss() {
 		// just updates the correctedRadius
 		double targetVol = getVolume();
 		double volumeLoss = 0;
@@ -497,17 +497,19 @@ template <typename Cell> class SphereMembrane {
 	// precise : takes a pointer to the other cell + the orientation of the connection
 	template <typename T = float_t>
 	static inline typename enable_if<hasPreciseAdhesion, T>::type getAdhesion(
-	    const T *a, const T *b, const Vec &ABnorm) {
+	    const Cell *a, const Cell *b, const Vec &ABnorm) {
 		const auto B = a->getOrientation();
 		bool zNeg = ABnorm.dot(B.X.cross(B.Y)) < 0;
 		double phi = acos(ABnorm.dot(B.Y));
 		double teta = zNeg ? acos(ABnorm.dot(B.X)) : M_PI * 2.0 - acos(ABnorm.dot(B.X));
+		std::cerr << "calling precise" << std::endl;
 		return a->getAdhesionWith(b, teta, phi);
 	}
 	// not precise: takes a pointer to the other cell
 	template <typename T = float_t, typename... Whatever>
 	static inline typename enable_if<!hasPreciseAdhesion && hasAdhesion, T>::type
-	    getAdhesion(const T *a, const T *b, Whatever...) {
+	    getAdhesion(const Cell *a, const Cell *b, Whatever...) {
+		std::cerr << "calling imprecise" << std::endl;
 		return a->getAdhesionWith(b);
 	}
 	// not even declared: always 0
@@ -515,6 +517,7 @@ template <typename Cell> class SphereMembrane {
 	static inline
 	    typename enable_if<!hasPreciseAdhesion && !hasAdhesion, T>::type getAdhesion(
 	        Whatever...) {
+		std::cerr << "calling neither" << std::endl;
 		return 0.0;
 	}
 

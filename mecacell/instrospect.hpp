@@ -4,6 +4,7 @@
 #include <string>
 #include <functional>
 #include <typeinfo>
+#include <utility>
 #include <cxxabi.h>
 
 // displays type name, for debugging purpose
@@ -47,21 +48,44 @@ template <typename T> struct debug_type {
 	template <typename C, typename F> struct has_##method##_signature {};                  \
 	template <typename C, typename Ret, typename... Args>                                  \
 	struct has_##method##_signature<C, Ret(Args...)> {                                     \
-		using COUILLE = Ret (C::*)(Args...);                                                 \
-		template <typename T> static constexpr bool has(...) { return false; }               \
+		using SIG = Ret (C::*)(Args...);                                                     \
 		template <typename T>                                                                \
-		static constexpr bool has(decltype(static_cast<COUILLE>(&T::method)) *) {            \
-			return std::is_same<COUILLE, decltype(static_cast<COUILLE>(&T::method))>::value;   \
+		static constexpr auto has(int) ->                                                    \
+		    typename is_same<SIG, decltype(static_cast<SIG>(&T::method))>::type;             \
+		template <typename T> static constexpr auto has(...) -> typename false_type::type;   \
+                                                                                         \
+		static void debug() {                                                                \
+			std::cout << " ---------------- signature -------------" << std::endl;             \
+			DEBUG_TYPE((Ret(Args...)));                                                        \
+			DEBUG_TYPE((SIG));                                                                 \
+			DEBUG_TYPE((decltype(&C::method)));                                                \
+			std::cout << "myValue = " << value << std::endl;                                   \
 		}                                                                                    \
-		static constexpr bool value = has<C>(nullptr);                                       \
+		static constexpr bool value = decltype(has<C>(0))::value;                            \
 	};                                                                                     \
 	/*checks if Class C has a method with one of the given signatures*/                    \
-	template <typename C, typename... Signatures>                                          \
-	struct has_##method##_signatures : std::false_type {};                                 \
+	template <typename C, typename... Signatures> struct has_##method##_signatures {       \
+		static constexpr bool value() { return false; }                                      \
+		static void debug() {}                                                               \
+	};                                                                                     \
 	template <typename C, typename First, typename... Rest>                                \
 	struct has_##method##_signatures<C, First, Rest...> {                                  \
-		static constexpr bool value = has_##method##_signature<C, First>::value ||           \
-		                              has_##method##_signatures<C, Rest...>::value;          \
+		static constexpr bool value() {                                                      \
+			return has_##method##_signature<C, First>::value ||                                \
+			       has_##method##_signatures<C, Rest...>::value();                             \
+		}                                                                                    \
+		static void debug() {                                                                \
+			std::cerr << "==========================================" << std::endl             \
+			          << "signature.value = " << has_##method##_signature<C, First>::value     \
+			          << std::endl;                                                            \
+			std::cerr << "signature.has = "                                                    \
+			          << decltype(                                                             \
+			                 has_##method##_signature<C, First>::template has<C>(0))::value    \
+			          << std::endl;                                                            \
+			std::cerr << "me.value= " << value() << std::endl;                                 \
+			has_##method##_signature<C, First>::debug();                                       \
+			has_##method##_signatures<C, Rest...>::debug();                                    \
+		}                                                                                    \
 	};                                                                                     \
 	/*checks if Class C has a method with the given name, without signature check*/        \
 	/*! doesn't work with overloaded methods or class template!!! */                       \
@@ -69,23 +93,7 @@ template <typename T> struct debug_type {
 		template <typename> static constexpr std::false_type has(...);                       \
 		template <typename T>                                                                \
 		static constexpr std::true_type has(decltype(&T::method) *stuff = 0);                \
-		using type = decltype(has<C>());                                                     \
-		static constexpr bool value = type::value;                                           \
-	};                                                                                     \
-	/*makes sure that if Class C has a certain method, it has one of the given             \
-	 * signatures*/                                                                        \
-	/*! doesn't work for overloaded methods*/                                              \
-	template <typename T, typename... Signatures>                                          \
-	static constexpr bool require_##method##_signatures(                                   \
-	    typename std::enable_if<has_##method##_method<T>::value, T *>::type = nullptr) {   \
-		static_assert(has_##method##_signatures<T, Signatures...>::value,                    \
-		              "Wrong signature for method ##method");                                \
-		return true;                                                                         \
-	}                                                                                      \
-	template <typename T, typename... Signatures>                                          \
-	static constexpr bool require_##method##_signatures(                                   \
-	    typename std::enable_if<!has_##method##_method<T>::value, T *>::type = nullptr) {  \
-		return false;                                                                        \
+		static constexpr bool value = decltype(has<C>())::value;                             \
 	}
 
 // lil' helper that explodes a tuple and forward its content to a func

@@ -64,7 +64,7 @@ template <typename R> class DeformableCellGroup : public PaintStep<R> {
 						auto newvert = sphere.vert;
 						for (auto &v : newvert) {
 							decltype((*cells.begin())->getPosition()) d(v.x(), v.y(), v.z());
-							v *= c->getMembraneDistance(-d);
+							v *= c->getMembraneDistance(d);
 						}
 						sphere.update(newvert, getColorVector(c, selected == c), shader);
 					} else {
