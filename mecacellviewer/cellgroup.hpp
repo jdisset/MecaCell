@@ -12,12 +12,11 @@ template <typename R> class CellGroup : public PaintStep<R> {
 
  public:
 	cellMode drawMode = plain;
-	CellGroup() : PaintStep<R>("Cells") {
+	CellGroup() : PaintStep<R>("Cells"), sphere(4) {
 		shader.addShaderFromSourceCode(QOpenGLShader::Vertex,
 		                               shaderWithHeader(":/shaders/cell.vert"));
 		shader.addShaderFromSourceCode(QOpenGLShader::Fragment,
 		                               shaderWithHeader(":/shaders/cell.frag"));
-		shader.link();
 		shader.link();
 		normalMap = unique_ptr<QOpenGLTexture>(
 		    new QOpenGLTexture(QImage(":/textures/cellNormalMap.jpg").mirrored()));
@@ -26,14 +25,18 @@ template <typename R> class CellGroup : public PaintStep<R> {
 		sphere.load(shader);
 	}
 
-	void call(R *r, QString colorMode = "normal") {
-		qDebug() << "cells called with colorMode = " << colorMode;
+	QVector4D getColorVector(const C *c, bool selected) {
+		if (selected) return QVector4D(1.0, 1.0, 1.0, 1.0);
+		return QVector4D(c->getColor(0), c->getColor(1), c->getColor(2), 1.0);
+	}
+
+	void call(R *r, const QString &) {
 		const auto &cells = r->getScenario().getWorld().cells;
 		if (cells.size() > 0) {
 			const QMatrix4x4 view = r->getViewMatrix();
-			const QMatrix4x4 projection = r->getViewMatrix();
-			const auto &viewV = r->getCamera().getViewVector();
-			const auto &camPos = r->getCamera().getPosition();
+			const QMatrix4x4 projection = r->getProjectionMatrix();
+			const auto viewV = r->getCamera().getViewVector();
+			const auto camPos = r->getCamera().getPosition();
 			const auto *selected = r->getSelectedCell();
 			shader.bind();
 			sphere.vao.bind();
@@ -43,33 +46,29 @@ template <typename R> class CellGroup : public PaintStep<R> {
 			shader.setUniformValue(shader.uniformLocation("nmap"), 0);
 			shader.setUniformValue(shader.uniformLocation("projection"), projection);
 			shader.setUniformValue(shader.uniformLocation("view"), view);
+			decltype((*cells.begin())->getPosition()) viewVec(viewV.x(), viewV.y(), viewV.z());
+			decltype((*cells.begin())->getPosition()) camVec(camPos.x(), camPos.y(),
+			                                                 camPos.z());
 			for (auto &c : cells) {
 				if (c->getVisible()) {
 					QMatrix4x4 model;
 					double radius = c->getBoundingBoxRadius();
 					QVector3D center = toQV3D(c->getPosition());
 					model.translate(center);
+					const double r = c->getBoundingBoxRadius();
+					model.scale(r, r, r);
 					model.rotate(radToDeg(c->getOrientationRotation().teta),
 					             toQV3D(c->getOrientationRotation().n));
-					if (drawMode == plain) {
-						model.scale(QVector3D(radius, radius, radius));
-					} else {
-						model.scale(QVector3D(2.0, 2.0, 2.0));
-					}
-					QVector3D color(c->getColor(0), c->getColor(1), c->getColor(2));
-					if (colorMode == "pressure") {
-						color = QVector3D(0.4, 1.0, 0.2);
-					}
-					if (c == selected) color = QVector3D(1.0, 1.0, 1.0);
 					QMatrix4x4 nmatrix = (model).inverted().transposed();
 					shader.setUniformValue(shader.uniformLocation("model"), model);
 					shader.setUniformValue(shader.uniformLocation("normalMatrix"), nmatrix);
+					auto color = getColorVector(c, selected == c);
 					shader.setUniformValue(shader.uniformLocation("color"), color);
 					GL->glDrawElements(GL_TRIANGLES, sphere.indices.size(), GL_UNSIGNED_INT, 0);
 				}
-				sphere.vao.release();
-				shader.release();
 			}
+			sphere.vao.release();
+			shader.release();
 		}
 	}
 };

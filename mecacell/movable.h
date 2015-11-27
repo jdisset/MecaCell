@@ -9,6 +9,7 @@ class Movable {
 	Vec prevposition = Vec::zero();
 	Vec velocity = Vec::zero();
 	Vec force = Vec::zero();
+	Vec extForce = Vec::zero();  // not reset
 	bool movementEnabled = true;
 	float_t mass = 1.0;
 	float_t baseMass = 1.0;
@@ -48,6 +49,9 @@ class Movable {
 		totalForce += compressive ? intensity : -intensity;
 	}
 	void receiveForce(const Vec &f) { force += f; }
+	void receiveExternalForce(const Vec &f) { extForce += f; }
+	void applyExternalForces() { force += extForce; }
+	void resetExternalForces() { extForce = Vec::zero(); }
 	void resetVelocity() { velocity = Vec::zero(); }
 	void resetForce() {
 		totalForce = 0;

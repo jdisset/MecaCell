@@ -13,6 +13,7 @@ namespace MecaCell {
 // This is just a classic "linear" spring
 struct Spring {
 	float_t k = 1.0;           // stiffness
+	float_t currentK = 1.0;    // stiffness
 	float_t c = 1.0;           // damp coef
 	float_t restLength = 1.0;  // rest length
 	float_t length = 1.0;      // current length
@@ -43,7 +44,7 @@ struct Joint {
 	float_t k = 1.0;  // angular stiffness
 	float_t currentK = 1.0;
 	float_t c = 1.0;                // damp
-	float_t maxTeta = M_PI / 20.0;  // maximum angle
+	float_t maxTeta = M_PI / 30.0;  // maximum angle
 	Rotation<Vec> r;                // rotation from node to joint
 	Rotation<Vec> delta;            // current rotation
 	Rotation<Vec> prevDelta;
@@ -182,7 +183,7 @@ template <typename N0, typename N1 = N0> struct Connection {
 			bool compression = x < 0;
 			float_t v = (sc.length - sc.prevLength) / dt;
 
-			float_t k = sc.k;  // compression ? sc.k : sc.k * 0.2;
+			float_t k = sc.currentK;  // compression ? sc.k : sc.k * 0.2;
 			float_t f = (-k * x - sc.c * v) / 2.0;
 			ptr(connected.first)->receiveForce(f, -sc.direction, compression);
 			ptr(connected.second)->receiveForce(f, sc.direction, compression);
@@ -232,6 +233,7 @@ template <typename N0, typename N1 = N0> struct Connection {
 			float_t d = scEnabled ? sc.length : (ptr(connected.first)->getPosition() -
 			                                     ptr(connected.second)->getPosition())
 			                                        .length();
+			//std::cerr << "currentK = " << fjNode.currentK << std::endl;
 			float_t torque =
 			    fjNode.currentK * fjNode.delta.teta +
 			    fjNode.c * (fjNode.delta.teta - fjNode.prevDelta.teta);   // -kx - cv

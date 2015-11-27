@@ -138,6 +138,10 @@ class BasicWorld {
 		for (auto &c : cells) {
 			c->updateStats();
 			c->resetForces();
+			c->applyExternalForces();
+			c->applyExternalTorque();
+			c->resetExternalForces();
+			c->resetExternalTorque();
 		}
 		// adding world specific forces
 		for (auto &c : cells) {

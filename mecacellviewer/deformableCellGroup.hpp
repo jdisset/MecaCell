@@ -58,8 +58,8 @@ template <typename R> class DeformableCellGroup : public PaintStep<R> {
 					double radius = c->getBoundingBoxRadius();
 					QVector3D center = toQV3D(c->getPosition());
 					model.translate(center);
-					// model.rotate(radToDeg(c->getOrientationRotation().teta),
-					// toQV3D(c->getOrientationRotation().n));
+					 model.rotate(radToDeg(c->getOrientationRotation().teta),
+					 toQV3D(c->getOrientationRotation().n));
 					if (drawMode == plain) {
 						auto newvert = sphere.vert;
 						for (auto &v : newvert) {

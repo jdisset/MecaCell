@@ -169,7 +169,8 @@ template <typename Scenario> class Viewer : public SignalSlotRenderer {
 		/////////////////////////////////
 		paintSteps.emplace("MSAA", psptr(new MSAA<R>(this)));
 		paintSteps.emplace("Skybox", psptr(new Skybox<R>()));
-		paintSteps.emplace("Cells", psptr(new DeformableCellGroup<R>()));
+		paintSteps.emplace("DeformableCells", psptr(new DeformableCellGroup<R>()));
+		paintSteps.emplace("SphereCells", psptr(new CellGroup<R>()));
 		paintSteps.emplace("Arrows", psptr(new ArrowsGroup<R>()));
 		paintSteps.emplace(
 		    "Grids", psptr(new GridViewer<R>(":shaders/mvp.vert", ":/shaders/flat.frag")));
@@ -182,17 +183,17 @@ template <typename Scenario> class Viewer : public SignalSlotRenderer {
 		// TODO: absolutely TERRIBLE performance wise, cool ease-of-use wise. Enhance!
 		cellsMenu.onToggled = [&](R *r, MenuElement<R> *me) {
 			if (me->isChecked()) {
-				if (me->at("Colors").at("Normal").isChecked()) {
+				if (me->at("Mesh type").at("Sphere").isChecked()) {
 					paintStepsMethods[10] = [&](R *r) {
-						DeformableCellGroup<R> *cells =
-						    dynamic_cast<DeformableCellGroup<R> *>(paintSteps["Cells"].get());
+						CellGroup<R> *cells =
+						    dynamic_cast<CellGroup<R> *>(paintSteps["SphereCells"].get());
 						cells->call(r, "normal");
 					};
-				} else {
+				} else if (me->at("Mesh type").at("Deformable mesh").isChecked()) {
 					paintStepsMethods[10] = [&](R *r) {
-						DeformableCellGroup<R> *cells =
-						    dynamic_cast<DeformableCellGroup<R> *>(paintSteps["Cells"].get());
-						cells->call(r, "pressure");
+						DeformableCellGroup<R> *cells = dynamic_cast<DeformableCellGroup<R> *>(
+						    paintSteps["DeformableCells"].get());
+						cells->call(r, "normal");
 					};
 				}
 			} else {

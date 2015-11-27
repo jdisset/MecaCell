@@ -18,16 +18,9 @@
 #undef DBG
 #define DBG DEBUG(spheremembrane)
 
+CREATE_METHOD_CHECKS(getAdhesionWith);
 namespace MecaCell {
 template <typename Cell> class SphereMembrane {
-	CREATE_METHOD_CHECKS(getAdhesionWith);
-	static constexpr bool hasPreciseAdhesion = has_getAdhesionWith_signatures<
-	    Cell, double(Cell *, double, double), float(Cell *, float, float),
-	    double(const Cell *, double, double), float(const Cell *, float, float)>::value;
-	static constexpr bool hasAdhesion =
-	    has_getAdhesionWith_signatures<Cell, double(Cell *), float(Cell *),
-	                                   double(const Cell *), float(const Cell *)>::value;
-
 	/********************** SphereMembrane class template **********************/
 	// Abstract :
 	// A sphere membrane is a very crude membrane approximation where a cell is
@@ -35,6 +28,40 @@ template <typename Cell> class SphereMembrane {
 	// dynamically connect and bounce. It provides rudimentary (but fast)
 	// volume conservation approximations and tries to maintain an adhesive
 	// strength proportional to the contact surface.
+
+	template <typename C> struct SFINAE {
+		static constexpr bool hasPreciseAdhesion = has_getAdhesionWith_signatures<
+		    C, double(C *, double, double), float(C *, float, float),
+		    double(const C *, double, double), float(const C *, float, float)>::value;
+		static constexpr bool hasAdhesion =
+		    has_getAdhesionWith_signatures<C, double(C *), float(C *), double(const C *),
+		                                   float(const C *)>::value;
+
+		// different precision level for getAdhesionWith
+		// precise : takes a pointer to the other cell + the orientation of the connection
+		template <typename T = float_t>
+		static inline typename enable_if<hasPreciseAdhesion, T>::type getAdhesion(
+		    const Cell *a, const Cell *b, const Vec &ABnorm) {
+			const auto B = a->getOrientation();
+			bool zNeg = ABnorm.dot(B.X.cross(B.Y)) < 0;
+			double phi = acos(ABnorm.dot(B.Y));
+			double teta = zNeg ? acos(ABnorm.dot(B.X)) : M_PI * 2.0 - acos(ABnorm.dot(B.X));
+			return a->getAdhesionWith(b, teta, phi);
+		}
+		// not precise: takes a pointer to the other cell
+		template <typename T = float_t, typename... Whatever>
+		static inline typename enable_if<!hasPreciseAdhesion && hasAdhesion, T>::type
+		    getAdhesion(const Cell *a, const Cell *b, Whatever...) {
+			return a->getAdhesionWith(b);
+		}
+		// not even declared: always 0
+		template <typename T = float_t, typename... Whatever>
+		static inline
+		    typename enable_if<!hasPreciseAdhesion && !hasAdhesion, T>::type getAdhesion(
+		        Whatever...) {
+			return 0.0;
+		}
+	};
 
  public:
 	using CCCM = CellCellConnectionManager_map<Cell>;
@@ -58,6 +85,7 @@ template <typename Cell> class SphereMembrane {
 	    DEFAULT_CELL_RADIUS;  // taking volume conservation into account
 	float_t stiffness = DEFAULT_CELL_STIFFNESS;
 	float_t dampRatio = DEFAULT_CELL_DAMP_RATIO;
+	float_t angularDampRatio = DEFAULT_CELL_DAMP_RATIO;
 	float_t angularStiffness = DEFAULT_CELL_ANG_STIFFNESS;
 	float_t maxTeta = M_PI / 12.0;
 	float_t pressure = 0;
@@ -206,11 +234,15 @@ template <typename Cell> class SphereMembrane {
 	void setVolume(float_t v) { setRadius(cbrt(v / (4.0 * M_PI / 3.0))); }
 	void setStiffness(float_t s) { stiffness = s; }
 	void setAngularStiffness(float_t s) { angularStiffness = s; }
+	void setDampRatio(float_t r) { dampRatio = r; }
+	void setAngularDampRatio(float_t r) { angularDampRatio = r; }
 
 	/**********************************************************
 	                           UPDATE
 	***********************************************************/
 	template <typename Integrator> void updatePositionsAndOrientations(double dt) {
+		// first we add rotation drag
+		cell->receiveTorque(-cell->getAngularVelocity() * 1000.0);
 		Integrator::updatePosition(*cell, dt);
 		Integrator::updateOrientation(*cell, dt);
 		if (volumeConservation) compensateVolumeLoss();
@@ -383,6 +415,11 @@ template <typename Cell> class SphereMembrane {
 	}
 
 	/******************** between cells ***********************/
+	template <typename C = Cell, typename... T>
+	static inline float_t getAdhesion(T &&... t) {
+		return SFINAE<C>::getAdhesion(std::forward<T>(t)...);
+	}
+
 	template <typename SpacePartition>
 	static void checkForCellCellConnections(
 	    vector<Cell *> &cells, CellCellConnectionContainer &cellCellConnections,
@@ -471,17 +508,17 @@ template <typename Cell> class SphereMembrane {
 				    (pow(connection.getSc().length, 2) +
 				     pow((c0->getConstMembrane().radius + c1->getConstMembrane().radius) / 2.0,
 				         2)));
-				connection.getFlex().first.setCurrentKCoef(contactSurface);
-				connection.getFlex().second.setCurrentKCoef(contactSurface);
-				connection.getTorsion().first.setCurrentKCoef(contactSurface);
-				connection.getTorsion().second.setCurrentKCoef(contactSurface);
+				float_t adh = min(getAdhesion(c1, c0, -connection.getDirection()),
+				                  getAdhesion(c0, c1, connection.getDirection()));
 
-				float_t newl =
-				    getConnectionLength(c0->getConstMembrane().correctedRadius +
-				                            c1->getConstMembrane().correctedRadius,
-				                        (getAdhesion(c1, c0, -connection.getDirection()) +
-				                         getAdhesion(c0, c1, connection.getDirection())) *
-				                            0.5);
+				connection.getFlex().first.setCurrentKCoef(contactSurface * adh);
+				connection.getFlex().second.setCurrentKCoef(contactSurface * adh);
+				connection.getTorsion().first.setCurrentKCoef(contactSurface * adh);
+				connection.getTorsion().second.setCurrentKCoef(contactSurface * adh);
+
+				float_t newl = getConnectionLength(c0->getConstMembrane().correctedRadius +
+				                                       c1->getConstMembrane().correctedRadius,
+				                                   adh);
 
 				connection.getSc().setRestLength(newl);
 				// then we compute the forces
@@ -492,35 +529,6 @@ template <typename Cell> class SphereMembrane {
 			CCCM::disconnect(con, get<0>(p), get<1>(p), get<2>(p));
 		}
 	}
-
-	// different precision level for getAdhesionWith
-	// precise : takes a pointer to the other cell + the orientation of the connection
-	template <typename T = float_t>
-	static inline typename enable_if<hasPreciseAdhesion, T>::type getAdhesion(
-	    const Cell *a, const Cell *b, const Vec &ABnorm) {
-		const auto B = a->getOrientation();
-		bool zNeg = ABnorm.dot(B.X.cross(B.Y)) < 0;
-		double phi = acos(ABnorm.dot(B.Y));
-		double teta = zNeg ? acos(ABnorm.dot(B.X)) : M_PI * 2.0 - acos(ABnorm.dot(B.X));
-		std::cerr << "calling precise" << std::endl;
-		return a->getAdhesionWith(b, teta, phi);
-	}
-	// not precise: takes a pointer to the other cell
-	template <typename T = float_t, typename... Whatever>
-	static inline typename enable_if<!hasPreciseAdhesion && hasAdhesion, T>::type
-	    getAdhesion(const Cell *a, const Cell *b, Whatever...) {
-		std::cerr << "calling imprecise" << std::endl;
-		return a->getAdhesionWith(b);
-	}
-	// not even declared: always 0
-	template <typename T = float_t, typename... Whatever>
-	static inline
-	    typename enable_if<!hasPreciseAdhesion && !hasAdhesion, T>::type getAdhesion(
-	        Whatever...) {
-		std::cerr << "calling neither" << std::endl;
-		return 0.0;
-	}
-
 	static inline void disconnectAndDeleteAllConnections(Cell *c0,
 	                                                     CellCellConnectionContainer &con) {
 		auto cop = c0->connectedCells;
@@ -541,14 +549,17 @@ template <typename Cell> class SphereMembrane {
 		float_t k = (membrane0.stiffness * vol0 + membrane1.stiffness * vol1) / volProportion;
 		float_t dr =
 		    (membrane0.dampRatio * vol0 + membrane1.dampRatio * vol1) / volProportion;
+		float_t adr =
+		    (membrane0.angularDampRatio * vol0 + membrane1.angularDampRatio * vol1) /
+		    volProportion;
 
 		pair<Joint, Joint> joints = {
 		    Joint(membrane0.getAngularStiffness(),
-		          dampingFromRatio(dr, membrane0.getMomentOfInertia() * 2.0,
+		          dampingFromRatio(adr, membrane0.getMomentOfInertia() * 2.0,
 		                           membrane0.angularStiffness),
 		          membrane0.maxTeta),
 		    Joint(membrane1.getAngularStiffness(),
-		          dampingFromRatio(dr, membrane1.getMomentOfInertia() * 2.0,
+		          dampingFromRatio(adr, membrane1.getMomentOfInertia() * 2.0,
 		                           membrane1.angularStiffness),
 		          membrane1.maxTeta)};
 
@@ -559,80 +570,6 @@ template <typename Cell> class SphereMembrane {
 	}
 
 	void division() { setRadius(getBaseRadius()); }
-
-	// void deleteOverlapingConnections() {
-	// float_t overlapCoef = 0.9;
-	// for (auto c0It = vec.begin(); c0It < vec.end();) {
-	// bool deleted = false;  // tells if c0 was deleted inside the inner loop (so we
-	// know
-	//// if we have to increment c0It)
-	// connect_type *c0 = *c0It;
-	// if (c0->getNode1() != nullptr) {  // if this is not a wall connection
-	// Vec c0dir;
-	// Cell *other0 = nullptr;
-	// float_t r0;
-	// if (c0->getNode0() == cell) {
-	// c0dir = c0->getDirection();
-	// r0 = c0->getNode1()->getRadius();
-	// other0 = c0->getNode1();
-	//} else {
-	// c0dir = -c0->getDirection();
-	// r0 = c0->getNode0()->getRadius();
-	// other0 = c0->getNode0();
-	//}
-	// Vec c0v = c0dir * c0->getLength();
-	// float_t c0SqLength = pow(c0->getLength(), 2);
-	// for (auto c1It = c0It + 1; c1It < vec.end();) {
-	// connect_type *c1 = *c1It;
-	// if (c1->getNode1() != nullptr) {
-	// Vec c1dir;
-	// Cell *other1 = nullptr;
-	// float_t r1;
-	// if (c1->getNode0() == cell) {
-	// c1dir = c1->getDirection();
-	// r1 = c1->getNode1()->getRadius();
-	// other1 = c1->getNode1();
-	//} else {
-	// c1dir = -c1->getDirection();
-	// r1 = c1->getNode0()->getRadius();
-	// other1 = c1->getNode0();
-	//}
-	// Vec c1v = c1dir * c1->getLength();
-	// float_t c1SqLength = pow(c1->getLength(), 2);
-	// float_t scal01 = c0v.dot(c1dir);
-	// float_t scal10 = c1v.dot(c0dir);
-	// if (scal01 > 0 && c0SqLength < c1SqLength &&
-	//(c0SqLength - scal01 * scal01) < r0 * r0 * overlapCoef) {
-	// c1It = vec.erase(c1It);
-	// other1->eraseConnection(c1);
-	// cell->eraseCell(other1);
-	// other1->eraseCell(cell);
-	// connections.erase(remove(connections.begin(), connections.end(), c1),
-	// connections.end());
-	// delete c1;
-	//} else if (scal10 > 0 && c1SqLength < c0SqLength &&
-	//(c1SqLength - scal10 * scal10) < r1 * r1 * overlapCoef) {
-	// c0It = vec.erase(c0It);
-	// other0->eraseConnection(c0);
-	// cell->eraseCell(other0);
-	// other0->eraseCell(cell);
-	// connections.erase(remove(connections.begin(), connections.end(), c0),
-	// connections.end());
-	// deleted = true;
-	// delete c0;
-	// break;  // we need to exit the inner loop, c0 doesn't exist
-	//// anymore.
-	//} else {
-	//++c1It;
-	//}
-	//} else {
-	//++c1It;
-	//}
-	//}
-	//}
-	// if (!deleted) ++c0It;
-	//}
-	//}
 };
 }
 
