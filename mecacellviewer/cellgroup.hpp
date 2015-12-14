@@ -30,7 +30,7 @@ template <typename R> class CellGroup : public PaintStep<R> {
 		return QVector4D(c->getColor(0), c->getColor(1), c->getColor(2), 1.0);
 	}
 
-	void call(R *r, const QString &) {
+	void call(R *r, const QString &mode) {
 		const auto &cells = r->getScenario().getWorld().cells;
 		if (cells.size() > 0) {
 			const QMatrix4x4 view = r->getViewMatrix();
@@ -56,7 +56,10 @@ template <typename R> class CellGroup : public PaintStep<R> {
 					QVector3D center = toQV3D(c->getPosition());
 					model.translate(center);
 					const double r = c->getBoundingBoxRadius();
-					model.scale(r, r, r);
+					if (mode == "centers")
+						model.scale(1, 1, 1);
+					else
+						model.scale(r, r, r);
 					model.rotate(radToDeg(c->getOrientationRotation().teta),
 					             toQV3D(c->getOrientationRotation().n));
 					QMatrix4x4 nmatrix = (model).inverted().transposed();

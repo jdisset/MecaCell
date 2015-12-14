@@ -16,6 +16,7 @@ using std::remove_reference;
 enum cellMode { plain, centers };
 extern bool culling;
 extern QOpenGLFunctions* GL;
+extern double scaleFactor;
 template <typename V> QVector3D toQV3D(const V& v) {
 	return QVector3D(v.x(), v.y(), v.z());
 }

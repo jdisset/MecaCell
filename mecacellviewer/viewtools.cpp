@@ -134,4 +134,5 @@ std::pair<double, double> updateElectrostaticPointsOnSphere(std::vector<QVector3
 	}
 	return std::make_pair(sqrt(minminsql), dt);
 }
+double scaleFactor = 1;
 }

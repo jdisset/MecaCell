@@ -55,16 +55,18 @@ template <typename R> class DeformableCellGroup : public PaintStep<R> {
 			for (auto &c : cells) {
 				if (c->getVisible()) {
 					QMatrix4x4 model;
-					double radius = c->getBoundingBoxRadius();
-					QVector3D center = toQV3D(c->getPosition());
+					QVector3D center = toQV3D(c->getPosition()) * scaleFactor;
 					model.translate(center);
-					 model.rotate(radToDeg(c->getOrientationRotation().teta),
-					 toQV3D(c->getOrientationRotation().n));
+					QQuaternion rotation =
+					    QQuaternion::fromAxisAndAngle(toQV3D(c->getOrientationRotation().n),
+					                                  radToDeg(c->getOrientationRotation().teta));
+					model.rotate(rotation);
 					if (drawMode == plain) {
 						auto newvert = sphere.vert;
 						for (auto &v : newvert) {
-							decltype((*cells.begin())->getPosition()) d(v.x(), v.y(), v.z());
-							v *= c->getMembraneDistance(d);
+							auto vr = rotation.rotatedVector(v);
+							decltype((*cells.begin())->getPosition()) d(vr.x(), vr.y(), vr.z());
+							v *= c->getMembraneDistance(d) * scaleFactor;
 						}
 						sphere.update(newvert, getColorVector(c, selected == c), shader);
 					} else {

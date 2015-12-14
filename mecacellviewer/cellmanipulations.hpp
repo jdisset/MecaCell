@@ -32,7 +32,7 @@ template <typename R> void dragCell(R* r) {
 			QVector3D projectedPos = l0 + d * l;
 			decltype(selectedCell->getPosition()) newPos(projectedPos.x(), projectedPos.y(),
 			                                             projectedPos.z());
-			selectedCell->setPosition(newPos);
+			selectedCell->setPosition(newPos / scaleFactor);
 			selectedCell->resetVelocity();
 		}
 	}
@@ -55,8 +55,8 @@ template <typename R> void pickCell(R* r, QPointF screenCoords) {
 	double minEyeDist = 1e20;
 	for (auto& c : r->getScenario().getWorld().cells) {
 		if (c->getVisible()) {
-			double sqRad = pow(c->getBoundingBoxRadius(), 2);
-			QVector3D EC = toQV3D(c->getPosition()) - camera.getPosition();
+			double sqRad = pow(c->getBoundingBoxRadius() * scaleFactor, 2);
+			QVector3D EC = toQV3D(c->getPosition() * scaleFactor) - camera.getPosition();
 			QVector3D EV = vray * QVector3D::dotProduct(EC, vray);
 			double eyeDist = EC.lengthSquared();
 			double rayDist = eyeDist - EV.lengthSquared();

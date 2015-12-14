@@ -11,7 +11,7 @@ Item{
 	property var paintStepsSubgroups: new Object();
 	property var paintStepsElem: new Object();
 	width: 1000
-	height: 700
+	height: 800
 	id: main
 	function createDisplayMenu(m){Logic.createDisplayMenu(m);} 
 	function addPaintStepComponent(a,b,c,d){Logic.addPaintStepComponent(a,b,c,d);}
@@ -165,7 +165,7 @@ Item{
 				}
 				Text {
 					id: playButton
-					property bool playing: true;
+					property bool playing: false;
 					text: playing ? "\uf04c" : "\uf04b"
 					color: ma_play.containsMouse ? mecaYellow : "white"
 					font.family: fontawesome.name
@@ -209,14 +209,13 @@ Item{
 			color: "transparent"
 			anchors.bottom: parent.bottom
 			anchors.bottomMargin: 3
-			//anchors.leftMargin: 7
 			Row {
 				height: parent.height
 				width: parent.width - parent.anchors.leftMargin
 				spacing: 10
 				ValueWatcher {
 					label: "FPS"
-					value: Logic.getStat(main,"fps").toFixed(0)
+					value: Logic.getStat("fps").toFixed(0)
 				}
 				RowSpacer {
 					color: "#20FFFFFF"
@@ -224,7 +223,7 @@ Item{
 				}
 				ValueWatcher {
 					label: "CELLS"
-					value: Logic.getStat(main,"nbCells")
+					value: Logic.getStat("nbCells")
 				}
 				RowSpacer {
 					color: "#20FFFFFF"
@@ -232,7 +231,7 @@ Item{
 				}
 				ValueWatcher {
 					label: "UPDATE"
-					value: Logic.getStat(main,"nbUpdates")
+					value: Logic.getStat("nbUpdates")
 				}
 			}
 		}

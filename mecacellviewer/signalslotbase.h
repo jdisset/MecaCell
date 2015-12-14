@@ -40,7 +40,7 @@ class SignalSlotBase : public QQuickItem {
 	Q_PROPERTY(QVariantMap stats READ getStats WRITE setStats NOTIFY statsChanged)
 
 	QVariantMap stats, guiCtrl;
-	bool worldUpdate = true;
+	bool worldUpdate = false;
 	bool loopStep = false;
 	std::set<Qt::Key> keyDown, keyPress;
 	int mouseWheel = 0;
@@ -78,7 +78,7 @@ class SignalSlotBase : public QQuickItem {
 		keyDown.erase(static_cast<Qt::Key>(event->key()));
 	}
 
-	std::vector<std::pair<QList<QVariant>,bool>> displayMenuToggled;
+	std::vector<std::pair<QList<QVariant>, bool>> displayMenuToggled;
  signals:
 	void statsChanged();
 	void guiCtrlChanged();

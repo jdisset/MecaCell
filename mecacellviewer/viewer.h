@@ -3,6 +3,7 @@
 #include "signalslotbase.h"
 #include "keyboardmanager.hpp"
 #include "mousemanager.hpp"
+#include "connectionsgroup.hpp"
 #include "paintstep.hpp"
 #include "screenmanager.hpp"
 #include "camera.hpp"
@@ -103,8 +104,8 @@ template <typename Scenario> class Viewer : public SignalSlotRenderer {
 	int nbFramesSinceLastTick = 0;
 	unsigned long currentFrameNumber = 0;
 	Cell *selectedCell = nullptr;
-	bool worldUpdate = true;
-	bool loopStep = true;
+	bool worldUpdate = false;
+	bool loopStep = false;
 	double fpsRefreshRate = 0.4;
 	QVariantMap guiCtrl, stats;
 	QList<QVariant> enabledPaintSteps;
@@ -156,6 +157,7 @@ template <typename Scenario> class Viewer : public SignalSlotRenderer {
 		       {"Deformable mesh", true}}},
 		     {"Colors", elementType::exclusiveGroup, {{"Normal", true}, {"Pressure", false}}},
 		     {"Display forces", false},
+		     {"Display connections", false},
 		     {"Display velocities", false}}};
 
 		qDebug() << cellsMenu.toJSON();
@@ -172,6 +174,7 @@ template <typename Scenario> class Viewer : public SignalSlotRenderer {
 		paintSteps.emplace("DeformableCells", psptr(new DeformableCellGroup<R>()));
 		paintSteps.emplace("SphereCells", psptr(new CellGroup<R>()));
 		paintSteps.emplace("Arrows", psptr(new ArrowsGroup<R>()));
+		paintSteps.emplace("Connections", psptr(new ConnectionsGroup<R>()));
 		paintSteps.emplace(
 		    "Grids", psptr(new GridViewer<R>(":shaders/mvp.vert", ":/shaders/flat.frag")));
 		paintSteps.emplace("SSAO", psptr(new SSAO<R>(this)));
@@ -195,9 +198,30 @@ template <typename Scenario> class Viewer : public SignalSlotRenderer {
 						    paintSteps["DeformableCells"].get());
 						cells->call(r, "normal");
 					};
+				} else if (me->at("Mesh type").at("Centers only").isChecked()) {
+					paintStepsMethods[10] = [&](R *r) {
+						CellGroup<R> *cells =
+						    dynamic_cast<CellGroup<R> *>(paintSteps["SphereCells"].get());
+						cells->call(r, "centers");
+					};
+				} else {
+					paintStepsMethods.erase(10);
 				}
 			} else {
 				paintStepsMethods.erase(10);
+			}
+		};
+		cellsMenu.at("Display connections").onToggled = [&](R *r, MenuElement<R> *me) {
+			if (me->isChecked()) {
+				paintStepsMethods[17] = [&](R *r) {
+					ConnectionsGroup<R> *connections =
+					    dynamic_cast<ConnectionsGroup<R> *>(paintSteps["Connections"].get());
+					connections->template draw<Cell>(
+					    r->getScenario().getWorld().getConnectedCellsList(), r->getViewMatrix(),
+					    r->getProjectionMatrix());
+				};
+			} else {
+				paintStepsMethods.erase(17);
 			}
 		};
 		cellsMenu.at("Display forces").onToggled = [&](R *r, MenuElement<R> *me) {
@@ -388,7 +412,7 @@ template <typename Scenario> class Viewer : public SignalSlotRenderer {
 
 	void updateStats() {
 		auto t1 = std::chrono::high_resolution_clock::now();
-		auto fpsDt = t1 - tfps;
+		std::chrono::duration<double> fpsDt = t1 - tfps;
 		nbFramesSinceLastTick++;
 		if (fpsDt.count() > fpsRefreshRate) {
 			stats["fps"] = (double)nbFramesSinceLastTick / (double)fpsDt.count();
@@ -431,6 +455,11 @@ template <typename Scenario> class Viewer : public SignalSlotRenderer {
 	 **************************/
 	void setCurrentFBO(QOpenGLFramebufferObject *fbo) { currentFBO = fbo; }
 	void setSelectedCell(Cell *c) { selectedCell = c; }
+	void pause() {
+		worldUpdate = false;
+		loopStep = false;
+	}
+	void play() { worldUpdate = true; }
 	/**************************
 	 *           GET
 	 **************************/
