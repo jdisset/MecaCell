@@ -83,19 +83,17 @@
 			var newElem = new MenuElement(elems[i].name, elems[i].type);
 			newElem.parent = parent;
 			var toggledFunc = function() {}
-			console.log("parent = " + parent.name)
-			console.log("parent.qmlItem.column = " + parent.qmlItem.column)
 			if (elems[i].type === "exclusiveGroup") {
 				newElem.qmlItem = createNewComponent("ExclusiveColumn.qml", parent.qmlItem.column, {
 					"legend": newElem.name
 				});
 			} else if (elems[i].type === "checkable") {
-					newElem.qmlItem = createNewComponent("CheckableButton.qml", parent.qmlItem.column, {
-						"legend": newElem.name,
-						"checked": elems[i].checked,
-						"group": parent && parent.type === "checkable" ? null : parent.qmlItem,
-						"toggledFunc": elemToggled(newElem)
-					})
+				newElem.qmlItem = createNewComponent("CheckableButton.qml", parent.qmlItem.column, {
+					"legend": newElem.name,
+					"checked": elems[i].checked,
+					"group": parent && parent.type === "checkable" ? null : parent.qmlItem,
+					"toggledFunc": elemToggled(newElem)
+				})
 			}
 			// we continue to unrol the list of elements
 			createMenuElement(elems[i].elems, newElem);
@@ -147,9 +145,6 @@
 		}
 	}
 
-	function sayHello() {
-		console.log("hello");
-	}
 
 	function addButton(id, menu, label, col) {
 		if (btnArray[id] != undefined) {
@@ -174,7 +169,6 @@
 
 	function setCtrl(k, v) {
 		guictrl[k] = v;
-		console.log("asking to set ctrl to " + guictrl);
 		renderer.setGuiCtrl(guictrl);
 	}
 
