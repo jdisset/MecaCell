@@ -4,9 +4,10 @@
 #include "surfacecontrolpoint.hpp"
 
 namespace MecaCell {
-template <typename Cell> class DeformableMembrane : public SphereMembrane<Cell> {
+template <typename Cell, unsigned int N = 20>
+class DeformableMembrane : public SphereMembrane<Cell> {
 	friend class SphereMembrane<Cell>;
-	static const size_t NbScp = 20;
+	static const size_t NbScp = N;
 	array<SurfaceControlPoint<Cell>, NbScp> scps;
 
  public:

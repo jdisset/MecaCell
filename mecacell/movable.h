@@ -11,8 +11,8 @@ class Movable {
 	Vec force = Vec::zero();
 	Vec extForce = Vec::zero();  // not reset
 	bool movementEnabled = true;
-	float_t mass = 1.0;
-	float_t baseMass = 1.0;
+	float_t mass = DEFAULT_CELL_MASS;
+	float_t baseMass = DEFAULT_CELL_MASS;
 	float_t totalForce = 0;
 
  public:

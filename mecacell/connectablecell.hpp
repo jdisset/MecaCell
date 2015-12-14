@@ -1,5 +1,11 @@
 #ifndef CONNECTABLECELL_HPP
 #define CONNECTABLECELL_HPP
+#include "rotation.h"
+#include "movable.h"
+#include "orientable.h"
+#include "model.h"
+#include "spheremembrane.hpp"
+#include "deformablemembrane.hpp"
 #include <vector>
 #include <deque>
 #include <array>
@@ -10,12 +16,6 @@
 #include <memory>
 #include <unordered_set>
 #include <functional>
-#include "rotation.h"
-#include "movable.h"
-#include "orientable.h"
-#include "model.h"
-#include "spheremembrane.hpp"
-#include "deformablemembrane.hpp"
 
 namespace MecaCell {
 
@@ -37,6 +37,7 @@ class ConnectableCell : public Movable, public Orientable {
 	// be seen as its kernel (it is NOT always the center of mass, but often close enough)
  public:
 	using membrane_t = Membrane<Derived>;
+	static constexpr bool hasModelCollisions = membrane_t::hasModelCollisions;
 	using CellCellConnectionContainer = typename membrane_t::CellCellConnectionContainer;
 	using CellModelConnectionContainer = typename membrane_t::CellModelConnectionContainer;
 
@@ -80,20 +81,32 @@ class ConnectableCell : public Movable, public Orientable {
 	    SpacePartition &grid) {
 		membrane_t::checkForCellCellConnections(cells, cellCellConnections, grid);
 	}
-	template <typename SpacePartition>
-	static inline void checkForCellModelConnections(
-	    vector<Derived *> &cells, unordered_map<string, Model> models,
-	    CellModelConnectionContainer &cellModelConnections, SpacePartition &modelGrid) {
+	// model collisions (only enabled if membrane can handle them
+	template <typename SpacePartition, typename T = void>
+	static inline typename enable_if<hasModelCollisions, T>::type
+	    checkForCellModelConnections(vector<Derived *> &cells,
+	                                 unordered_map<string, Model> &models,
+	                                 CellModelConnectionContainer &cellModelConnections,
+	                                 SpacePartition &modelGrid) {
 		membrane_t::checkForCellModelCollisions(cells, models, cellModelConnections,
 		                                        modelGrid);
 	}
+	template <typename SpacePartition, typename T = void>
+	static inline typename enable_if<!hasModelCollisions, T>::type
+	    checkForCellModelConnections(vector<Derived *> &, unordered_map<string, Model> &,
+	                                 CellModelConnectionContainer &, SpacePartition &) {}
+	template <typename T = void>
+	static inline typename enable_if<hasModelCollisions, T>::type
+	    updateCellModelConnections(CellModelConnectionContainer &c, float_t dt) {
+		membrane_t::updateCellModelConnections(c, dt);
+	}
+	template <typename T = void>
+	static inline typename enable_if<!hasModelCollisions, T>::type
+	    updateCellModelConnections(CellModelConnectionContainer &, float_t) {}
+
 	static inline void updateCellCellConnections(CellCellConnectionContainer &c,
 	                                             float_t dt) {
 		membrane_t::updateCellCellConnections(c, dt);
-	}
-	static inline void updateCellModelConnections(CellModelConnectionContainer &c,
-	                                              float_t dt) {
-		membrane_t::updateCellModelConnections(c, dt);
 	}
 
 	static inline void disconnectAndDeleteAllConnections(Derived *c0,
@@ -150,12 +163,12 @@ class ConnectableCell : public Movable, public Orientable {
 		return {{getPosition(), getVelocity()}};
 	}
 
-	string toString() const {
+	string toString() {
 		stringstream s;
 		s << "Cell " << id << " :" << endl;
-		s << " position = " << position << ", orientation = " << orientation << endl;
+		s << " position = " << position << endl;
 		s << " velocity = " << velocity << ", angular velocity = " << angularVelocity << endl;
-		s << " force = " << force << " ; " << force << endl;
+		s << " force = " << force << ", torque " << torque << endl;
 		s << " nbConnections = " << connectedCells.size();
 		return s.str();
 	}

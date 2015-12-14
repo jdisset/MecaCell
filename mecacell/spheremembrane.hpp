@@ -64,6 +64,7 @@ template <typename Cell> class SphereMembrane {
 	};
 
  public:
+	static const bool hasModelCollisions = true;
 	using CCCM = CellCellConnectionManager_map<Cell>;
 	friend CCCM;
 	using ModelConnectionType = CellModelConnection<Cell>;
@@ -531,9 +532,9 @@ template <typename Cell> class SphereMembrane {
 	}
 	static inline void disconnectAndDeleteAllConnections(Cell *c0,
 	                                                     CellCellConnectionContainer &con) {
-		auto cop = c0->connectedCells;
-		for (auto &c1 : cop) {
-			CCCM::disconnect(con, c0, c1);
+		auto cop = c0->membrane.cccm.cellConnections;
+		for (auto &cc : cop) {
+			CCCM::disconnect(con, cc->getNode0(), cc->getNode1(), cc);
 		}
 	}
 
@@ -564,7 +565,7 @@ template <typename Cell> class SphereMembrane {
 		          membrane1.maxTeta)};
 
 		CCCM::createConnection(
-		    con, cells,
+		    con, cells, make_pair(cells.first, cells.second),
 		    Spring(k, dampingFromRatio(dr, cells.first->mass + cells.second->mass, k), l),
 		    joints, joints);
 	}

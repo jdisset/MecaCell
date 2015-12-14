@@ -1,16 +1,16 @@
 #ifndef MECACELL_WORLD_H
 #define MECACELL_WORLD_H
-#include <deque>
-#include <vector>
-#include <algorithm>
-#include <map>
-#include <cstdlib>
 #include "tools.h"
 #include "connection.h"
 #include "grid.hpp"
 #include "model.h"
 #include "integrators.hpp"
 #include "modelconnection.hpp"
+#include <deque>
+#include <vector>
+#include <algorithm>
+#include <map>
+#include <cstdlib>
 #include <cstdint>
 #include <typeinfo>
 #include <cxxabi.h>
@@ -133,6 +133,24 @@ class BasicWorld {
 	 *             MAIN UPDATE ROUTINE            *
 	 *********************************************/
 
+	bool nanTorques() {
+		for (auto &c : cells) {
+			if (isnan_v(c->getTorque())) return true;
+		}
+		return false;
+	}
+	bool nanForces() {
+		for (auto &c : cells) {
+			if (isnan_v(c->getForce())) return true;
+		}
+		return false;
+	}
+	bool nanPositions() {
+		for (auto &c : cells) {
+			if (isnan_v(c->getPosition())) return true;
+		}
+		return false;
+	}
 	void update() {
 		// getting ready
 		for (auto &c : cells) {
@@ -143,6 +161,12 @@ class BasicWorld {
 			c->resetExternalForces();
 			c->resetExternalTorque();
 		}
+		if (nanForces()) {
+			DBG << " nan forces at 0" << endl;
+		}
+		if (nanTorques()) {
+			DBG << " nan torques at 0" << endl;
+		}
 		// adding world specific forces
 		for (auto &c : cells) {
 			c->receiveForce(-6.0 * M_PI * viscosityCoef * c->getBoundingBoxRadius() *
@@ -150,14 +174,40 @@ class BasicWorld {
 			c->receiveForce(g * c->getMass());  // gravity
 		}
 
+		if (nanForces()) {
+			DBG << " nan forces at 1" << endl;
+		}
+		if (nanTorques()) {
+			DBG << " nan torques at 1" << endl;
+		}
+		if (nanPositions()) {
+			DBG << " nan positions at 1" << endl;
+		}
 		// then connections/collisions induced forces
 		Cell::updateCellCellConnections(cellCellConnections, dt);
 		Cell::updateCellModelConnections(cellModelConnections, dt);
+		if (nanForces()) {
+			DBG << " nan forces at 2" << endl;
+		}
+		if (nanTorques()) {
+			DBG << " nan torques at 2" << endl;
+		}
+		if (nanPositions()) {
+			DBG << " nan positions at 2" << endl;
+		}
 
 		// updating cells positions
 		for (auto &c : cells) {
 			c->template updatePositionsAndOrientations<Integrator>(dt);
-			c->setPosition(roundN(c->getPosition()));
+		}
+		if (nanForces()) {
+			DBG << " nan forces at 3" << endl;
+		}
+		if (nanTorques()) {
+			DBG << " nan torques at 3" << endl;
+		}
+		if (nanPositions()) {
+			DBG << " nan positions at 3" << endl;
 		}
 
 		// looking for connections/collisions
@@ -169,7 +219,6 @@ class BasicWorld {
 
 		updateBehaviors();
 		destroyDeadCells();  // cleanup
-
 		++frame;
 	}
 

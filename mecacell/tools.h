@@ -12,6 +12,7 @@
 #include <deque>
 #include <iostream>
 #include <stdio.h>
+#include <stdexcept>
 namespace MecaCell {
 typedef Vector3D Vec;
 
@@ -111,11 +112,17 @@ template <typename T, size_t N = 10> T inline roundN(const T &t) {
 template <size_t N = 10> inline Vec roundN(const Vec &v) {
 	return Vec(roundN(v.x()), roundN(v.y()), roundN(v.z()));
 }
+bool isnan_v(const Vector3D &);
 }
 namespace std {
 template <typename T> struct hash<MecaCell::ordered_pair<T>> {
 	size_t operator()(const MecaCell::ordered_pair<T> &x) const {
 		return hash<T>()(x.first) ^ hash<T>()(x.second);
+	}
+};
+template <typename T, typename U> struct hash<std::pair<T, U>> {
+	size_t operator()(const std::pair<T, U> &x) const {
+		return hash<T>()(x.first) ^ hash<U>()(x.second);
 	}
 };
 }

@@ -2,7 +2,6 @@
 #define INTEGRATORS_HPP
 #include "tools.h"
 namespace MecaCell {
-
 struct Verlet {
 	template <typename C> static void updatePosition(C &c, const float_t &dt) {
 		// position
