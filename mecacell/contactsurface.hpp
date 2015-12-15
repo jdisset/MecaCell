@@ -43,7 +43,7 @@ template <typename Cell> struct ContactSurface {
 		                              cells.second->getOrientationRotation());
 	}
 
-	template <int n> void updateJoints(float_t dt) {
+	template <int n> void updateJoints(float_t) {
 		constexpr int otherN = n == 0 ? 1 : 0;
 		SimpleJoint &fjNode = std::get<n>(joints);
 		const auto &node = cells.template get<n>();
@@ -57,31 +57,54 @@ template <typename Cell> struct ContactSurface {
 		fjNode.maxTeta = midp > 0 ? atan(bondMaxL / midp) : 0.0;
 		if (fjNode.delta.teta > fjNode.maxTeta) {  // if we passed flex break angle
 			float dif = fjNode.delta.teta - fjNode.maxTeta;
-			fjNode.r = fjNode.r + Rotation<Vec>(fjNode.delta.n, dif);
-			fjNode.direction = fjNode.direction.rotated(Rotation<Vec>(fjNode.delta.n, dif));
-			fjNode.r = node->getOrientationRotation().inverted() +
-			           Vec::getRotation(Basis<Vec>(),
-			                            Basis<Vec>(fjNode.direction, fjNode.direction.ortho()));
+			if (dif > 5.0 * fjNode.maxTeta) {
+				initJoints();
+			} else {
+				fjNode.r = fjNode.r + Rotation<Vec>(fjNode.delta.n, dif);
+				fjNode.direction = fjNode.direction.rotated(Rotation<Vec>(fjNode.delta.n, dif));
+				fjNode.r = node->getOrientationRotation().inverted() +
+				           Vec::getRotation(Basis<Vec>(), Basis<Vec>(fjNode.direction,
+				                                                     fjNode.direction.ortho()));
+			}
 		}
 
-		Vec ortho = sign * normal.ortho(fjNode.delta.n).normalized();  // force direction
-		// force's point of application is at the center of the current surface
-		// (normal*midpoint)
-		fjNode.prevElongation = fjNode.elongation;
-		fjNode.elongation = tan(fjNode.delta.teta) * midp;
-		// auto speed = max(0.0, (fjNode.elongation - fjNode.prevElongation) / dt);
-		auto speed = 0;  // tan((fjNode.delta.teta - fjNode.prevDelta.teta) / dt) * midp;
-		const auto rollDamping =
-		    dampingFromRatio(damping, cells.first->getMass() + cells.second->getMass(),
-		                     adhArea * adhStrength * adhCoef);
-		auto halfForce =
-		    0.5 * 0.2 * (fjNode.elongation * adhArea * adhCoef * adhStrength * ortho -
-		                 speed * rollDamping);
-		node->receiveTorque((midp * normal * sign).cross(-halfForce));
-		node->receiveForce(-halfForce);
-		other->receiveTorque((othermidp * normal * sign).cross(halfForce));
-		other->receiveForce(halfForce);
+		// flex torque and force
+		float_t d = centersDist;
+		float_t torque =
+		    200.0 * adhArea * adhCoef * adhStrength * fjNode.delta.teta +
+		    damping * 100.0 * (fjNode.delta.teta - fjNode.prevDelta.teta);  // -kx - cv
+		Vec vFlex = fjNode.delta.n * torque;                                // torque
+		Vec ortho = normal.ortho(fjNode.delta.n).normalized();              // force direction
+		Vec force = sign * ortho * torque / d;
+
+		node->receiveForce(-force);
+		other->receiveForce(force);
+
+		node->receiveTorque(vFlex);
 		fjNode.prevDelta = fjNode.delta;
+		// Vec ortho = sign * normal.ortho(fjNode.delta.n).normalized();  // force direction
+		//// force's point of application is at the center of the current surface
+		//// (normal*midpoint)
+		// fjNode.prevElongation = fjNode.elongation;
+		// fjNode.elongation = tan(fjNode.delta.teta) * midp;
+		// if (fjNode.elongation > bondMaxL) {
+		// DBG << RED << "elongation = " << fjNode.elongation << endl;
+		// DBG << " max Teta = " << fjNode.maxTeta << ", max L= " << bondMaxL << endl;
+		// DBG << " delta teta = " << fjNode.delta.teta << endl;
+		//}
+		//// auto speed = max(0.0, (fjNode.elongation - fjNode.prevElongation) / dt);
+		// auto speed = 0;  // tan((fjNode.delta.teta - fjNode.prevDelta.teta) / dt) * midp;
+		// const auto rollDamping =
+		// dampingFromRatio(damping, cells.first->getMass() + cells.second->getMass(),
+		// adhArea * adhStrength * adhCoef);
+		// auto halfForce = 0.5 * (fjNode.elongation * adhArea * adhCoef * adhStrength * ortho
+		// -
+		// speed * rollDamping);
+		// node->receiveTorque((midp * normal * sign).cross(-halfForce));
+		// node->receiveForce(-halfForce);
+		//// other->receiveTorque((othermidp * normal * sign).cross(halfForce));
+		//// other->receiveForce(halfForce);
+		// fjNode.prevDelta = fjNode.delta;
 	}
 
 	ordered_pair<Cell *> cells;
@@ -96,8 +119,8 @@ template <typename Cell> struct ContactSurface {
 	float_t centersDist, prevCentersDist = 0;
 	float_t staticFrictionCoef = 7.0, dynamicFrictionCoef = 5.0;
 	float_t adhCoef = 1;
-	const float_t adhStrength = 0.07;
-	float_t bondMaxL = 0.4;    // max length a surface bond can reach before breaking
+	const float_t adhStrength = 0.01;  // base strength
+	float_t bondMaxL = 1.5;    // max length a surface bond can reach before breaking
 	float_t distToMaxL = 1.0;  // at wich distance from contact do the bonds reach their
 	                           // maxL (related to the average curvature of
 	                           // the membrane around contact surface)

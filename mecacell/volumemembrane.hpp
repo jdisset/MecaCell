@@ -71,7 +71,7 @@ template <typename Cell> class VolumeMembrane {
 	CCCM cccm;
 
 	// params
-	float_t incompressibility = 0.005;
+	float_t incompressibility = 0.009;
 	float_t membraneStiffness = 0.04;
 	float_t membraneReactivity = 20.0;
 
