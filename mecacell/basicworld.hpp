@@ -57,6 +57,7 @@ class BasicWorld {
 	CellCellConnectionContainer cellCellConnections;
 	CellModelConnectionContainer cellModelConnections;
 
+
 	// all the cells are in this container
 	vector<Cell *> cells;
 	// all models are stored in this map, using their name as the key

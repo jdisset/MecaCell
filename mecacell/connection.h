@@ -233,7 +233,7 @@ template <typename N0, typename N1 = N0> struct Connection {
 			float_t d = scEnabled ? sc.length : (ptr(connected.first)->getPosition() -
 			                                     ptr(connected.second)->getPosition())
 			                                        .length();
-			//std::cerr << "currentK = " << fjNode.currentK << std::endl;
+			// std::cerr << "currentK = " << fjNode.currentK << std::endl;
 			float_t torque =
 			    fjNode.currentK * fjNode.delta.teta +
 			    fjNode.c * (fjNode.delta.teta - fjNode.prevDelta.teta);   // -kx - cv
