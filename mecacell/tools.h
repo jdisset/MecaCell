@@ -57,6 +57,7 @@ template <typename T> struct ordered_pair {
 	bool operator==(const ordered_pair &other) const {
 		return (first == other.first && second == other.second);
 	}
+	template <unsigned int i> T &get() { return i == 0 ? first : second; }
 };
 template <typename T> inline ordered_pair<T *> make_ordered_cell_pair(T *a, T *b) {
 	if (a->id < b->id) return {a, b};
