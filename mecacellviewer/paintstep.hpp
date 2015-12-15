@@ -31,6 +31,7 @@ template <typename R> struct MenuElement {
 	bool previousChecked = true;
 	vector<MenuElement> elems;
 	std::function<void(R*, MenuElement*)> onToggled;
+	void add(const MenuElement& e) { elems.push_back(e); }
 	int count(const QString& n) {
 		for (auto& e : elems) {
 			if (e.name == n) return 1;
