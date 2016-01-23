@@ -10,6 +10,7 @@
 #include "button.hpp"
 #include "viewtools.h"
 #include "arrowsgroup.hpp"
+#include "screencapture.hpp"
 #include "cellgroup.hpp"
 #include "deformableCellGroup.hpp"
 #include "gridviewer.hpp"
@@ -179,9 +180,12 @@ template <typename Scenario> class Viewer : public SignalSlotRenderer {
 		    "Grids", psptr(new GridViewer<R>(":shaders/mvp.vert", ":/shaders/flat.frag")));
 		paintSteps.emplace("SSAO", psptr(new SSAO<R>(this)));
 		paintSteps.emplace("Blur", psptr(new MenuBlur<R>(this)));
+		paintSteps.emplace("ScreenCapture", psptr(new MenuScreenCapture<R>(this)));
 		screenManagers.push_back(dynamic_cast<ScreenManager<R> *>(paintSteps["MSAA"].get()));
 		screenManagers.push_back(dynamic_cast<ScreenManager<R> *>(paintSteps["SSAO"].get()));
 		screenManagers.push_back(dynamic_cast<ScreenManager<R> *>(paintSteps["Blur"].get()));
+		screenManagers.push_back(
+		    dynamic_cast<ScreenManager<R> *>(paintSteps["ScreenCapture"].get()));
 
 		// TODO: absolutely TERRIBLE performance wise, cool ease-of-use wise. Enhance!
 		cellsMenu.onToggled = [&](R *r, MenuElement<R> *me) {
@@ -291,7 +295,16 @@ template <typename Scenario> class Viewer : public SignalSlotRenderer {
 				paintStepsMethods.erase(2000000);
 			}
 		};
-		MenuElement<R> postProcMenu = {"Post processing", {ssaoPostproc, menublurPostproc}};
+		MenuElement<R> screenCap = {"Screen capture", false};
+		screenCap.onToggled = [&](R *r, MenuElement<R> *me) {
+			if (me->isChecked()) {
+				paintStepsMethods[1900000] = [&](R *r) { paintSteps["ScreenCapture"]->call(r); };
+			} else {
+				paintStepsMethods.erase(1900000);
+			}
+		};
+		MenuElement<R> postProcMenu = {"Post processing",
+		                               {ssaoPostproc, menublurPostproc, screenCap}};
 		displayMenu = {"Rendered elements", {cellsMenu, postProcMenu}};
 		for (auto &p : plugins_onLoad) p(this);
 		displayMenu.print();
@@ -495,6 +508,7 @@ template <typename Scenario> class Viewer : public SignalSlotRenderer {
 	/**************************
 	 *           GET
 	 **************************/
+	int getFrame() { return frame; }
 	Scenario &getScenario() { return scenario; }
 	const QMatrix4x4 &getViewMatrix() { return viewMatrix; }
 	const QMatrix4x4 &getProjectionMatrix() { return projectionMatrix; }

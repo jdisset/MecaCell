@@ -5,7 +5,7 @@
 #include "orientable.h"
 #include "model.h"
 #include "spheremembrane.hpp"
-#include "deformablemembrane.hpp"
+#include "volumemembrane.hpp"
 #include <vector>
 #include <deque>
 #include <array>
@@ -19,7 +19,7 @@
 
 namespace MecaCell {
 
-template <typename Derived, template <class> class Membrane = SphereMembrane>
+template <typename Derived, template <class> class Membrane = VolumeMembrane>
 class ConnectableCell : public Movable, public Orientable {
 	CREATE_METHOD_CHECKS(setColor);
 	friend class SphereMembrane<Derived>;

@@ -122,7 +122,10 @@ class Vector3D {
 	                       const Vector3D &r);
 
 	void normalize();
-	inline Vector3D normalized() const { return *this / length(); }
+	inline Vector3D normalized() const {
+		double l = length();
+		return l > 0 ? *this / l : zero();
+	}
 
 	std::string toString() const;
 	static int getHash(const int a, const int b);

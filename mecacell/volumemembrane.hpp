@@ -71,8 +71,8 @@ template <typename Cell> class VolumeMembrane {
 	CCCM cccm;
 
 	// params
-	float_t incompressibility = 0.009;
-	float_t membraneStiffness = 0.04;
+	float_t incompressibility = 0.04;
+	float_t membraneStiffness = 0.17;
 	float_t membraneReactivity = 20.0;
 
 	// internal stuff
@@ -197,6 +197,9 @@ template <typename Cell> class VolumeMembrane {
 	/**********************************************************
 	                             SET
 	***********************************************************/
+	void setIncompressibility(float_t i) { incompressibility = i; }
+	void setStiffness(float_t k) { membraneStiffness = k; }
+	void setReactivity(float_t r) { membraneReactivity = r; }
 	void setRadius(float_t r) { restRadius = r; }
 	void setBaseRadius(float_t r) { baseRadius = r; }
 	void setRadiusRatio(float_t r) { restRadius = r * baseRadius; }
@@ -208,7 +211,6 @@ template <typename Cell> class VolumeMembrane {
 	template <typename Integrator> void updatePositionsAndOrientations(double dt) {
 		// Before updating positions and orientations we compute the cureent pressure
 		computeCurrentVolume();
-		float_t currentArea = getCurrentArea();
 		float_t dA = getRestArea() - currentArea;
 		float_t dV = getRestVolume() - getCurrentVolume();
 		auto Fv = incompressibility * dV;
@@ -285,9 +287,6 @@ template <typename Cell> class VolumeMembrane {
 			CCCM::createConnection(cellCellConnections, nc, nc);
 		}
 	}
-
-	static inline float_t getConnectionMidpoint(const Cell *c0, const Cell *c1,
-	                                            const CellCellConnectionType &connection) {}
 
 	static void updateCellCellConnections(CellCellConnectionContainer &concon, float_t dt) {
 		// we update forces & delete impossible connections (cells not in contact

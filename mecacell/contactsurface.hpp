@@ -4,10 +4,11 @@
 #include <utility>
 #include <cmath>
 
-#define TRACE 1
+#define TRACE 0
 
 namespace MecaCell {
 using std::isnan;
+#undef DBG
 #define DBG DEBUG(contactSurface)
 template <typename Cell> struct ContactSurface {
 	struct SimpleJoint {
@@ -46,6 +47,7 @@ template <typename Cell> struct ContactSurface {
 	template <int n> void updateJoints(float_t) {
 		constexpr int otherN = n == 0 ? 1 : 0;
 		SimpleJoint &fjNode = std::get<n>(joints);
+		SimpleJoint &otherJoint = std::get<otherN>(joints);
 		const auto &node = cells.template get<n>();
 		const auto &other = cells.template get<otherN>();
 		const float_t sign = n == 0 ? 1 : -1;
@@ -54,7 +56,7 @@ template <typename Cell> struct ContactSurface {
 
 		fjNode.target = normal * sign;
 		fjNode.updateDelta();
-		fjNode.maxTeta = midp > 0 ? atan(bondMaxL / midp) : 0.0;
+		fjNode.maxTeta = midp > 0 ? 2.0 * atan(bondMaxL / midp) : 0.0;
 		if (fjNode.delta.teta > fjNode.maxTeta) {  // if we passed flex break angle
 			float dif = fjNode.delta.teta - fjNode.maxTeta;
 			if (dif > 5.0 * fjNode.maxTeta) {
@@ -70,11 +72,11 @@ template <typename Cell> struct ContactSurface {
 
 		// flex torque and force
 		float_t d = centersDist;
-		float_t torque =
-		    200.0 * adhArea * adhCoef * adhStrength * fjNode.delta.teta +
-		    damping * 100.0 * (fjNode.delta.teta - fjNode.prevDelta.teta);  // -kx - cv
-		Vec vFlex = fjNode.delta.n * torque;                                // torque
-		Vec ortho = normal.ortho(fjNode.delta.n).normalized();              // force direction
+		// float_t angSpeed = (fjNode.delta.teta - fjNode.prevDelta.teta) +
+		//(otherJoint.delta.teta - otherJoint.prevDelta.teta);
+		float_t torque = 100.0 * adhArea * adhCoef * adhStrength * fjNode.delta.teta;
+		Vec vFlex = fjNode.delta.n * torque;                    // torque
+		Vec ortho = normal.ortho(fjNode.delta.n).normalized();  // force direction
 		Vec force = sign * ortho * torque / d;
 
 		node->receiveForce(-force);
@@ -118,9 +120,9 @@ template <typename Cell> struct ContactSurface {
 	float_t area, adhArea = 0;
 	float_t centersDist, prevCentersDist = 0;
 	float_t staticFrictionCoef = 7.0, dynamicFrictionCoef = 5.0;
-	float_t adhCoef = 1;
-	const float_t adhStrength = 0.01;  // base strength
-	float_t bondMaxL = 1.5;    // max length a surface bond can reach before breaking
+	float_t adhCoef = 0, prevAdhCoef = 0;
+	const float_t adhStrength = 0.1;  // base strength
+	float_t bondMaxL = 1.5;           // max length a surface bond can reach before breaking
 	float_t distToMaxL = 1.0;  // at wich distance from contact do the bonds reach their
 	                           // maxL (related to the average curvature of
 	                           // the membrane around contact surface)
@@ -131,69 +133,6 @@ template <typename Cell> struct ContactSurface {
 
 	double projCentersDist = 0.0;
 	double prevProjCentersDist = 0.0;
-
-	/*void updateICB(float_t dt) {*/
-	//// we update the orientation of our contact surface in the cells basis
-	// DBG << YELLOW << "<--- Updating ICB ---> " << endl;
-	// auto &i0 = icb.first;
-	// i0.currentBasis = cells.first->getOrientation().rotated(
-	// i0.r.rotated(cells.first->getOrientationRotation()));
-	// auto &i1 = icb.second;
-	// i1.currentBasis = cells.second->getOrientation().rotated(
-	// i1.r.rotated(cells.second->getOrientationRotation()));
-	//// now we can compute the distance between the two centers
-	//// projected onto the current plane
-
-	// float_t nr0 = normal.dot(i0.currentBasis.X);
-	// float_t nr1 = -normal.dot(i1.currentBasis.X);
-	// if (nr0 > 0 && nr1 > 0) {
-	// auto p0 = cells.first->getPosition();
-	// auto o0 = p0 + normal * midpoint.first;
-	// auto proj0 = p0 + (normal.dot(o0 - p0) / nr0) * i0.currentBasis.X;
-	// auto p1 = cells.second->getPosition();
-	// auto o1 = p1 - normal * midpoint.second;
-	// auto proj1 = p1 + (-normal.dot(o1 - p1) / nr1) * i1.currentBasis.X;
-	// auto c0c1 = proj1 - proj0;
-	// prevProjCentersDist = projCentersDist;
-	// projCentersDist = c0c1.length();
-	// auto c0c1dir = (c0c1 / projCentersDist);
-	// Vec retForce;
-	// auto speed = max(0.0, (prevProjCentersDist - projCentersDist) / dt);
-	// const auto damp =
-	// dampingFromRatio(damping, cells.first->getMass() + cells.second->getMass(),
-	// adhArea * adhCoef * adhStrength);
-	// if (projCentersDist > bondMaxL) {
-	// retForce =
-	//(bondMaxL * adhCoef * adhStrength * adhArea - speed * damp) * 0.5 * c0c1dir;
-	//// there is going to be some springs breaking
-	// auto halfLengthDiff = 0.5 * (projCentersDist - bondMaxL);
-	// auto newProj0 = proj0 + c0c1dir * halfLengthDiff;
-	// auto newProj1 = proj1 - c0c1dir * halfLengthDiff;
-	//// now we update the basis with the new projections
-	// DBG << "reprojecting" << endl;
-	//// i0.r = i0.r + Vec::getRotation(i0.currentBasis.X, (newProj0 -
-	//// p0).normalized());
-	// auto npp0 = (newProj0 - p0).normalized();
-	// i0.r = cells.first->getOrientationRotation().inverted() +
-	// Vec::getRotation(Basis<Vec>(), Basis<Vec>(npp0, npp0.ortho()));
-	//// i1.r = i1.r + Vec::getRotation((newProj1 - p1).normalized(),
-	//// i1.currentBasis.X);
-	//// and we apply the force
-	//} else {
-	// retForce = (projCentersDist * adhCoef * adhStrength * adhArea - speed * damp) *
-	// 0.5 * c0c1dir;
-	//}
-
-	// DBG << "retForce = " << retForce << endl;
-	// cells.first->receiveTorque((proj0 - p0).cross(retForce));
-	// cells.first->receiveForce(retForce);
-	// cells.second->receiveTorque((proj1 - p1).cross(-retForce));
-	// cells.second->receiveForce(-retForce);
-	//} else {
-	// i0.r = i0.r + Vec::getRotation(i0.currentBasis.X, normal);
-	// i1.r = i1.r + Vec::getRotation(i1.currentBasis.X, -normal);
-	//}
-	/*}*/
 
 	bool nanIsInTheAir() {
 		return isnan_v(cells.first->getPosition()) || isnan_v(cells.first->getForce()) ||
@@ -213,7 +152,19 @@ template <typename Cell> struct ContactSurface {
 		sqradius = pow(cells.first->getMembrane().getDynamicRadius(), 2) -
 		           midpoint.first * midpoint.first;
 		area = sqradius * M_PI;
+		updateAdhCoef();
+		prevAdhCoef = adhCoef;
 		initJoints();
+	}
+	void updateAdhCoef() {
+		prevAdhCoef = adhCoef;
+		adhCoef =
+		    min(cells.first->getAdhesionWith(
+		            cells.second,
+		            normal.rotated(cells.first->getOrientationRotation().inverted())),
+		        cells.second->getAdhesionWith(
+		            cells.first,
+		            (-normal).rotated(cells.second->getOrientationRotation().inverted())));
 	}
 
 	std::string toString() {
@@ -334,9 +285,14 @@ template <typename Cell> struct ContactSurface {
 		cells.second->receiveForce(normalForce, normal, true);
 		speed = max(0.0, speed);
 
-		updateJointsDirection();
-		updateJoints<0>(dt);
-		updateJoints<1>(dt);
+		if (adhesionEnabled && adhCoef > 0) {
+			if (prevAdhCoef == 0)
+				initJoints();
+			else
+				updateJointsDirection();
+			updateJoints<0>(dt);
+			updateJoints<1>(dt);
+		}
 
 #if TRACE > 2
 		DBG << CYAN << "|--------------------------------| " << endl;
@@ -346,7 +302,7 @@ template <typename Cell> struct ContactSurface {
 		DBG << "Pressure force = " << normalForce << endl;
 #endif
 		// adhesion : normal to contact
-		if (adhesionEnabled) {
+		if (adhesionEnabled && adhCoef > 0) {
 #if TRACE > 2
 			DBG << YELLOW << "<--- Adhesion Forces ---> " << endl;
 #endif
@@ -357,7 +313,7 @@ template <typename Cell> struct ContactSurface {
 				// we removed part of the surface
 				float_t radius = sqrt(sqradius);
 				float_t deltaRadius = adhRadius - radius;
-				float_t truncatedConeVol = 0;  // volume of the part where the bonds broke
+				float_t truncatedConeVol = 0;  // volume of the part where the bonds are still ok
 				float_t maxCylinderVol = 0;    // volume of the part where the bonds broke
 #if TRACE > 2
 				DBG << " deltaRadius = " << deltaRadius << endl;
@@ -414,6 +370,7 @@ template <typename Cell> struct ContactSurface {
 		                         cells.second->getMembrane().getDynamicRadius(),
 		                     2);
 		if (sqL > sqMaxD) {
+			// cells aren't connected anymore
 			area = 0;
 		} else {
 			prevCentersDist = centersDist;
@@ -424,6 +381,7 @@ template <typename Cell> struct ContactSurface {
 			sqradius = pow(cells.first->getMembrane().getDynamicRadius(), 2) -
 			           midpoint.first * midpoint.first;
 			area = sqradius * M_PI;
+			updateAdhCoef();
 		}
 	}
 };

@@ -30,9 +30,10 @@ template <typename Cell> class SphereMembrane {
 	// strength proportional to the contact surface.
 
 	template <typename C> struct SFINAE {
-		static constexpr bool hasPreciseAdhesion = has_getAdhesionWith_signatures<
-		    C, double(C *, double, double), float(C *, float, float),
-		    double(const C *, double, double), float(const C *, float, float)>::value;
+		static constexpr bool hasPreciseAdhesion =
+		    has_getAdhesionWith_signatures<C, double(C *, Vec), float(C *, const Vec &),
+		                                   double(const C *, Vec),
+		                                   float(const C *, const Vec &)>::value;
 		static constexpr bool hasAdhesion =
 		    has_getAdhesionWith_signatures<C, double(C *), float(C *), double(const C *),
 		                                   float(const C *)>::value;
@@ -42,11 +43,8 @@ template <typename Cell> class SphereMembrane {
 		template <typename T = float_t>
 		static inline typename enable_if<hasPreciseAdhesion, T>::type getAdhesion(
 		    const Cell *a, const Cell *b, const Vec &ABnorm) {
-			const auto B = a->getOrientation();
-			bool zNeg = ABnorm.dot(B.X.cross(B.Y)) < 0;
-			double phi = acos(ABnorm.dot(B.Y));
-			double teta = zNeg ? acos(ABnorm.dot(B.X)) : M_PI * 2.0 - acos(ABnorm.dot(B.X));
-			return a->getAdhesionWith(b, teta, phi);
+			return a->getAdhesionWith(b,
+			                          ABnorm.rotated(a->getOrientationRotation().inverted()));
 		}
 		// not precise: takes a pointer to the other cell
 		template <typename T = float_t, typename... Whatever>

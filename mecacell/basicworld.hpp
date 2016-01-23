@@ -57,7 +57,6 @@ class BasicWorld {
 	CellCellConnectionContainer cellCellConnections;
 	CellModelConnectionContainer cellModelConnections;
 
-
 	// all the cells are in this container
 	vector<Cell *> cells;
 	// all models are stored in this map, using their name as the key
@@ -69,6 +68,7 @@ class BasicWorld {
 	Vec getG() const { return g; }
 	void setG(const Vec &v) { g = v; }
 	void setDt(float_t d) { dt = d; }
+	double getDt() const { return dt; }
 	const decltype(cellSpacePartition) &getCellGrid() { return cellSpacePartition; }
 	const decltype(cellSpacePartition) *getCellGridPtr() { return &cellSpacePartition; }
 	const decltype(modelSpacePartition) &getModelGrid() { return modelSpacePartition; }
