@@ -298,8 +298,6 @@ template <typename Cell> class VolumeMembrane {
 			con.update(dt);
 			if (con.area <= 0) {
 				toDisconnect.push_back(&con);
-			} else {
-				con.update(dt);
 			}
 		}
 		for (auto &c : toDisconnect) {
