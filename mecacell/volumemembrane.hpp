@@ -217,6 +217,7 @@ template <typename Cell> class VolumeMembrane {
 		auto Fa = membraneStiffness * dA;
 		pressure = (Fv - Fa) / currentArea;
 		dynamicRadius += membraneReactivity * dt * dt * (cbrt(Fv) + cbrt(Fa));
+		if (restRadius > dynamicRadius) dynamicRadius = restRadius;
 		if (isnan(pressure)) {
 			DBG << "pressure nan, currentArea = " << currentArea << ", Fv = " << Fv
 			    << ", Fa = " << Fa << ", dynRad = " << dynamicRadius << endl;

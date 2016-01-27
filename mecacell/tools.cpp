@@ -5,7 +5,9 @@
 
 namespace MecaCell {
 
-bool isnan_v(const Vector3D &v) { return std::isnan(v.x()) || std::isnan(v.y()) || std::isnan(v.z()); }
+bool isnan_v(const Vector3D &v) {
+	return std::isnan(v.x()) || std::isnan(v.y()) || std::isnan(v.z());
+}
 vector<Vec> getSpherePointsPacking(unsigned int n) {
 	// we simulate n mutually repulsive points on a sphere
 	vector<Vec> p;
