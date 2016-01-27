@@ -71,8 +71,8 @@ template <typename Cell> class VolumeMembrane {
 	CCCM cccm;
 
 	// params
-	float_t incompressibility = 0.04;
-	float_t membraneStiffness = 0.17;
+	float_t incompressibility = 0.004;
+	float_t membraneStiffness = 0.017;
 	float_t membraneReactivity = 20.0;
 
 	// internal stuff
@@ -294,31 +294,11 @@ template <typename Cell> class VolumeMembrane {
 		vector<CellCellConnectionType *> toDisconnect;
 		for (auto &cc : concon) {
 			auto &con = CCCM::getConnection(cc);
-			if (con.nanIsInTheAir()) {
-				DBG << " before update " << endl;
-				DBG << con.toString() << endl;
-				throw(0);
-			}
-			con.update();
-			if (con.nanIsInTheAir()) {
-				DBG << " after update " << endl;
-				DBG << con.toString() << endl;
-				throw(0);
-			}
+			con.update(dt);
 			if (con.area <= 0) {
 				toDisconnect.push_back(&con);
 			} else {
-				if (con.nanIsInTheAir()) {
-					DBG << " before pressure update " << endl;
-					DBG << con.toString() << endl;
-					throw(0);
-				}
-				con.applyPressureAndAdhesionForces(dt);
-				if (con.nanIsInTheAir()) {
-					DBG << " after pressure update " << endl;
-					DBG << con.toString() << endl;
-					throw(0);
-				}
+				con.update(dt);
 			}
 		}
 		for (auto &c : toDisconnect) {
@@ -327,17 +307,7 @@ template <typename Cell> class VolumeMembrane {
 		// now that all forces have been computed, we can add friction
 		for (auto &cc : concon) {
 			auto &con = CCCM::getConnection(cc);
-			if (con.nanIsInTheAir()) {
-				DBG << " before friction update " << endl;
-				DBG << con.toString() << endl;
-				throw(0);
-			}
-			CCCM::getConnection(cc).applyFriction();
-			if (con.nanIsInTheAir()) {
-				DBG << " after friction update " << endl;
-				DBG << con.toString() << endl;
-				throw(0);
-			}
+			// CCCM::getConnection(cc).applyFriction();
 		}
 	}
 

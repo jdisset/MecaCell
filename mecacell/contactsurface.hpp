@@ -7,382 +7,103 @@
 #define TRACE 0
 
 namespace MecaCell {
-using std::isnan;
-#undef DBG
-#define DBG DEBUG(contactSurface)
 template <typename Cell> struct ContactSurface {
-	struct SimpleJoint {
-		float_t maxTeta = M_PI / 30.0;  // maximum angle
-		Rotation<Vec> r;                // rotation from node to joint
-		Rotation<Vec> delta;            // current rotation
-		Rotation<Vec> prevDelta;
-		float_t elongation = 0.0, prevElongation = 0.0;
-		Vec direction;  // current direction
-		Vec target;     // targeted direction
-		// current direction is computed using a reference Vector v rotated with rotation rot
-		void updateDirection(const Vec &v, const Rotation<Vec> &rot) {
-			direction = v.rotated(r.rotated(rot));
-		}
-		void updateDelta() { delta = Vec::getRotation(direction, target); }
-	};
-
-	void initJoints() {
-		Vec ortho = normal.ortho();
-		// rotations for joints (cell base to connection) =
-		// cellBasis -> worldBasis + worldBasis -> connectionBasis
-		joints.first.r = cells.first->getOrientationRotation().inverted() +
-		                 Vec::getRotation(Basis<Vec>(), Basis<Vec>(normal, ortho));
-		joints.second.r = cells.second->getOrientationRotation().inverted() +
-		                  Vec::getRotation(Basis<Vec>(), Basis<Vec>(-normal, ortho));
-	}
-
-	void updateJointsDirection() {
-		// joint's current direction
-		joints.first.updateDirection(cells.first->getOrientation().X,
-		                             cells.first->getOrientationRotation());
-		joints.second.updateDirection(cells.second->getOrientation().X,
-		                              cells.second->getOrientationRotation());
-	}
-
-	template <int n> void updateJoints(float_t) {
-		constexpr int otherN = n == 0 ? 1 : 0;
-		SimpleJoint &fjNode = std::get<n>(joints);
-		SimpleJoint &otherJoint = std::get<otherN>(joints);
-		const auto &node = cells.template get<n>();
-		const auto &other = cells.template get<otherN>();
-		const float_t sign = n == 0 ? 1 : -1;
-		const float_t midp = std::get<n>(midpoint);
-		const float_t othermidp = std::get<otherN>(midpoint);
-
-		fjNode.target = normal * sign;
-		fjNode.updateDelta();
-		fjNode.maxTeta = midp > 0 ? 2.0 * atan(bondMaxL / midp) : 0.0;
-		if (fjNode.delta.teta > fjNode.maxTeta) {  // if we passed flex break angle
-			float dif = fjNode.delta.teta - fjNode.maxTeta;
-			if (dif > 5.0 * fjNode.maxTeta) {
-				initJoints();
-			} else {
-				fjNode.r = fjNode.r + Rotation<Vec>(fjNode.delta.n, dif);
-				fjNode.direction = fjNode.direction.rotated(Rotation<Vec>(fjNode.delta.n, dif));
-				fjNode.r = node->getOrientationRotation().inverted() +
-				           Vec::getRotation(Basis<Vec>(), Basis<Vec>(fjNode.direction,
-				                                                     fjNode.direction.ortho()));
-			}
-		}
-
-		// flex torque and force
-		float_t d = centersDist;
-		// float_t angSpeed = (fjNode.delta.teta - fjNode.prevDelta.teta) +
-		//(otherJoint.delta.teta - otherJoint.prevDelta.teta);
-		float_t torque = 100.0 * adhArea * adhCoef * adhStrength * fjNode.delta.teta;
-		Vec vFlex = fjNode.delta.n * torque;                    // torque
-		Vec ortho = normal.ortho(fjNode.delta.n).normalized();  // force direction
-		Vec force = sign * ortho * torque / d;
-
-		node->receiveForce(-force);
-		other->receiveForce(force);
-
-		node->receiveTorque(vFlex);
-		fjNode.prevDelta = fjNode.delta;
-		// Vec ortho = sign * normal.ortho(fjNode.delta.n).normalized();  // force direction
-		//// force's point of application is at the center of the current surface
-		//// (normal*midpoint)
-		// fjNode.prevElongation = fjNode.elongation;
-		// fjNode.elongation = tan(fjNode.delta.teta) * midp;
-		// if (fjNode.elongation > bondMaxL) {
-		// DBG << RED << "elongation = " << fjNode.elongation << endl;
-		// DBG << " max Teta = " << fjNode.maxTeta << ", max L= " << bondMaxL << endl;
-		// DBG << " delta teta = " << fjNode.delta.teta << endl;
-		//}
-		//// auto speed = max(0.0, (fjNode.elongation - fjNode.prevElongation) / dt);
-		// auto speed = 0;  // tan((fjNode.delta.teta - fjNode.prevDelta.teta) / dt) * midp;
-		// const auto rollDamping =
-		// dampingFromRatio(damping, cells.first->getMass() + cells.second->getMass(),
-		// adhArea * adhStrength * adhCoef);
-		// auto halfForce = 0.5 * (fjNode.elongation * adhArea * adhCoef * adhStrength * ortho
-		// -
-		// speed * rollDamping);
-		// node->receiveTorque((midp * normal * sign).cross(-halfForce));
-		// node->receiveForce(-halfForce);
-		//// other->receiveTorque((othermidp * normal * sign).cross(halfForce));
-		//// other->receiveForce(halfForce);
-		// fjNode.prevDelta = fjNode.delta;
-	}
-
 	ordered_pair<Cell *> cells;
-	Vec normal;
-	std::pair<float_t, float_t> midpoint;
-	std::pair<SimpleJoint, SimpleJoint> joints;
-	bool adhesionEnabled = true;
-	bool frictionEnabled = false;
-	float_t damping = 0.3;
-	float_t sqradius, adhRadius = 0;
-	float_t area, adhArea = 0;
-	float_t centersDist, prevCentersDist = 0;
+
+	/***********************************************************
+	 *                SETTABLE PARAMETERS
+	 **********************************************************/
 	float_t staticFrictionCoef = 7.0, dynamicFrictionCoef = 5.0;
-	float_t adhCoef = 0, prevAdhCoef = 0;
-	const float_t adhStrength = 0.1;  // base strength
-	float_t bondMaxL = 1.5;           // max length a surface bond can reach before breaking
+	bool pressureEnabled = true;
+	bool adhesionEnabled = false;
+	bool frictionEnabled = false;
+	float_t pressureDamping = 0.1;
+	float_t adhCoef = 0;       // adhesion Coef
+	float_t bondMaxL = 1.5;    // max length a surface bond can reach before breaking
 	float_t distToMaxL = 1.0;  // at wich distance from contact do the bonds reach their
 	                           // maxL (related to the average curvature of
-	                           // the membrane around contact surface)
-	float_t normalForce = 0.0;
-	const float_t restEpsilon =
+	                           // the membrane around contact surface
+
+	/*********************************************************
+	 * 				     	INTERNALS
+	 ********************************************************/
+	Vec normal;  // normal of the actual contact surface (from cell 0 to cell 1)
+	std::pair<float_t, float_t> midpoint;      // distance to center (viewed from each cell)
+	float_t sqradius = 0;                      // squared radius of the contact disk
+	float_t area = 0;                          // area of the contact disk
+	float_t centersDist, prevCentersDist = 0;  // distances of the two cells centers
+	bool atRest = false;  // are the cells at rest, relatively to each other ?
+	static constexpr float_t restEpsilon =
 	    1e-10;  // minimal speed to consider the connected Cells not to be at rest
-	bool atRest = false;
+	static constexpr float_t DIST_EPSILON = 1e-20;
 
-	double projCentersDist = 0.0;
-	double prevProjCentersDist = 0.0;
-
-	bool nanIsInTheAir() {
-		return isnan_v(cells.first->getPosition()) || isnan_v(cells.first->getForce()) ||
-		       isnan_v(cells.first->getTorque()) || isnan_v(cells.second->getPosition()) ||
-		       isnan_v(cells.second->getForce()) || isnan_v(cells.second->getTorque()) ||
-		       isnan(sqradius) || isnan(adhRadius) || isnan(area) || isnan(adhArea) ||
-		       isnan(centersDist) || isnan(prevCentersDist) || isnan(normalForce) ||
-		       isnan(midpoint.first) || isnan(midpoint.second) || isnan_v(normal);
-	}
-
+	/*********************************************************
+	 * 				        CONSTRUCTORS
+	 ********************************************************/
 	ContactSurface(){};
-	ContactSurface(ordered_pair<Cell *> c) : cells(c) {
-		Vec AB = cells.second->getPosition() - cells.first->getPosition();
-		centersDist = AB.length();
-		normal = centersDist >= 0 ? AB / centersDist : Vec(1, 0, 0);
-		midpoint = make_pair(centersDist * 0.5, centersDist * 0.5);
-		sqradius = pow(cells.first->getMembrane().getDynamicRadius(), 2) -
+	ContactSurface(ordered_pair<Cell *> c) : cells(c) { updateInternals(); }
+
+	/*********************************************************
+	 * 				        MAIN UPDATE
+	 ********************************************************/
+	void update(float_t dt) {
+		// first we update all the internals
+		updateInternals();
+		// then we apply all the forces
+		if (pressureEnabled) applyPressureForces(dt);
+	};
+
+	/*********************************************************
+	 * 				        INTERNALS UPDATES
+	 ********************************************************/
+	void updateInternals() {
+		normal = cells.second->getPosition() - cells.first->getPosition();
+		prevCentersDist = centersDist;
+		centersDist = normal.length();
+		if (centersDist > DIST_EPSILON) normal /= centersDist;
+		midpoint = computeMidpoints();
+		sqradius = std::pow(cells.first->getMembrane().getDynamicRadius(), 2) -
 		           midpoint.first * midpoint.first;
-		area = sqradius * M_PI;
-		updateAdhCoef();
-		prevAdhCoef = adhCoef;
-		initJoints();
-	}
-	void updateAdhCoef() {
-		prevAdhCoef = adhCoef;
-		adhCoef =
-		    min(cells.first->getAdhesionWith(
-		            cells.second,
-		            normal.rotated(cells.first->getOrientationRotation().inverted())),
-		        cells.second->getAdhesionWith(
-		            cells.first,
-		            (-normal).rotated(cells.second->getOrientationRotation().inverted())));
+		area = M_PI * sqradius;
 	}
 
-	std::string toString() {
-		std::stringstream ss;
-		ss << "Contact Surface : " << endl;
-		ss << cells.first->toString() << endl;
-		ss << cells.second->toString() << endl;
-		ss << " normal = " << normal << endl;
-		ss << " area = " << area << ", adhArea = " << adhArea << endl;
-		ss << " sqradius = " << sqradius << endl;
-		ss << " normalForce = " << normalForce << endl;
-		ss << " midpoint = [" << midpoint.first << " ; " << midpoint.second << "]" << endl;
-		ss << " atRest = " << atRest << endl;
-		return ss.str();
+	std::pair<float_t, float_t> computeMidpoints() {
+		// return the current contact disk's center distance to each cells centers
+		if (centersDist <= DIST_EPSILON) return {0, 0};
+
+		auto biggestCell = cells.first->getMembrane().getDynamicRadius() >=
+		                           cells.second->getMembrane().getDynamicRadius() ?
+		                       cells.first :
+		                       cells.second;
+		auto smallestCell = biggestCell == cells.first ? cells.second : cells.first;
+		float_t biggestCellMidpoint =
+		    0.5 * (centersDist +
+		           (std::pow(biggestCell->getMembrane().getDynamicRadius(), 2) -
+		            std::pow(smallestCell->getMembrane().getDynamicRadius(), 2)) /
+		               centersDist);
+		float_t smallestCellMidpoint = centersDist - biggestCellMidpoint;
+		if (biggestCell == cells.first)
+			return {biggestCellMidpoint, smallestCellMidpoint};
+		else
+			return {smallestCellMidpoint, biggestCellMidpoint};
 	}
 
-	void applyFriction() {
-		if (frictionEnabled) {
-			if (nanIsInTheAir()) {
-				DBG << " ---------------------------------" << endl;
-				DBG << "beginning : " << endl;
-				DBG << toString() << endl;
-				throw(0);
-			}
-			if (atRest) {  // static friction
-				float_t staticF = staticFrictionCoef * normalForce * 2.0;
-				Vec torqueCrossed0 = cells.first->getTorque().cross(midpoint.first * normal);
-				Vec forceFromTorqueAtCenter0 = torqueCrossed0.sqlength() != 0.0 ?
-				                                   torqueCrossed0.normalized() *
-				                                       cells.first->getTorque().length() /
-				                                       abs(midpoint.first) :
-				                                   Vec::zero();
-				Vec tangentialForceFromTorqueAtCenter0 =
-				    forceFromTorqueAtCenter0 - forceFromTorqueAtCenter0.dot(normal) * normal;
-				Vec torqueCrossed1 = cells.second->getTorque().cross(-midpoint.first * normal);
-				Vec forceFromTorqueAtCenter1 = torqueCrossed1.sqlength() != 0.0 ?
-				                                   torqueCrossed1.normalized() *
-				                                       cells.second->getTorque().length() /
-				                                       abs(midpoint.second) :
-				                                   Vec::zero();
-				Vec tangentialForceFromTorqueAtCenter1 =
-				    forceFromTorqueAtCenter1 - forceFromTorqueAtCenter1.dot(normal) * normal;
-				Vec tangentialForce =
-				    (cells.first->getForce() - cells.first->getForce().dot(normal) * normal +
-				     tangentialForceFromTorqueAtCenter0) -
-				    (cells.second->getForce() - cells.second->getForce().dot(normal) * normal +
-				     tangentialForceFromTorqueAtCenter1);
-				if (tangentialForce.sqlength() > staticF * staticF) {
-					atRest = false;
-				} else {
-					// this force is applied at the center of the contact surface.
-					auto halfTF = tangentialForce * 0.5;
-					cells.first->receiveTorque((midpoint.first * normal).cross(halfTF));
-					cells.first->receiveForce(-halfTF);
-					cells.second->receiveTorque((-midpoint.second * normal).cross(-halfTF));
-					cells.second->receiveForce(halfTF);
-					if (nanIsInTheAir()) {
-						DBG << "staticF = " << staticF << endl;
-						DBG << " cells.first->getTorque = " << cells.first->getTorque() << endl;
-						DBG << "forceFromTorqueAtCenter0 = " << forceFromTorqueAtCenter0 << endl;
-						DBG << "tangentialForceFromTorqueAtCenter0 = "
-						    << tangentialForceFromTorqueAtCenter0 << endl;
-						DBG << "forceFromTorqueAtCenter1 = " << forceFromTorqueAtCenter1 << endl;
-						DBG << "tangentialForceFromTorqueAtCenter1 = "
-						    << tangentialForceFromTorqueAtCenter1 << endl;
-						DBG << "tangentialForce = " << tangentialForce << endl;
-					}
-				}
-			}
-			if (!atRest) {  // dynamic friction
-				Vec tangentialVelocity01 =
-				    (cells.first->getVelocity() -
-				     cells.first->getVelocity().dot(normal) * normal +
-				     cells.first->getAngularVelocity().cross(
-				         cells.first->getMembrane().getDeducedRadius() * normal)) -
-				    (cells.second->getVelocity() -
-				     cells.second->getVelocity().dot(normal) * normal +
-				     cells.second->getAngularVelocity().cross(
-				         -cells.second->getMembrane().getDeducedRadius() * normal));
-				if (tangentialVelocity01.sqlength() < restEpsilon) {
-					atRest = true;
-				} else {
-					auto Fd0 =
-					    -dynamicFrictionCoef * normalForce * tangentialVelocity01.normalized();
-					auto Fd1 = -Fd0;
-					// this force is applied at the center of the contact surface.
-					cells.first->receiveTorque((midpoint.first * normal).cross(Fd0));
-					cells.first->receiveForce(Fd0);
-					cells.second->receiveTorque((-midpoint.second * normal).cross(Fd1));
-					cells.second->receiveForce(Fd1);
-					if (nanIsInTheAir()) {
-						DBG << "c0 velocity = " << cells.first->getVelocity()
-						    << ", c0 angular vel = " << cells.first->getAngularVelocity() << endl;
-						DBG << "c1 velocity = " << cells.second->getVelocity()
-						    << ", c1 angular vel = " << cells.second->getAngularVelocity() << endl;
-						DBG << "tangentialVelocity = " << tangentialVelocity01 << endl;
-						DBG << " c0 deduced radius = "
-						    << cells.first->getMembrane().getDeducedRadius()
-						    << ", c1 deduced radius = "
-						    << cells.second->getMembrane().getDeducedRadius() << endl;
-						DBG << "Fd0 = " << Fd0 << endl;
-						DBG << "tangentialVelocity01= " << tangentialVelocity01 << endl;
-						DBG << toString() << endl;
-					}
-				}
-			}
-		}
-	}
+	/*********************************************************
+	 * 				     FORCES COMPUTATIONS
+	 ********************************************************/
+	// All forces applying method assume the internal values have
+	// correctly been updated before
 
-	void applyPressureAndAdhesionForces(float_t dt) {
-		normalForce = 0.5 * (max(0.0, cells.first->getMembrane().pressure * area) +
-		                     max(0.0, cells.second->getMembrane().pressure * area));
-		auto speed = (prevCentersDist - centersDist) / dt;
-		const auto pressureDamping = dampingFromRatio(
-		    damping, cells.first->getMass() + cells.second->getMass(), normalForce * 0.5);
-		normalForce -= max(0.0, -speed) * pressureDamping;
-		cells.first->receiveForce(normalForce, -normal, true);
-		cells.second->receiveForce(normalForce, normal, true);
-		speed = max(0.0, speed);
-
-		if (adhesionEnabled && adhCoef > 0) {
-			if (prevAdhCoef == 0)
-				initJoints();
-			else
-				updateJointsDirection();
-			updateJoints<0>(dt);
-			updateJoints<1>(dt);
-		}
-
-#if TRACE > 2
-		DBG << CYAN << "|--------------------------------| " << endl;
-		DBG << CYAN << cells.first->id << "<-> " << cells.second->id
-		    << " (d = " << (cells.first->getPosition() - cells.second->getPosition()).length()
-		    << ")" << endl;
-		DBG << "Pressure force = " << normalForce << endl;
-#endif
-		// adhesion : normal to contact
-		if (adhesionEnabled && adhCoef > 0) {
-#if TRACE > 2
-			DBG << YELLOW << "<--- Adhesion Forces ---> " << endl;
-#endif
-			if (area < adhArea) {
-#if TRACE > 2
-				DBG << MAGENTA << " cells were teared appart !" << endl;
-#endif
-				// we removed part of the surface
-				float_t radius = sqrt(sqradius);
-				float_t deltaRadius = adhRadius - radius;
-				float_t truncatedConeVol = 0;  // volume of the part where the bonds are still ok
-				float_t maxCylinderVol = 0;    // volume of the part where the bonds broke
-#if TRACE > 2
-				DBG << " deltaRadius = " << deltaRadius << endl;
-#endif
-				auto prevAdhArea = adhArea;
-				if (deltaRadius > distToMaxL) {
-					float_t tcRadius = distToMaxL;
-					truncatedConeVol = (tcRadius * tcRadius + sqradius) * bondMaxL * M_PI / 3.0;
-					maxCylinderVol = bondMaxL * (adhArea - area);
-					// some bonds were broken :
-					auto prevAdhRadius = adhArea;
-					adhRadius = radius + distToMaxL;
-					adhArea = adhRadius * adhRadius * M_PI;
-#if TRACE > 2
-					DBG << RED << " deltaRadiux > distToMaxL (" << distToMaxL << ")" << endl;
-					DBG << " prevAdhRadius = " << prevAdhRadius << ", new = " << adhRadius << endl;
-#endif
-				} else {
-					truncatedConeVol = (adhRadius * adhRadius + sqradius) *
-					                   (bondMaxL * deltaRadius / distToMaxL) * M_PI / 3.0;
-#if TRACE > 2
-					DBG << GREEN << " deltaRadiux < distToMaxL (" << distToMaxL << ")" << endl;
-#endif
-				}
-				float_t totalVol = truncatedConeVol + maxCylinderVol;
-				float_t fAdh = 0.5 * adhCoef * adhStrength * totalVol;
-				fAdh -= speed * dampingFromRatio(damping,
-				                                 cells.first->getMass() + cells.second->getMass(),
-				                                 adhStrength * adhCoef * (prevAdhArea - area));
-				cells.first->receiveForce(fAdh, normal, false);
-				cells.second->receiveForce(fAdh, -normal, false);
-#if TRACE > 2
-				DBG << " truncatedConeVol = " << truncatedConeVol
-				    << " ; maxCylinderVol = " << maxCylinderVol << endl;
-				DBG << MAGENTA << " fAdh = " << fAdh << endl;
-#endif
-			} else {
-				// more adhesions !
-				auto prevAdhRadius = adhRadius;
-				adhRadius = sqrt(sqradius);
-				adhArea = area;
-#if TRACE > 2
-				DBG << BLUE << " more adhesions ! : " << RESET
-				    << " prevAdhRadius = " << prevAdhRadius << ", new = " << adhRadius << endl;
-#endif
-			}
-		}
-	}
-
-	void update() {
-		Vec AB = cells.second->getPosition() - cells.first->getPosition();
-		float_t sqL = AB.sqlength();
-		float_t sqMaxD = pow(cells.first->getMembrane().getDynamicRadius() +
-		                         cells.second->getMembrane().getDynamicRadius(),
-		                     2);
-		if (sqL > sqMaxD) {
-			// cells aren't connected anymore
-			area = 0;
-		} else {
-			prevCentersDist = centersDist;
-			centersDist = sqrt(sqL);
-			normal = centersDist != 0 ? AB / centersDist : Vec(1, 0, 0);
-			// TODO ; precise midpoint
-			midpoint = make_pair(centersDist * 0.5, centersDist * 0.5);
-			sqradius = pow(cells.first->getMembrane().getDynamicRadius(), 2) -
-			           midpoint.first * midpoint.first;
-			area = sqradius * M_PI;
-			updateAdhCoef();
-		}
+	// from internal pressure
+	void applyPressureForces(double dt) {
+		// force from pressure is normal to the actual contact surface
+		// and proportional to its surface
+		float_t f_speed = 0;  // pressureDamping * fabs(centersDist - prevCentersDist) / dt;
+		auto F = (0.5 * area * (cells.first->getPressure() + cells.second->getPressure()) -
+		          f_speed) *
+		         normal;
+		cells.first->receiveForce(-F);
+		cells.second->receiveForce(F);
 	}
 };
 }
