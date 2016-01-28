@@ -57,6 +57,7 @@ template <typename N0, typename N1 = N0> struct Connection {
 		                         ptr(connected.second)->getPosition());
 		sc.prevLength = sc.length;
 	}
+
 	void initFJ() {
 		Vec ortho = sc.direction.ortho();
 		// rotations for joints (cell base to connection) =
