@@ -14,7 +14,7 @@ template <typename R> class DeformableCellGroup : public PaintStep<R> {
 
  public:
 	cellMode drawMode = plain;
-	DeformableCellGroup() : PaintStep<R>("Cells"), sphere(150) {
+	DeformableCellGroup() : PaintStep<R>("Cells"), sphere(350) {
 		shader.addShaderFromSourceCode(QOpenGLShader::Vertex,
 		                               shaderWithHeader(":/shaders/cell.vert"));
 		shader.addShaderFromSourceCode(QOpenGLShader::Fragment,

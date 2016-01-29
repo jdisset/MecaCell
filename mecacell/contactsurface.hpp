@@ -21,8 +21,8 @@ template <typename Cell> struct ContactSurface {
 
 	/////////////// adhesion ///////////////
 	float_t adhCoef = 0.5;    // adhesion Coef [0;1]
-	float_t dampCoef = 0.9;   // damping [0;1]
-	float_t bondMaxL = 2.0;   // max length a surface bond can reach before breaking
+	float_t dampCoef = 0.01;  // damping [0;1]
+	float_t bondMaxL = 5.0;   // max length a surface bond can reach before breaking
 	float_t bondReach = 0.3;  // when are new connection created [0;bondMaxL[
 
 	/*********************************************************
@@ -44,7 +44,8 @@ template <typename Cell> struct ContactSurface {
 	    1e-10;  // minimal speed to consider the connected Cells not to be at rest
 
 	////////////// adhesion //////////////////
-	static constexpr float_t baseBondStrength = 0.001;
+	static constexpr float_t baseBondStrength = 0.002;
+	static constexpr float_t MIN_ADH_DIST = 3.0;
 	struct TargetSurface {
 		Basis<Vec> b;  // X is the normal of the surface, Y is the up vector
 		// b is expressed in the cell's basis, thus if we want to compute b in world basis :
@@ -137,10 +138,8 @@ template <typename Cell> struct ContactSurface {
 	void applyPressureForces(double dt) {
 		// force from pressure is normal to the actual contact surface
 		// and proportional to its surface
-		const auto dCoef = 1.0;
-		auto speed = max(0.0, (centersDist - prevCentersDist) / dt);
-		auto F = (0.5 * (area * (cells.first->getPressure() + cells.second->getPressure())) -
-		          speed * dCoef) *
+		auto F = 0.5 * (area * (max(0.0, cells.first->getPressure()) +
+		                        max(0.0, cells.second->getPressure()))) *
 		         normal;
 		cells.first->receiveForce(-F);
 		cells.second->receiveForce(F);
@@ -166,6 +165,8 @@ template <typename Cell> struct ContactSurface {
 		if (projDist.second > 0 && projDist.second < targets.second.d) {
 			targets.second.d = projDist.second;
 		}
+		if (targets.first.d < MIN_ADH_DIST) targets.first.d = MIN_ADH_DIST;
+		if (targets.second.d < MIN_ADH_DIST) targets.second.d = MIN_ADH_DIST;
 		// we can now compute the target centers;
 		std::pair<Vec, Vec> o = {
 		    cells.first->getPosition() + targets.first.d * targetsBw.first.X,
@@ -194,21 +195,29 @@ template <typename Cell> struct ContactSurface {
 				o.second -= halfD * o0o1;
 				auto newX = (o.first - cells.first->getPosition());
 				auto newD = newX.length();
+				if (newD > 0)
+					newX /= newD;
+				else
+					newX = Vec(1, 0, 0);
 				targets.first.b.X =
-				    (newX / newD).rotated(cells.first->getOrientationRotation().inverted());
+				    newX.rotated(cells.first->getOrientationRotation().inverted());
 				targets.first.d = newD;
 				newX = (o.second - cells.second->getPosition());
 				newD = newX.length();
+				if (newD > 0)
+					newX /= newD;
+				else
+					newX = Vec(1, 0, 0);
 				targets.second.b.X =
-				    (newX / newD).rotated(cells.second->getOrientationRotation().inverted());
+				    newX.rotated(cells.second->getOrientationRotation().inverted());
 				targets.second.d = newD;
 				linAdhElongation = bondMaxL;
 			}
-			float_t speed = (linAdhElongation - prevLinAdhElongation) / dt;
-			float_t c = 0.0;
-			Vec F = 0.5 *
-			        (adhArea * adhCoef * baseBondStrength * linAdhElongation - c * speed) *
-			        o0o1;
+			float_t speed = -(linAdhElongation - prevLinAdhElongation) / dt;
+			float_t k = adhArea * adhCoef * baseBondStrength * linAdhElongation;
+			float_t c =
+			    dampingFromRatio(dampCoef, cells.first->getMass() + cells.second->getMass(), k);
+			Vec F = 0.5 * (k - c * speed) * o0o1;
 			// cells.first receive F at o0 and in the direction o0o1
 			cells.first->receiveForce(F);
 			cells.first->receiveTorque((targetsBw.first.X * targets.first.d).cross(F));

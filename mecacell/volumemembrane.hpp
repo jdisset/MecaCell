@@ -71,15 +71,16 @@ template <typename Cell> class VolumeMembrane {
 	CCCM cccm;
 
 	// params
-	float_t incompressibility = 0.004;
-	float_t membraneStiffness = 0.017;
-	float_t membraneReactivity = 20.0;
+	float_t incompressibility = 0.003;
+	float_t membraneStiffness = 0.01;
+	float_t membraneReactivity = 50.0;
 
 	// internal stuff
 	float_t baseRadius = DEFAULT_CELL_RADIUS;
 	float_t restRadius = DEFAULT_CELL_RADIUS;
 	// dynamic target radius:
 	float_t dynamicRadius = DEFAULT_CELL_RADIUS;
+	static constexpr float_t MAX_DYN_RADIUS_RATIO = 2.0;
 	// this is the effective Radius, the one we deduce from the membrane area:
 	float_t deducedRadius = restRadius;
 	float_t currentArea = 4.0 * M_PI * restRadius * restRadius;
@@ -122,7 +123,10 @@ template <typename Cell> class VolumeMembrane {
 	inline float_t getCurrentArea() const { return currentArea; }
 
 	/************************ computed **************************/
-	void division() { setRadius(getBaseRadius()); }
+	void division() {
+		setRadius(getBaseRadius());
+		dynamicRadius = getBaseRadius();
+	}
 
 	pair<Cell *, float_t> getConnectedCellAndMembraneDistance(const Vec &d) const {
 		// /!\ assumes that d is normalized
@@ -161,7 +165,7 @@ template <typename Cell> class VolumeMembrane {
 		return roundN(FOUR_THIRD_PI * baseRadius * baseRadius * baseRadius);
 	}
 	inline float_t getRestMomentOfInertia() const {
-		return 4.0 * cell->mass * restRadius * restRadius;
+		return 0.4 * cell->mass * restRadius * restRadius;
 	}
 	inline float_t getMomentOfInertia() const { return getRestMomentOfInertia(); }
 	inline float_t getVolumeVariation() const { return restVolume - currentVolume; }
@@ -175,8 +179,10 @@ template <typename Cell> class VolumeMembrane {
 			volumeLoss += (M_PI * h / 6.0) * (3.0 * con.sqradius + h * h);
 		}
 		// TODO : soustraire les overlapps
-		currentVolume =
-		    FOUR_THIRD_PI * dynamicRadius * dynamicRadius * dynamicRadius - volumeLoss;
+		float_t baseVol = FOUR_THIRD_PI * dynamicRadius * dynamicRadius * dynamicRadius;
+		currentVolume = baseVol - volumeLoss;
+		const float_t minVol = 0.1 * getRestVolume();
+		if (currentVolume < minVol) currentVolume = minVol;
 	}
 
 	float_t getVolume() const { return restVolume; }
@@ -188,9 +194,12 @@ template <typename Cell> class VolumeMembrane {
 			auto &midpoint = cell == con.cells.first ? con.midpoint.first : con.midpoint.second;
 			surfaceLoss += 2.0 * M_PI * dynamicRadius * (dynamicRadius - midpoint) - con.area;
 		}
-		currentArea = 4.0 * M_PI * dynamicRadius * dynamicRadius - surfaceLoss;
+		float_t baseArea = 4.0 * M_PI * dynamicRadius * dynamicRadius;
+		currentArea = baseArea - surfaceLoss;
 		// TODO : soustraire les overlapps, avoir une meilleure précision
-		if (currentArea < 1.0) currentArea = 1.0;
+		const float_t minArea =
+		    0.1 * getRestArea();  // garde fou en attendant de soustraire les overlaps
+		if (currentArea < minArea) currentArea = minArea;
 		deducedRadius = sqrt(currentArea / 4.0 * M_PI);
 	}
 
@@ -212,20 +221,16 @@ template <typename Cell> class VolumeMembrane {
 		// Before updating positions and orientations we compute the cureent pressure
 		computeCurrentVolume();
 		float_t dA = getRestArea() - currentArea;
-		float_t dV = getRestVolume() - getCurrentVolume();
+		float_t dV = getRestVolume() - currentVolume;
 		auto Fv = incompressibility * dV;
 		auto Fa = membraneStiffness * dA;
 		pressure = (Fv - Fa) / currentArea;
 		dynamicRadius += membraneReactivity * dt * dt * (cbrt(Fv) + cbrt(Fa));
-		if (restRadius > dynamicRadius) dynamicRadius = restRadius;
-		if (isnan(pressure)) {
-			DBG << "pressure nan, currentArea = " << currentArea << ", Fv = " << Fv
-			    << ", Fa = " << Fa << ", dynRad = " << dynamicRadius << endl;
-		}
-		if (isnan_v(cell->getAngularVelocity())) {
-			DBG << RED << " cellAngularvelocity nan" << endl;
-		}
-		cell->receiveTorque(-cell->getAngularVelocity() * 0.5);
+		if (dynamicRadius > restRadius * MAX_DYN_RADIUS_RATIO)
+			dynamicRadius = restRadius * MAX_DYN_RADIUS_RATIO;
+		else if (dynamicRadius < restRadius)
+			dynamicRadius = restRadius;
+		cell->receiveTorque(-cell->getAngularVelocity() * 50.0);
 		Integrator::updatePosition(*cell, dt);
 		Integrator::updateOrientation(*cell, dt);
 		cell->markAsNotTested();

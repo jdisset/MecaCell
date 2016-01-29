@@ -14,10 +14,11 @@ template <typename R> class MenuScreenCapture : public ScreenManager<R> {
 	MenuScreenCapture(R* r, QString p = "./")
 	    : ScreenManager<R>("menuScreenCapture"), path(p) {}
 	int cap = 0;
+	int NBFRAMEPERSCREEN = 1;
 
 	void call(R* r) {
 		if (r->getCurrentFBO()) {
-			if (r->getFrame() % 10 == 0) {
+			if (r->getFrame() % NBFRAMEPERSCREEN == 0) {
 				r->getCurrentFBO()->toImage().save(path + QString("capture_") +
 				                                   QString::number(cap++) + ".png");
 			}
