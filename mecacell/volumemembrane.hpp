@@ -72,14 +72,14 @@ template <typename Cell> class VolumeMembrane {
 
 	// params
 	float_t incompressibility = 0.003;
-	float_t membraneStiffness = 0.01;
-	float_t membraneReactivity = 50.0;
+	float_t membraneStiffness = 3;
 
 	// internal stuff
 	float_t baseRadius = DEFAULT_CELL_RADIUS;
 	float_t restRadius = DEFAULT_CELL_RADIUS;
 	// dynamic target radius:
 	float_t dynamicRadius = DEFAULT_CELL_RADIUS;
+	float_t prevDynamicRadius = DEFAULT_CELL_RADIUS;
 	static constexpr float_t MAX_DYN_RADIUS_RATIO = 2.0;
 	// this is the effective Radius, the one we deduce from the membrane area:
 	float_t deducedRadius = restRadius;
@@ -94,7 +94,6 @@ template <typename Cell> class VolumeMembrane {
 	    : cell(c),
 	      incompressibility(sm.incompressibility),
 	      membraneStiffness(sm.membraneStiffness),
-	      membraneReactivity(sm.membraneReactivity),
 	      baseRadius(sm.baseRadius),
 	      restRadius(sm.restRadius),
 	      dynamicRadius(sm.dynamicRadius),
@@ -208,7 +207,6 @@ template <typename Cell> class VolumeMembrane {
 	***********************************************************/
 	void setIncompressibility(float_t i) { incompressibility = i; }
 	void setStiffness(float_t k) { membraneStiffness = k; }
-	void setReactivity(float_t r) { membraneReactivity = r; }
 	void setRadius(float_t r) { restRadius = r; }
 	void setBaseRadius(float_t r) { baseRadius = r; }
 	void setRadiusRatio(float_t r) { restRadius = r * baseRadius; }
@@ -220,12 +218,14 @@ template <typename Cell> class VolumeMembrane {
 	template <typename Integrator> void updatePositionsAndOrientations(double dt) {
 		// Before updating positions and orientations we compute the cureent pressure
 		computeCurrentVolume();
-		float_t dA = getRestArea() - currentArea;
+		float_t dA = currentArea - getRestArea();
 		float_t dV = getRestVolume() - currentVolume;
 		auto Fv = incompressibility * dV;
 		auto Fa = membraneStiffness * dA;
-		pressure = (Fv - Fa) / currentArea;
-		dynamicRadius += membraneReactivity * dt * dt * (cbrt(Fv) + cbrt(Fa));
+		pressure = Fv / currentArea;
+		float dynSpeed = (dynamicRadius - prevDynamicRadius) / dt;
+		float_t c = 5.0;
+		dynamicRadius += dt * dt * (Fv - Fa - dynSpeed * c);
 		if (dynamicRadius > restRadius * MAX_DYN_RADIUS_RATIO)
 			dynamicRadius = restRadius * MAX_DYN_RADIUS_RATIO;
 		else if (dynamicRadius < restRadius)
@@ -280,7 +280,7 @@ template <typename Cell> class VolumeMembrane {
 								Vec dir = AB / dist;
 								auto d0 = op.first->getConstMembrane().getPreciseMembraneDistance(dir);
 								auto d1 = op.second->getConstMembrane().getPreciseMembraneDistance(-dir);
-								if (dist < 0.999999 * (d0 + d1)) {
+								if (dist < 0.99999999 * (d0 + d1)) {
 									newConnections.insert(op);
 								}
 							}

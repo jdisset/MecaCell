@@ -23,7 +23,8 @@ template <typename Cell> struct ContactSurface {
 	float_t adhCoef = 0.5;    // adhesion Coef [0;1]
 	float_t dampCoef = 0.01;  // damping [0;1]
 	float_t bondMaxL = 5.0;   // max length a surface bond can reach before breaking
-	float_t bondReach = 0.3;  // when are new connection created [0;bondMaxL[
+	float_t bondReach = 1.0;  // when are new connection created [0;bondMaxL[
+	float_t currentDamping = 0.0;
 
 	/*********************************************************
 	 * 				     	INTERNALS
@@ -44,8 +45,8 @@ template <typename Cell> struct ContactSurface {
 	    1e-10;  // minimal speed to consider the connected Cells not to be at rest
 
 	////////////// adhesion //////////////////
-	static constexpr float_t baseBondStrength = 0.002;
-	static constexpr float_t MIN_ADH_DIST = 3.0;
+	static constexpr float_t baseBondStrength = 0.005;
+	static constexpr float_t MIN_ADH_DIST = 8.0;
 	struct TargetSurface {
 		Basis<Vec> b;  // X is the normal of the surface, Y is the up vector
 		// b is expressed in the cell's basis, thus if we want to compute b in world basis :
@@ -138,6 +139,7 @@ template <typename Cell> struct ContactSurface {
 	void applyPressureForces(double dt) {
 		// force from pressure is normal to the actual contact surface
 		// and proportional to its surface
+		float_t adhSpeed = (centersDist - prevCentersDist) / dt;
 		auto F = 0.5 * (area * (max(0.0, cells.first->getPressure()) +
 		                        max(0.0, cells.second->getPressure()))) *
 		         normal;
@@ -158,12 +160,13 @@ template <typename Cell> struct ContactSurface {
 		    Vec::rayCast(midpointPos, normal, cells.first->getPosition(), targetsBw.first.X),
 		    Vec::rayCast(midpointPos, normal, cells.second->getPosition(),
 		                 targetsBw.second.X)};
-		if (projDist.first > 0 && projDist.first < targets.first.d) {
+		if (projDist.first > MIN_ADH_DIST && projDist.first - bondReach < targets.first.d) {
 			// we got closer! we need to update our target midpoints
-			targets.first.d = projDist.first;
+			targets.first.d = projDist.first - bondReach;
 		}
-		if (projDist.second > 0 && projDist.second < targets.second.d) {
-			targets.second.d = projDist.second;
+		if (projDist.second > MIN_ADH_DIST &&
+		    projDist.second - bondReach < targets.second.d) {
+			targets.second.d = projDist.second - bondReach;
 		}
 		if (targets.first.d < MIN_ADH_DIST) targets.first.d = MIN_ADH_DIST;
 		if (targets.second.d < MIN_ADH_DIST) targets.second.d = MIN_ADH_DIST;
@@ -213,11 +216,12 @@ template <typename Cell> struct ContactSurface {
 				targets.second.d = newD;
 				linAdhElongation = bondMaxL;
 			}
-			float_t speed = -(linAdhElongation - prevLinAdhElongation) / dt;
-			float_t k = adhArea * adhCoef * baseBondStrength * linAdhElongation;
-			float_t c =
+			float_t springSpeed = (linAdhElongation - prevLinAdhElongation) / dt;
+			float_t k = adhArea * adhCoef * baseBondStrength;
+			currentDamping =
 			    dampingFromRatio(dampCoef, cells.first->getMass() + cells.second->getMass(), k);
-			Vec F = 0.5 * (k - c * speed) * o0o1;
+
+			Vec F = 0.5 * (k * linAdhElongation + currentDamping * springSpeed) * o0o1;
 			// cells.first receive F at o0 and in the direction o0o1
 			cells.first->receiveForce(F);
 			cells.first->receiveTorque((targetsBw.first.X * targets.first.d).cross(F));
