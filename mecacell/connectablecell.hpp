@@ -21,7 +21,6 @@ namespace MecaCell {
 
 template <typename Derived, template <class> class Membrane = VolumeMembrane>
 class ConnectableCell : public Movable, public Orientable {
-	CREATE_METHOD_CHECKS(setColor);
 	friend class SphereMembrane<Derived>;
 	friend class Membrane<Derived>;
 	friend typename Membrane<Derived>::CCCM;
@@ -226,6 +225,53 @@ class ConnectableCell : public Movable, public Orientable {
 	void die() { dead = true; }
 	bool isDead() { return dead; }
 
+	void setColorRGB(int r, int g, int b) {
+		color = {{static_cast<double>(r) / 255.0, static_cast<double>(g) / 255.0,
+		          static_cast<double>(b) / 255.0}};
+	}
+
+	void setColorHSV(float_t H, float_t S, float_t V) {
+		// h =	[0, 360]; s, v = [0, 1]
+		float_t C = V * S;  // Chroma
+		float_t HPrime = fmod(H / 60.0, 6.0);
+		float_t X = C * (1.0 - fabs(fmod(HPrime, 2.0) - 1.0));
+		float_t M = V - C;
+		float_t R, G, B;
+		if (0 <= HPrime && HPrime < 1) {
+			R = C;
+			G = X;
+			B = 0;
+		} else if (1 <= HPrime && HPrime < 2) {
+			R = X;
+			G = C;
+			B = 0;
+		} else if (2 <= HPrime && HPrime < 3) {
+			R = 0;
+			G = C;
+			B = X;
+		} else if (3 <= HPrime && HPrime < 4) {
+			R = 0;
+			G = X;
+			B = C;
+		} else if (4 <= HPrime && HPrime < 5) {
+			R = X;
+			G = 0;
+			B = C;
+		} else if (5 <= HPrime && HPrime < 6) {
+			R = C;
+			G = 0;
+			B = X;
+		} else {
+			R = 0;
+			G = 0;
+			B = 0;
+		}
+		R += M;
+		G += M;
+		B += M;
+		color = {{R, G, B}};
+	}
+	void setColorHSVf(float_t h, float_t s, float_t v) {}
 	void randomColor() {
 		float_t r0 = 0.0001 * (rand() % 10000);
 		float_t r1 = 0.0001 * (rand() % 10000);
