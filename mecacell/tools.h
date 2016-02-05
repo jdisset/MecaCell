@@ -84,14 +84,11 @@ template <typename T> inline bool fuzzyEqual(const T &a, const T &b) {
 }
 
 template <typename T> inline void eraseFromVector(const T &elem, std::deque<T> &vec) {
-	size_t s0 = vec.size();
 	vec.erase(std::remove(vec.begin(), vec.end(), elem), vec.end());
-	assert(vec.size() == s0 - 1);
 }
+
 template <typename T> inline void eraseFromVector(const T &elem, std::vector<T> &vec) {
-	size_t s0 = vec.size();
 	vec.erase(std::remove(vec.begin(), vec.end(), elem), vec.end());
-	assert(vec.size() == s0 - 1);
 }
 template <typename T> inline ostream &operator<<(ostream &out, const vector<T> &v) {
 	out << "[ ";
