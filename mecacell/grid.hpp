@@ -162,7 +162,9 @@ template <typename O> class Grid {
 	}
 
 	float_t computeSphericity() const {
-		return (cbrt(M_PI) * (pow(6.0 * getVolume(), (2.0 / 3.0)))) / computeSurface();
+		auto s = computeSurface();
+		if (s <= 0) return -1;
+		return (cbrt(M_PI) * (pow(6.0 * getVolume(), (2.0 / 3.0)))) / s;
 	}
 
 	// nb of occupied neighbour grid cells

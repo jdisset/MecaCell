@@ -36,6 +36,7 @@ class BasicWorld {
  protected:
 	float_t dt = 1.0 / 50.0;  // interval btwn updates
 	int frame = 0;            // current update number
+	int nbAddedCells = 0;     // used for each added cell's unique id
 
 	// space partition hashmap for cells
 	SpacePartition<Cell *> cellSpacePartition =
@@ -275,7 +276,7 @@ class BasicWorld {
 	void addCell(Cell *c) {
 		if (c) {
 			cells.push_back(c);
-			c->id = cells.size() - 1;
+			c->id = nbAddedCells++;
 		}
 	}
 

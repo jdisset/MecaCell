@@ -38,6 +38,7 @@ struct CellCellConnectionManager_map {
 		eraseFromVector(connection, c1->membrane.cccm.cellConnections);
 		c0->connectedCells.erase(c1);
 		c1->connectedCells.erase(c0);
+		assert(c0->getId() != c1->getId());
 		container.erase(make_ordered_cell_pair(c0, c1));
 	}
 	// Accessors for iterations
