@@ -54,6 +54,28 @@ template <typename O> class Grid {
 		}
 	}
 
+	void insertPrecise(const O &obj) {
+		// good for gridSize << boundingboxRadius
+		const Vec &center = ptr(obj)->getPosition();
+		const float_t &radius = ptr(obj)->getBoundingBoxRadius();
+		const float_t sqRadius = radius * radius;
+		const float_t cubeSize = 1.0 / cellSize;
+		Vec minCorner = getIndexFromPosition(center - radius);
+		Vec maxCorner = getIndexFromPosition(center + radius);
+		for (double i = minCorner.x(); i <= maxCorner.x(); ++i) {
+			for (double j = minCorner.y(); j <= maxCorner.y(); ++j) {
+				for (double k = minCorner.z(); k <= maxCorner.z(); ++k) {
+					// we test if this cube's center overlaps with the sphere
+					// i j k coords are the bottom front left coords of a 1/cellSize cube
+					Vec cubeCenter(i + cubeSize, j + cubeSize, k + cubeSize);
+					if ((cubeCenter - center).sqlength() < sqRadius) {
+						um[Vec(i, j, k)].push_back(obj);
+					}
+				}
+			}
+		}
+	}
+
 	void insert(const O &obj, const Vec &p0, const Vec &p1,
 	            const Vec &p2) {  // insert triangles
 		Vec blf(min(p0.x(), min(p1.x(), p2.x())), min(p0.y(), min(p1.y(), p2.y())),
