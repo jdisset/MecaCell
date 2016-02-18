@@ -3,8 +3,9 @@ import QtQuick 2.0
 import QtGraphicalEffects 1.0
 import QtQuick.Controls 1.2
 import "javascript.js" as Logic
-Item{
+import QtQuick.Window 2.1
 
+Window {
 	property var guictrl: renderer.getGuiCtrl();
 	property var btnArray: new Object();
 	property var paintStepsCategories: new Object();
@@ -25,7 +26,7 @@ Item{
 		//anchors.bottom: parent.bottom
 		//anchors.right: parent.right
 		focus: true
-		z: -1
+		//z: -1
 	}
 
 	property color mecaYellow: "#F2DC83"

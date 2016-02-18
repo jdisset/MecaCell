@@ -12,7 +12,7 @@ using namespace std;
 	    const typename std::enable_if<is_##hName##_callable<P, void(R *)>::value,  \
 	                                  T *>::type r,                                \
 	    P &p) {                                                                    \
-		r->plugins_##hName.push_back([&](R *view) { p.hName(view); });               \
+		r->plugins_##hName.push_back([&](R * view) { p.hName(view); });              \
 	}                                                                              \
 	template <typename T = R>                                                      \
 	static void register_##hName(                                                  \
@@ -20,14 +20,18 @@ using namespace std;
 	                                  T *>::type,                                  \
 	    P &) {}
 
+CREATE_METHOD_CHECKS(preLoad);
 CREATE_METHOD_CHECKS(onLoad);
+CREATE_METHOD_CHECKS(onSync);
 CREATE_METHOD_CHECKS(draw);
 CREATE_METHOD_CHECKS(preDraw);
 CREATE_METHOD_CHECKS(preLoop);
 CREATE_METHOD_CHECKS(postDraw);
 
 template <typename R, typename P> struct HookChecker {
+	HOOKCHECK(preLoad)
 	HOOKCHECK(onLoad)
+	HOOKCHECK(onSync)
 	HOOKCHECK(preLoop)
 	HOOKCHECK(preDraw)
 	HOOKCHECK(postDraw)
@@ -49,10 +53,14 @@ template <typename R, typename P> struct HookChecker {
 #define REGISTERH(hName) HookChecker<R, P>::register_##hName(renderer, p);
 
 template <typename R, typename P> void loadPluginHooks(R *renderer, P &p) {
+	REGISTERH(preLoad)
 	REGISTERH(onLoad)
 	REGISTERH(preLoop)
 	REGISTERH(preDraw)
 	REGISTERH(draw)
 	REGISTERH(postDraw)
+}
+template <typename R, typename P> void loadSyncHooks(R *renderer, P &p) {
+	REGISTERH(onSync)
 }
 #endif

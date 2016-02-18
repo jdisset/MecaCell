@@ -79,7 +79,7 @@ class SignalSlotBase : public QQuickItem {
 	}
 
 	std::vector<std::pair<QList<QVariant>, bool>> displayMenuToggled;
- signals:
+signals:
 	void statsChanged();
 	void guiCtrlChanged();
 

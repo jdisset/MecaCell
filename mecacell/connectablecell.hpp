@@ -271,7 +271,6 @@ class ConnectableCell : public Movable, public Orientable {
 		B += M;
 		color = {{R, G, B}};
 	}
-	void setColorHSVf(float_t h, float_t s, float_t v) {}
 	void randomColor() {
 		float_t r0 = 0.0001 * (rand() % 10000);
 		float_t r1 = 0.0001 * (rand() % 10000);

@@ -21,6 +21,7 @@
 #include "blur.hpp"
 #include <QMap>
 #include <QOpenGLFramebufferObject>
+#include <QQmlApplicationEngine>
 #include <QMatrix4x4>
 #include <QQuickView>
 #include <QQmlContext>
@@ -116,11 +117,12 @@ template <typename Scenario> class Viewer : public SignalSlotRenderer {
 	bool displayMenuChanged = true;
 
  public:
+	std::vector<Rfunc> plugins_preLoad;
 	std::vector<Rfunc> plugins_onLoad;
 	std::vector<Rfunc> plugins_preLoop;
 	std::vector<Rfunc> plugins_preDraw;
-	std::vector<Rfunc> plugins_onDraw;
 	std::vector<Rfunc> plugins_postDraw;
+	std::vector<Rfunc> plugins_onSync;
 
  private:
 	std::map<Qt::Key, Rfunc> keyDownMethods;
@@ -282,9 +284,8 @@ template <typename Scenario> class Viewer : public SignalSlotRenderer {
 			if (me->isChecked()) {
 				paintStepsMethods[1000000] = [&](R *r) { paintSteps["SSAO"]->call(r); };
 			} else {
-				paintStepsMethods[1000000] = [&](R *r) {
-					dynamic_cast<SSAO<R> *>(paintSteps["SSAO"].get())->callDumb(r);
-				};
+				paintStepsMethods[1000000] =
+				    [&](R *r) { dynamic_cast<SSAO<R> *>(paintSteps["SSAO"].get())->callDumb(r); };
 			}
 		};
 		MenuElement<R> menublurPostproc = {"Blurred menu"};
@@ -312,7 +313,7 @@ template <typename Scenario> class Viewer : public SignalSlotRenderer {
 	}
 
 	void applyInterfaceAdditions(SignalSlotBase *b) {
-		QObject *root = b->parentItem();
+		QObject *root = b->window();
 		for (auto &b : buttons) {
 			auto &bt = b.second;
 			if (bt.needsToBeUpdated()) {
@@ -329,6 +330,7 @@ template <typename Scenario> class Viewer : public SignalSlotRenderer {
 			displayMenuChanged = false;
 		}
 	}
+
 	// called after every frame, thread safe
 	// synchronization between Qt threads
 	virtual void sync(SignalSlotBase *b) {
@@ -559,24 +561,29 @@ template <typename Scenario> class Viewer : public SignalSlotRenderer {
 	}
 	QQuickWindow *getWindow() { return window; }
 
+	QQuickWindow *view;
+	QQmlApplicationEngine *engine;
+	QQuickWindow *getMainView() { return view; }
+	QQmlApplicationEngine *getEngine() { return engine; }
 	int exec() {
 		QGuiApplication app(argc, argv);
 		app.setQuitOnLastWindowClosed(true);
-		QQuickView view;
-		view.setFlags(Qt::Window | Qt::CustomizeWindowHint | Qt::WindowMinMaxButtonsHint |
-		              Qt::WindowTitleHint | Qt::WindowCloseButtonHint |
-		              Qt::WindowFullscreenButtonHint);
-		view.setSurfaceType(QSurface::OpenGLSurface);
-		view.setColor(QColor(Qt::transparent));
-		view.setClearBeforeRendering(true);
-		view.setResizeMode(QQuickView::SizeRootObjectToView);
+
 		qmlRegisterType<SignalSlotBase>("SceneGraphRendering", 1, 0, "Renderer");
-		view.setSource(QUrl("qrc:/main.qml"));
-		QObject *root = view.rootObject();
+		engine = new QQmlApplicationEngine((QUrl("qrc:/main.qml")));
+
+		QObject *root = engine->rootObjects().first();
+
+		view = qobject_cast<QQuickWindow *>(root);
+		view->setFlags(Qt::Window | Qt::CustomizeWindowHint | Qt::WindowMinMaxButtonsHint |
+		               Qt::WindowTitleHint | Qt::WindowCloseButtonHint |
+		               Qt::WindowFullscreenButtonHint);
 		SignalSlotBase *ssb = root->findChild<SignalSlotBase *>("renderer");
-		view.rootContext()->setContextProperty("glview", ssb);
+		engine->rootContext()->setContextProperty("glview", ssb);
 		ssb->init(this);
-		view.show();
+		view->show();
+		for (auto &p : plugins_preLoad) p(this);
+		QObject::connect(view, SIGNAL(closing(QQuickCloseEvent *)), &app, SLOT(quit()));
 		return app.exec();
 	}
 };
