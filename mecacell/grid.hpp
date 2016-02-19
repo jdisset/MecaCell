@@ -40,6 +40,10 @@ template <typename O> class Grid {
 		return (abs((int)v.x()) % 2) + (abs((int)v.y()) % 2) * 2 + (abs((int)v.z()) % 2) * 4;
 	}
 
+	void insertOnlyCenter(const O &obj) {
+		um[getIndexFromPosition(ptr(obj)->getPosition())].push_back(obj);
+	}
+
 	void insert(const O &obj) {
 		const Vec &center = ptr(obj)->getPosition();
 		const float_t &radius = ptr(obj)->getBoundingBoxRadius();
