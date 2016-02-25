@@ -32,6 +32,7 @@ class Movable {
 	Vec getPrevposition() const { return prevposition; }
 	Vec getVelocity() const { return velocity; }
 	Vec getForce() const { return force; }
+	Vec getExternalForces() const { return extForce; }
 	float_t getMass() const { return mass; }
 	float_t getBaseMass() const { return baseMass; }
 	void setPosition(const Vec &p) { position = p; }

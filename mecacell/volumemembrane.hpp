@@ -6,7 +6,6 @@
 #include "contactsurface.hpp"
 #include "modelconnection.hpp"
 #include "cellcellconnectionmanager.hpp"
-#include <unordered_map>
 #include <utility>
 #include <vector>
 #include <map>
@@ -132,16 +131,16 @@ template <typename Cell> class VolumeMembrane {
 		Cell *closestCell = nullptr;
 		float_t closestDist = dynamicRadius;
 		for (auto &cc : cccm.cellConnections) {
-			auto &con = CCCM::getConnection(cc);
-			auto normal = cell == con.cells.first ? -con.normal : con.normal;
+			auto con = CCCM::getConnection(cc);
+			auto normal = cell == con->cells.first ? -con->normal : con->normal;
 			float_t dot = normal.dot(d);
 			if (dot < 0) {
 				const auto &midpoint =
-				    cell == con.cells.first ? con.midpoint.first : con.midpoint.second;
+				    cell == con->cells.first ? con->midpoint.first : con->midpoint.second;
 				float_t l = -midpoint / dot;
 				if (l < closestDist) {
 					closestDist = l;
-					closestCell = con.cells.first == cell ? con.cells.second : con.cells.first;
+					closestCell = con->cells.first == cell ? con->cells.second : con->cells.first;
 				}
 			}
 		}
@@ -172,10 +171,11 @@ template <typename Cell> class VolumeMembrane {
 	void computeCurrentVolume() {
 		float_t volumeLoss = 0;
 		for (auto &cc : cccm.cellConnections) {
-			auto &con = CCCM::getConnection(cc);
-			auto &midpoint = cell == con.cells.first ? con.midpoint.first : con.midpoint.second;
+			auto con = CCCM::getConnection(cc);
+			auto &midpoint =
+			    cell == con->cells.first ? con->midpoint.first : con->midpoint.second;
 			auto h = dynamicRadius - midpoint;
-			volumeLoss += (M_PI * h / 6.0) * (3.0 * con.sqradius + h * h);
+			volumeLoss += (M_PI * h / 6.0) * (3.0 * con->sqradius + h * h);
 		}
 		// TODO : soustraire les overlapps
 		float_t baseVol = FOUR_THIRD_PI * dynamicRadius * dynamicRadius * dynamicRadius;
@@ -189,9 +189,10 @@ template <typename Cell> class VolumeMembrane {
 	void computeAreaAndDeduceRadius() {
 		float_t surfaceLoss = 0;
 		for (auto &cc : cccm.cellConnections) {
-			auto &con = CCCM::getConnection(cc);
-			auto &midpoint = cell == con.cells.first ? con.midpoint.first : con.midpoint.second;
-			surfaceLoss += 2.0 * M_PI * dynamicRadius * (dynamicRadius - midpoint) - con.area;
+			auto con = CCCM::getConnection(cc);
+			auto &midpoint =
+			    cell == con->cells.first ? con->midpoint.first : con->midpoint.second;
+			surfaceLoss += 2.0 * M_PI * dynamicRadius * (dynamicRadius - midpoint) - con->area;
 		}
 		float_t baseArea = 4.0 * M_PI * dynamicRadius * dynamicRadius;
 		currentArea = baseArea - surfaceLoss;
@@ -223,7 +224,7 @@ template <typename Cell> class VolumeMembrane {
 		auto Fv = incompressibility * dV;
 		auto Fa = membraneStiffness * dA;
 		pressure = Fv / currentArea;
-		float dynSpeed = (dynamicRadius - prevDynamicRadius) / dt;
+		float_t dynSpeed = (dynamicRadius - prevDynamicRadius) / dt;
 		float_t c = 5.0;
 		dynamicRadius += dt * dt * (Fv - Fa - dynSpeed * c);
 		if (dynamicRadius > restRadius * MAX_DYN_RADIUS_RATIO)
@@ -260,7 +261,7 @@ template <typename Cell> class VolumeMembrane {
 	static void checkForCellCellConnections(
 	    vector<Cell *> &cells, CellCellConnectionContainer &cellCellConnections,
 	    SpacePartition &grid) {
-		unordered_set<ordered_pair<Cell *>> newConnections;
+		vector<ordered_pair<Cell *>> newConnections;
 		grid.clear();
 		for (const auto &c : cells) grid.insert(c);
 		auto gridCells = grid.getThreadSafeGrid();
@@ -274,14 +275,14 @@ template <typename Cell> class VolumeMembrane {
 						if (sqDistance < pow(op.first->getConstMembrane().dynamicRadius +
 						                         op.second->getConstMembrane().dynamicRadius,
 						                     2)) {
-							if (!CCCM::areConnected(op.first, op.second) && !newConnections.count(op) &&
-							    op.first != op.second) {
+							if (!CCCM::areConnected(op.first, op.second) &&
+							    !isInVector(op, newConnections) && op.first != op.second) {
 								float_t dist = sqrt(sqDistance);
 								Vec dir = AB / dist;
 								auto d0 = op.first->getConstMembrane().getPreciseMembraneDistance(dir);
 								auto d1 = op.second->getConstMembrane().getPreciseMembraneDistance(-dir);
 								if (dist < 0.99999999 * (d0 + d1)) {
-									newConnections.insert(op);
+									newConnections.push_back(op);
 								}
 							}
 						}
@@ -299,19 +300,14 @@ template <typename Cell> class VolumeMembrane {
 		// anymore...)
 		vector<CellCellConnectionType *> toDisconnect;
 		for (auto &cc : concon) {
-			auto &con = CCCM::getConnection(cc);
-			con.update(dt);
-			if (con.area <= 0) {
-				toDisconnect.push_back(&con);
+			CellCellConnectionType *con = CCCM::getConnection(cc);
+			con->update(dt);
+			if (con->area <= 0) {
+				toDisconnect.push_back(con);
 			}
 		}
-		for (auto &c : toDisconnect) {
+		for (CellCellConnectionType *c : toDisconnect) {
 			CCCM::disconnect(concon, c->cells.first, c->cells.second, c);
-		}
-		// now that all forces have been computed, we can add friction
-		for (auto &cc : concon) {
-			auto &con = CCCM::getConnection(cc);
-			// CCCM::getConnection(cc).applyFriction();
 		}
 	}
 

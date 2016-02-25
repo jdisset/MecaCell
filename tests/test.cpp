@@ -52,81 +52,66 @@ TEST_CASE("Vectors & trigo") {
 	                 sqrt(1.0 + 1.3 * 1.3)));
 }
 
-//class Cell1 : public MecaCell::ConnectableCell<Cell1, SphereMembrane> {
- //public:
-	//using Base = MecaCell::ConnectableCell<Cell1, SphereMembrane>;
-	//using Base::Base;
-	//double getAdhesionWith(const Cell1*) const { return 0.8; }
-	//Cell1* updateBehavior(double) { return nullptr; }
-//};
+class SpCell : public MecaCell::ConnectableCell<SpCell, VolumeMembrane> {
+ public:
+	using Base = MecaCell::ConnectableCell<SpCell, VolumeMembrane>;
+	using Base::Base;
+	double getAdhesionWith(const SpCell*, const MecaCell::Vec&) const { return 0.0; }
+	SpCell* updateBehavior(double) { return nullptr; }
+};
 
-// class Cell2 : public MecaCell::ConnectableCell<Cell2, VectorSphereMembrane> {
-// public:
-// using Base2 = MecaCell::ConnectableCell<Cell2, VectorSphereMembrane>;
-// using Base2::Base2;
-// double getAdhesionWith(const Cell2*) const { return 0.8; }
-// Cell2* updateBehavior(double) { return nullptr; }
-//};
+class VolCell : public MecaCell::ConnectableCell<VolCell, VolumeMembrane> {
+ public:
+	using Base = MecaCell::ConnectableCell<VolCell, VolumeMembrane>;
+	using Base::Base;
+	double getAdhesionWith(const VolCell*, const MecaCell::Vec&) const { return 0.0; }
+	VolCell* updateBehavior(double) { return nullptr; }
+};
 
-//template <typename CellType>
-//void testAdhesionAndCopyBetween2Cells(Vec initialPosition, Vec direction) {
-	//Vec dir = direction.normalized();
-	//CellType c(initialPosition);
-	//// checking construction && membrane
-	//REQUIRE(c.getPosition() == initialPosition);
-	//REQUIRE(c.getMembraneDistance(initialPosition) == c.getBoundingBoxRadius());
-	//REQUIRE(c.getMembrane().getCell() == &c);
-	//c.getMembrane().setStiffness(c.getMembrane().getStiffness() * 1.1);
-	//c.getMembrane().setAngularStiffness(c.getMembrane().getAngularStiffness() * 1.1);
-	//c.getMembrane().setBaseRadius(c.getMembrane().getRadius() * 1.1);
-	//double r = c.getBoundingBoxRadius();
-	//CellType c2(c, r * dir);
-	//// checking copy constructor
-	//REQUIRE(
-			//doubleEq((c2.getPosition() - c.getPosition()).dot(r * dir), (r * dir).sqlength()));
-	//REQUIRE(c2.getMembrane().getCell() == &c2);
-	//REQUIRE(c2.getMembrane().getBaseRadius() == c.getMembrane().getBaseRadius());
-	//REQUIRE(c2.getMembrane().getRadius() == c.getMembrane().getRadius());
-	//REQUIRE(c2.getMembrane().getCorrectedRadius() == c.getMembrane().getCorrectedRadius());
-	//REQUIRE(c2.getMembrane().getStiffness() == c.getMembrane().getStiffness());
-	//REQUIRE(c2.getMembrane().getDampRatio() == c.getMembrane().getDampRatio());
-	//REQUIRE(c2.getMembrane().getAngularStiffness() ==
-					//c.getMembrane().getAngularStiffness());
-	//vector<CellType*> cells;
-	//cells.push_back(&c);
-	//cells.push_back(&c2);
-	//typename CellType::CellCellConnectionContainer connections;
-	//Grid<CellType*> cellGrid(200);
-	//cellGrid.clear();
-	//cellGrid.insert(&c);
-	//cellGrid.insert(&c2);
-	//// TODO: test grid;
-	//CellType::checkForCellCellConnections(cells, connections, cellGrid);
-	//REQUIRE(connections.size() == 1);
-	//REQUIRE(c.getConnectedCells().size() == 1);
-	//REQUIRE(c2.getConnectedCells().size() == 1);
-	//REQUIRE(*(c.getConnectedCells().begin()) == &c2);
-	//REQUIRE(*(c2.getConnectedCells().begin()) == &c);
-	//REQUIRE(c.getMembraneDistance(-dir) == c.getBoundingBoxRadius());
-	//REQUIRE(c2.getMembraneDistance(dir) == c2.getBoundingBoxRadius());
-	//REQUIRE(c.getMembraneDistance(dir.ortho()) == c.getBoundingBoxRadius());
-	//REQUIRE(c2.getMembraneDistance(dir.ortho()) == c2.getBoundingBoxRadius());
-	//REQUIRE(c.getMembraneDistance(dir) < c.getBoundingBoxRadius());
-	//REQUIRE(c2.getMembraneDistance(-dir) < c2.getBoundingBoxRadius());
-	//REQUIRE(c.getMembraneDistance(dir) == c2.getMembraneDistance(-dir));
-	//REQUIRE(c.getMembrane().getConnectedCell(dir) == &c2);
-	//REQUIRE(c2.getMembrane().getConnectedCell(-dir) == &c);
-//}
+template <typename W> void checkThatCellsAreIdentical(W& w0, W& w1) {
+	for (int c = 0; c < w0.cells.size(); ++c) {
+		REQUIRE(w0.cells[c]->id == w1.cells[c]->id);
+		REQUIRE(w0.cells[c]->getPosition() == w1.cells[c]->getPosition());
+		REQUIRE(w0.cells[c]->getVelocity() == w1.cells[c]->getVelocity());
+		REQUIRE(w0.cells[c]->getForce() == w1.cells[c]->getForce());
+		REQUIRE(w0.cells[c]->getExternalForces() == w1.cells[c]->getExternalForces());
+		REQUIRE(w0.cells[c]->getConnectedCells().size() ==
+		        w1.cells[c]->getConnectedCells().size());
+		auto connected = w0.cells[c]->getConnectedCells();
+		for (const auto& other : connected) {
+			bool sameConnections = false;
+			for (auto& other1 : w1.cells[c]->getConnectedCells()) {
+				if (other1->id == other->id) {
+					sameConnections = true;
+					break;
+				}
+			}
+			REQUIRE(sameConnections);
+		}
+	}
+}
 
-//TEST_CASE("SphereMembrane") {
-	//testAdhesionAndCopyBetween2Cells<Cell1>(Vec(0, 0, 0), Vec(1, 0, 0));
-	//testAdhesionAndCopyBetween2Cells<Cell1>(Vec(-10, -340, 0), Vec(-1, 1, 0));
-	//testAdhesionAndCopyBetween2Cells<Cell1>(
-			//Vec(-12314240, 0.0000000000000001, 1234823483.2342342342),
-			//Vec(23131.4, -231231230, 12222.12342343420));
-	//// testAdhesionAndCopyBetween2Cells<Cell2>(Vec(0, 0, 0), Vec(1, 0, 0));
-	//// testAdhesionAndCopyBetween2Cells<Cell2>(Vec(-10, -340, 0), Vec(-1, 1, 0));
-	//// testAdhesionAndCopyBetween2Cells<Cell2>(
-	//// Vec(-12314240, 0.0000000000000001, 1234823483.2342342342),
-	//// Vec(23131.4, -231231230, 12222.12342343420));
-/*}*/
+TEST_CASE("cells update are deterministic") {
+	using Cell = VolCell;
+	using World = MecaCell::BasicWorld<Cell>;
+	for (int n = 0; n < 10; ++n) {
+		World w0, w1, w2;
+		const int nbC = 10;
+		for (int i = 0; i < nbC; ++i) {
+			auto pos = MecaCell::Vec::randomUnit() * 50.0;
+			w0.addCell(new Cell(pos));
+			w1.addCell(new Cell(pos));
+			w2.addCell(new Cell(pos));
+		}
+		REQUIRE(w0.cells.size() == nbC);
+		REQUIRE(w0.cells.size() == w1.cells.size());
+		REQUIRE(w1.cells.size() == w2.cells.size());
+		for (int l = 0; l < 700; ++l) {
+			w0.update();
+			w1.update();
+			w2.update();
+			checkThatCellsAreIdentical(w0, w1);
+			checkThatCellsAreIdentical(w1, w2);
+		}
+	}
+}

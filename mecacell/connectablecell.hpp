@@ -4,6 +4,7 @@
 #include "movable.h"
 #include "orientable.h"
 #include "model.h"
+#include "tools.h"
 #include "spheremembrane.hpp"
 #include "volumemembrane.hpp"
 #include <vector>
@@ -14,7 +15,6 @@
 #include <cstdlib>
 #include <iostream>
 #include <memory>
-#include <unordered_set>
 #include <functional>
 
 namespace MecaCell {
@@ -45,7 +45,7 @@ class ConnectableCell : public Movable, public Orientable {
 	bool dead = false;
 	array<float_t, 3> color = {{0.75, 0.12, 0.07}};
 	bool tested = false;  // has already been tested for collision
-	unordered_set<Derived *> connectedCells;
+	unique_vector<Derived *> connectedCells;
 	bool visible = true;
 
  public:
@@ -131,8 +131,8 @@ class ConnectableCell : public Movable, public Orientable {
 		if (i < 3) return color[i];
 		return 0;
 	}
-	inline const std::unordered_set<Derived *> &getConnectedCells() const {
-		return connectedCells;
+	inline const std::vector<Derived *> &getConnectedCells() const {
+		return connectedCells.getUnderlyingVector();
 	}
 	inline float_t getPressure() const { return membrane.getPressure(); }
 

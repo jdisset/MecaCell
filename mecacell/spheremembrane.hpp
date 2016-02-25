@@ -5,10 +5,9 @@
 #include "model.h"
 #include "modelconnection.hpp"
 #include "cellcellconnectionmanager.hpp"
-#include <unordered_map>
 #include <utility>
 #include <vector>
-#include <map>
+#include <unordered_map>
 
 // default breaking connection angle
 #define DEFAULT_MAX_TETA M_PI / 12.0
@@ -322,9 +321,8 @@ template <typename Cell> class SphereMembrane {
 					if (cellModelConnections.count(mf.first) &&
 					    cellModelConnections[mf.first].count(c)) {
 						for (auto &otherconn : cellModelConnections[mf.first][c]) {
-							Vec prevDirection =
-							    (otherconn->bounce.getNode0().getPosition() - c->getPrevposition())
-							        .normalized();
+							Vec prevDirection = (otherconn->bounce.getNode0().getPosition() -
+							                     c->getPrevposition()).normalized();
 							if (prevDirection.dot(currentDirection) > MIN_MODEL_CONNECTION_SIMILARITY) {
 								alreadyExist = true;
 								otherconn->dirty = false;
@@ -344,10 +342,9 @@ template <typename Cell> class SphereMembrane {
 									    currentDirection.cross(currentDirection.cross(anchorDirection));
 									if (crossp.sqlength() > c->getConstMembrane().radius * 0.02) {
 										crossp.normalize();
-										float_t projLength = min(
-										    (otherconn->anchor.getNode0().getPosition() - c->getPosition())
-										        .dot(crossp),
-										    c->getConstMembrane().radius);
+										float_t projLength = min((otherconn->anchor.getNode0().getPosition() -
+										                          c->getPosition()).dot(crossp),
+										                         c->getConstMembrane().radius);
 										otherconn->anchor.getNode0().position =
 										    c->getPosition() + projLength * crossp;
 									}
@@ -426,7 +423,7 @@ template <typename Cell> class SphereMembrane {
 		for (auto &cc : cellCellConnections) {
 			CCCM::getConnection(cc).updateLengthDirection();
 		}
-		unordered_set<ordered_pair<Cell *>> newConnections;
+		unique_vector<ordered_pair<Cell *>> newConnections;
 		grid.clear();
 		for (const auto &c : cells) grid.insert(c);
 		auto gridCells = grid.getThreadSafeGrid();

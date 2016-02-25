@@ -97,7 +97,7 @@ class BasicWorld {
 		return res;
 	}
 	vector<pair<Cell *, Cell *>> getConnectedCellsList() {
-		unordered_set<ordered_pair<Cell *>> uniquePairs;
+		unique_vector<ordered_pair<Cell *>> uniquePairs;
 		for (auto &c : cells) {
 			for (auto &other : c->getConnectedCells()) {
 				uniquePairs.insert(make_ordered_pair(c, other));
@@ -153,8 +153,8 @@ class BasicWorld {
 		}
 		return false;
 	}
-	void update() {
-		// getting ready
+
+	void prepareCellForNextUpdate() {
 		for (auto &c : cells) {
 			c->updateStats();
 			c->resetForces();
@@ -163,64 +163,41 @@ class BasicWorld {
 			c->resetExternalForces();
 			c->resetExternalTorque();
 		}
-		if (nanForces()) {
-			DBG << " nan forces at 0" << endl;
-		}
-		if (nanTorques()) {
-			DBG << " nan torques at 0" << endl;
-		}
-		// adding world specific forces
+	}
+
+	void addWorldSpecificForces() {
 		for (auto &c : cells) {
 			c->receiveForce(-6.0 * M_PI * viscosityCoef * c->getBoundingBoxRadius() *
 			                c->getVelocity());  // friction
 			c->receiveForce(g * c->getMass());  // gravity
 		}
+	}
 
-		if (nanForces()) {
-			DBG << " nan forces at 1" << endl;
-		}
-		if (nanTorques()) {
-			DBG << " nan torques at 1" << endl;
-		}
-		if (nanPositions()) {
-			DBG << " nan positions at 1" << endl;
-		}
-		// then connections/collisions induced forces
+	void updateExistingCollisionsAndConnections() {
 		Cell::updateCellCellConnections(cellCellConnections, dt);
 		Cell::updateCellModelConnections(cellModelConnections, dt);
-		if (nanForces()) {
-			DBG << " nan forces at 2" << endl;
-		}
-		if (nanTorques()) {
-			DBG << " nan torques at 2" << endl;
-		}
-		if (nanPositions()) {
-			DBG << " nan positions at 2" << endl;
-		}
+	}
 
-		// updating cells positions
-		for (auto &c : cells) {
-			c->template updatePositionsAndOrientations<Integrator>(dt);
-		}
-		if (nanForces()) {
-			DBG << " nan forces at 3" << endl;
-		}
-		if (nanTorques()) {
-			DBG << " nan torques at 3" << endl;
-		}
-		if (nanPositions()) {
-			DBG << " nan positions at 3" << endl;
-		}
+	void updateCellsPositions() {
+		for (auto &c : cells) c->template updatePositionsAndOrientations<Integrator>(dt);
+	}
 
-		// looking for connections/collisions
+	void lookForNewCollisionsAndConnections() {
 		if (cellCellCollisions)
 			Cell::checkForCellCellConnections(cells, cellCellConnections, cellSpacePartition);
 		if (cellModelCollisions && models.size() > 0)
 			Cell::checkForCellModelConnections(cells, models, cellModelConnections,
 			                                   modelSpacePartition);
+	}
 
+	void update() {
+		prepareCellForNextUpdate();
+		addWorldSpecificForces();
+		updateExistingCollisionsAndConnections();
+		updateCellsPositions();
+		lookForNewCollisionsAndConnections();
 		updateBehaviors();
-		destroyDeadCells();  // cleanup
+		destroyDeadCells();
 		++frame;
 	}
 

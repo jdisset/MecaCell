@@ -13,6 +13,7 @@
 #include <iostream>
 #include <stdio.h>
 #include <stdexcept>
+#include <unordered_map>
 namespace MecaCell {
 typedef Vector3D Vec;
 
@@ -55,7 +56,7 @@ template <typename T> inline T *ptr(T *obj) { return obj; }
 template <typename T> struct ordered_pair {
 	T first, second;
 	bool operator==(const ordered_pair &other) const {
-		return (first == other.first && second == other.second);
+		return (first->id == other.first->id && second->id == other.second->id);
 	}
 	template <unsigned int i> T &get() { return i == 0 ? first : second; }
 };
@@ -64,7 +65,7 @@ template <typename T> inline ordered_pair<T *> make_ordered_cell_pair(T *a, T *b
 	return {b, a};
 }
 template <typename T> inline ordered_pair<T> make_ordered_pair(const T &a, const T &b) {
-	if (a < b) return {a, b};
+	if (a.id < b.id) return {a, b};
 	return {b, a};
 }
 template <typename T> inline bool isInVector(const T &elem, const std::vector<T> &vec) {
@@ -112,16 +113,79 @@ template <size_t N = 10> inline Vec roundN(const Vec &v) {
 }
 bool isnan_v(const Vector3D &);
 }
+
 namespace std {
 template <typename T> struct hash<MecaCell::ordered_pair<T>> {
 	size_t operator()(const MecaCell::ordered_pair<T> &x) const {
-		return hash<T>()(x.first) ^ hash<T>()(x.second);
+		assert(x.first->id < x.second->id);
+		return hash<size_t>()(x.first->id) ^ hash<size_t>()(x.second->id);
 	}
 };
+
 template <typename T, typename U> struct hash<std::pair<T, U>> {
 	size_t operator()(const std::pair<T, U> &x) const {
 		return hash<T>()(x.first) ^ hash<U>()(x.second);
 	}
+};
+
+template <typename T> class unique_vector {
+	std::vector<T> vec;
+
+ public:
+	const std::vector<T> &getUnderlyingVector() const { return vec; }
+	void clear() { vec = std::vector<T>(); }
+	T &operator[](size_t i) { return vec[i]; }
+	template <typename U> void insert(U &&u) {
+		if (!isInVector(std::forward<U>(u), vec)) vec.push_back(u);
+	}
+	template <typename I> void insert(I b, I e) {
+		while (b != e) {
+			insert(*b);
+			++b;
+		}
+	}
+	size_t count(const T &t) { return isInVector(t, vec) ? 1 : 0; }
+	void erase(const T &t) { eraseFromVector(t, vec); }
+	using const_iterator = typename decltype(vec)::const_iterator;
+	using iterator = typename decltype(vec)::iterator;
+	const_iterator begin() const { return vec.begin(); }
+	const_iterator end() const { return vec.end(); }
+	iterator begin() { return vec.begin(); }
+	iterator end() { return vec.end(); }
+};
+
+template <typename K, typename V> struct ordered_hash_map {
+	std::unordered_map<K, size_t> um;
+	std::vector<std::pair<K, V>> vec;
+	V &operator[](const K &k) {
+		if (!um.count(k)) {
+			um[k] = vec.size();
+			vec.push_back({k, V{}});
+		}
+		return vec[um[k]].second;
+	}
+
+	size_t size() { return vec.size(); }
+	V &at(const K &k) { return vec[um.at(k)].second; }
+
+	void emplace(const K &k, const V &v) { (*this)[k] = v; }
+
+	void erase(const K &k) {
+		if (um.count(k)) {
+			auto id = um[k];
+			vec.erase(vec.begin() + id);
+			um.erase(k);
+			for (auto &u : um) {
+				if (u.second > id) --u.second;
+			}
+		}
+	}
+	using const_iterator = typename decltype(vec)::const_iterator;
+	using iterator = typename decltype(vec)::iterator;
+	const_iterator begin() const { return vec.begin(); }
+	const_iterator end() const { return vec.end(); }
+	iterator begin() { return vec.begin(); }
+	iterator end() { return vec.end(); }
 };
 }
 #endif

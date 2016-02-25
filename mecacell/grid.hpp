@@ -3,7 +3,6 @@
 
 #include <vector>
 #include <set>
-#include <unordered_set>
 #include <deque>
 #include <iostream>
 #include <unordered_map>
@@ -13,24 +12,22 @@ using namespace std;
 
 namespace MecaCell {
 template <typename O> class Grid {
+	// TODO::deterministic
  private:
 	float_t cellSize;  // actually it's 1/cellSize, just so we can multiply
-	unordered_map<Vec, vector<O>> um;
+	unordered_map<Vec, size_t> um;
+	vector<std::pair<Vec, vector<O>>> orderedVec;
 
  public:
 	Grid(float_t cs) : cellSize(1.0 / cs) {}
 
 	float_t getCellSize() const { return 1.0 / cellSize; }
-	const unordered_map<Vec, vector<O>> &getContent() const { return um; }
+	const vector<std::pair<Vec, vector<O>>> &getContent() const { return orderedVec; }
 
 	array<vector<vector<O>>, 8> getThreadSafeGrid() const {
 		array<vector<vector<O>>, 8> res;
-		for (const auto &c : um) {
+		for (const auto &c : orderedVec) {
 			size_t color = vecToColor(c.first);
-			// vector<O> vec = c.second;
-			// sort(vec.begin(), vec.end());
-			// vec.erase(unique(vec.begin(), vec.end()), vec.end());
-			// res[color].push_back(vec);
 			res[color].push_back(c.second);
 		}
 		return res;
@@ -40,8 +37,16 @@ template <typename O> class Grid {
 		return (abs((int)v.x()) % 2) + (abs((int)v.y()) % 2) * 2 + (abs((int)v.z()) % 2) * 4;
 	}
 
+	template <typename V> void insert(V &&k, const O &o) {
+		if (!um.count(std::forward<V>(k))) {
+			um[std::forward<V>(k)] = orderedVec.size();
+			orderedVec.push_back({std::forward<V>(k), vector<O>()});
+		}
+		orderedVec[um[std::forward<V>(k)]].second.push_back(o);
+	}
+
 	void insertOnlyCenter(const O &obj) {
-		um[getIndexFromPosition(ptr(obj)->getPosition())].push_back(obj);
+		insert(getIndexFromPosition(ptr(obj)->getPosition()), obj);
 	}
 
 	void insert(const O &obj) {
@@ -52,7 +57,7 @@ template <typename O> class Grid {
 		for (double i = minCorner.x(); i <= maxCorner.x(); ++i) {
 			for (double j = minCorner.y(); j <= maxCorner.y(); ++j) {
 				for (double k = minCorner.z(); k <= maxCorner.z(); ++k) {
-					um[Vec(i, j, k)].push_back(obj);
+					insert(Vec(i, j, k), obj);
 				}
 			}
 		}
@@ -73,7 +78,7 @@ template <typename O> class Grid {
 					// i j k coords are the bottom front left coords of a 1/cellSize cube
 					Vec cubeCenter(i + cubeSize, j + cubeSize, k + cubeSize);
 					if ((cubeCenter - center).sqlength() < sqRadius) {
-						um[Vec(i, j, k)].push_back(obj);
+						insert(Vec(i, j, k), obj);
 					}
 				}
 			}
@@ -92,7 +97,7 @@ template <typename O> class Grid {
 			std::pair<bool, Vec> projec = projectionIntriangle(p0, p1, p2, center);
 			if ((center - projec.second).sqlength() < 0.8 * cs * cs) {
 				if (projec.first || closestDistToTriangleEdge(p0, p1, p2, center) < 0.87 * cs) {
-					um[v].push_back(obj);
+					insert(v, obj);
 				}
 			}
 		});
@@ -103,48 +108,25 @@ template <typename O> class Grid {
 		return Vec(floor(res.x()), floor(res.y()), floor(res.z()));
 	}
 
-	// set<O> retrieveUnique(const Vec &coord, float_t r) const {
-	// set<O> res;
-	// Vec center = coord * cellSize;
-	// float_t radius = r * cellSize;
-	// Vec minCorner = center - radius;
-	// Vec maxCorner = center + radius;
-	//// TODO check if faster with a set (uniques...) and by removing  selfcollision
-	// minCorner.iterateTo(maxCorner, [&](const Vec &v) {
-	// if (um.count(v)) {
-	// for (auto &e : um.at(v)) {
-	// res.insert(e);
-	//}
-	//}
-	//});
-	// return res;
-	//}
-
-	unordered_set<O> retrieve(const Vec &center, float_t radius) const {
-		unordered_set<O> res;
+	vector<O> retrieve(const Vec &center, float_t radius) const {
+		unique_vector<O> res;
 		Vec minCorner = getIndexFromPosition(center - radius);
 		Vec maxCorner = getIndexFromPosition(center + radius);
 		for (double i = minCorner.x(); i <= maxCorner.x(); ++i) {
 			for (double j = minCorner.y(); j <= maxCorner.y(); ++j) {
 				for (double k = minCorner.z(); k <= maxCorner.z(); ++k) {
 					const Vector3D v(i, j, k);
-					if (um.count(v)) res.insert(um.at(v).begin(), um.at(v).end());
+					if (um.count(v))
+						res.insert(orderedVec[um.at(v)].second.begin(),
+						           orderedVec[um.at(v)].second.end());
 				}
 			}
 		}
-		return res;
+		return res.getUnderlyingVector();
 	}
 
-	unordered_set<O> retrieve(const O &obj) const {
-		unordered_set<O> res;
-		Vec center = ptr(obj)->getPosition() * cellSize;
-		float_t radius = ptr(obj)->getBoundingBoxRadius() * cellSize;
-		Vec minCorner = center - radius;
-		Vec maxCorner = center + radius;
-		minCorner.iterateTo(maxCorner, [this, &res](const Vec &v) {
-			if (um.count(v)) res.insert(res.end(), um.at(v).begin(), um.at(v).end());
-		});
-		return res;
+	vector<O> retrieve(const O &obj) const {
+		return retrieve(ptr(obj)->getPosition(), ptr(obj)->getBoundingBoxRadius());
 	}
 
 	float_t computeSurface() const {
