@@ -1,8 +1,13 @@
 #include "catch.hpp"
+#define protected public
+#define private public
 #include "../mecacell/mecacell.h"
 #include "../mecacell/logger.hpp"
 #include "../mecacell/tools.h"
+#undef protected
+#undef private
 #include <iostream>
+
 using namespace MecaCell;
 
 bool doubleEq(double a, double b) { return abs(a - b) < 0.000000001; }
@@ -91,12 +96,109 @@ template <typename W> void checkThatCellsAreIdentical(W& w0, W& w1) {
 	}
 }
 
+TEST_CASE("connections form and disappear") {
+	using Cell = VolCell;
+	using World = MecaCell::BasicWorld<Cell>;
+	for (int i = 0; i < 1; ++i) {
+		World w;
+		w.addCell(new Cell(MecaCell::Vec(0, 20, 0)));
+		w.addCell(new Cell(MecaCell::Vec(0, -20, 0)));
+		w.update();
+		w.addCell(new Cell(MecaCell::Vec(40, 0, 0)));
+		w.update();
+
+		REQUIRE(w.cells.size() == 3);
+		REQUIRE(w.cells[0]->membrane.cccm.cellConnections.size() == 2);
+		REQUIRE(w.cells[1]->membrane.cccm.cellConnections.size() == 2);
+		REQUIRE(w.cells[0]->membrane.cccm.cellConnections[0]->cells.first == w.cells[0]);
+		REQUIRE(w.cells[0]->membrane.cccm.cellConnections[0]->cells.second == w.cells[1]);
+		REQUIRE(w.cells[0]->membrane.cccm.cellConnections[0] ==
+		        w.cells[1]->membrane.cccm.cellConnections[0]);
+		REQUIRE(w.cellCellConnections.size() == 3);
+
+		SECTION("moving cells apart") {
+			w.cells[0]->setPosition(MecaCell::Vec(0, 2000, 0));
+			w.update();
+			REQUIRE(w.cells.size() == 3);
+			REQUIRE(w.cells[0]->membrane.cccm.cellConnections.size() == 0);
+			REQUIRE(w.cells[1]->membrane.cccm.cellConnections.size() == 1);
+			REQUIRE(w.cellCellConnections.size() == 1);
+		}
+		SECTION("dying cell") {
+			w.cells[0]->setPosition(MecaCell::Vec(0, 20, 0));
+			w.update();
+			w.cells[1]->die();
+			w.update();
+			REQUIRE(w.cells.size() == 2);
+			REQUIRE(w.cells[0]->membrane.cccm.cellConnections.size() == 1);
+			REQUIRE(w.cells[1]->membrane.cccm.cellConnections.size() == 1);
+			REQUIRE(w.cells[1]->id == 2);
+			REQUIRE(w.cellCellConnections.size() == 1);
+		}
+	}
+}
+
+template <typename W> void printCells(W& w) {
+	std::cerr << " ---- (update " << w.getNbUpdates() << ") ---- " << std::endl;
+	std::cerr << "     " << w.cells.size() << " cells:" << std::endl;
+	for (auto& c : w.cells) {
+		std::cerr << YELLOW << "cell " << c->id << RESET << " ( adr = " << c
+		          << "):" << std::endl;
+		std::cerr << " -- connectedCells:" << std::endl;
+		for (auto& co : c->connectedCells)
+			std::cerr << "    |> " << BOLDBLUE << co->id << RESET << " (" << co << ")"
+			          << std::endl;
+		std::cerr << " -- cellConnections:" << std::endl;
+		for (auto& co : c->membrane.cccm.cellConnections) {
+			std::cerr << "    |> Connection " << co << " btwn " << co->cells.first->id << " & "
+			          << co->cells.second->id << std::endl;
+		}
+	}
+	std::cerr << BOLDYELLOW << ">>> World stored connections ("
+	          << w.cellCellConnections.size() << "): " << RESET << std::endl;
+	for (auto& co : w.cellCellConnections) {
+		std::cerr << "    |> (" << co.second.get() << ") between cells " << BOLDBLUE
+		          << co.second->cells.first->id << " & " << co.second->cells.second->id
+		          << RESET << std::endl;
+	}
+}
+
+TEST_CASE("cell dying bug") {
+	using Cell = VolCell;
+	using World = MecaCell::BasicWorld<Cell>;
+	World w;
+	const double nbC = 2.0;
+	const double space = 50.0;
+	for (double x = 0; x < nbC; ++x) {
+		w.addCell(new Cell(MecaCell::Vec(x * space, 0, 0)));
+	}
+	w.update();
+	REQUIRE(w.cells.size() == nbC);
+
+	const size_t dyingCell = w.cells.size() / 2;
+	auto nbConn = w.cells[dyingCell]->membrane.cccm.cellConnections.size();
+	REQUIRE(w.cells[dyingCell]->connectedCells.size() == nbConn);
+	auto& listOfConnected = w.cells[dyingCell]->connectedCells;
+	unique_vector<Cell*> listCopy;
+	listCopy.insert(listOfConnected.begin(), listOfConnected.end());
+	REQUIRE(listCopy.size() == listOfConnected.size());
+	for (auto& c : listCopy) {
+		REQUIRE(c->connectedCells.count(w.cells[dyingCell]));
+	}
+	auto dyingCellPtr = w.cells[dyingCell];
+	w.cells[dyingCell]->die();
+	for (int l = 0; l < 10; ++l) {
+		w.update();
+		REQUIRE(w.cells.size() == nbC - 1);
+	}
+}
+
 TEST_CASE("cells update are deterministic") {
 	using Cell = VolCell;
 	using World = MecaCell::BasicWorld<Cell>;
-	for (int n = 0; n < 10; ++n) {
+	for (int n = 0; n < 15; ++n) {
 		World w0, w1, w2;
-		const int nbC = 10;
+		const int nbC = 8;
 		for (int i = 0; i < nbC; ++i) {
 			auto pos = MecaCell::Vec::randomUnit() * 50.0;
 			w0.addCell(new Cell(pos));
@@ -106,12 +208,25 @@ TEST_CASE("cells update are deterministic") {
 		REQUIRE(w0.cells.size() == nbC);
 		REQUIRE(w0.cells.size() == w1.cells.size());
 		REQUIRE(w1.cells.size() == w2.cells.size());
-		for (int l = 0; l < 700; ++l) {
+		for (int l = 0; l < 300; ++l) {
 			w0.update();
 			w1.update();
 			w2.update();
 			checkThatCellsAreIdentical(w0, w1);
 			checkThatCellsAreIdentical(w1, w2);
 		}
+		w0.cells[1]->die();
+		w1.cells[1]->die();
+		w2.cells[1]->die();
+		for (int l = 0; l < 500; ++l) {
+			w0.update();
+			w1.update();
+			w2.update();
+			checkThatCellsAreIdentical(w0, w1);
+			checkThatCellsAreIdentical(w1, w2);
+		}
+		REQUIRE(w0.cells.size() == nbC - 1);
+		REQUIRE(w0.cells.size() == w1.cells.size());
+		REQUIRE(w1.cells.size() == w2.cells.size());
 	}
 }

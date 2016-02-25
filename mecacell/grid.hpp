@@ -165,7 +165,10 @@ template <typename O> class Grid {
 		return res;
 	}
 
-	void clear() { um.clear(); }
+	void clear() {
+		um.clear();
+		orderedVec = decltype(orderedVec)();
+	}
 };
 }
 #endif

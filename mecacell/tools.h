@@ -144,6 +144,7 @@ template <typename T> class unique_vector {
 			++b;
 		}
 	}
+	size_t size() { return vec.size(); }
 	size_t count(const T &t) { return isInVector(t, vec) ? 1 : 0; }
 	void erase(const T &t) { eraseFromVector(t, vec); }
 	using const_iterator = typename decltype(vec)::const_iterator;
@@ -176,7 +177,7 @@ template <typename K, typename V> struct ordered_hash_map {
 			vec.erase(vec.begin() + id);
 			um.erase(k);
 			for (auto &u : um) {
-				if (u.second > id) --u.second;
+				if (u.second > id) u.second--;
 			}
 		}
 	}
