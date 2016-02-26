@@ -376,6 +376,7 @@ template <typename Scenario> class Viewer : public SignalSlotRenderer {
 		keyDown = b->keyDown;
 		b->keyPress.clear();
 		processEvents(b);
+		for (auto &p : plugins_postDraw) p(this);
 	}
 
 	/***********************************
@@ -447,8 +448,6 @@ template <typename Scenario> class Viewer : public SignalSlotRenderer {
 		for (auto &s : paintStepsMethods) {
 			s.second(this);
 		}
-
-		for (auto &p : plugins_postDraw) p(this);
 
 		updateStats();
 		if (window) {

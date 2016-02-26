@@ -144,8 +144,8 @@ template <typename T> class unique_vector {
 			++b;
 		}
 	}
-	size_t size() { return vec.size(); }
-	size_t count(const T &t) { return isInVector(t, vec) ? 1 : 0; }
+	size_t size() const { return vec.size(); }
+	size_t count(const T &t) const { return isInVector(t, vec) ? 1 : 0; }
 	void erase(const T &t) { eraseFromVector(t, vec); }
 	using const_iterator = typename decltype(vec)::const_iterator;
 	using iterator = typename decltype(vec)::iterator;
@@ -166,7 +166,7 @@ template <typename K, typename V> struct ordered_hash_map {
 		return vec[um[k]].second;
 	}
 
-	size_t size() { return vec.size(); }
+	size_t size() const { return vec.size(); }
 	V &at(const K &k) { return vec[um.at(k)].second; }
 
 	void emplace(const K &k, const V &v) { (*this)[k] = v; }

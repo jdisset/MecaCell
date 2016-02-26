@@ -35,7 +35,6 @@ class BasicWorld {
 
  protected:
 	float_t dt = 1.0 / 50.0;  // interval btwn updates
-	int frame = 0;            // current update number
 	int nbAddedCells = 0;     // used for each added cell's unique id
 
 	// space partition hashmap for cells
@@ -55,6 +54,7 @@ class BasicWorld {
 	float_t viscosityCoef = 0.0003;
 
  public:
+	int frame = 0;  // current update number
 	CellCellConnectionContainer cellCellConnections;
 	CellModelConnectionContainer cellModelConnections;
 
@@ -100,7 +100,7 @@ class BasicWorld {
 		unique_vector<ordered_pair<Cell *>> uniquePairs;
 		for (auto &c : cells) {
 			for (auto &other : c->getConnectedCells()) {
-				uniquePairs.insert(make_ordered_pair(c, other));
+				uniquePairs.insert(make_ordered_cell_pair(c, other));
 			}
 		}
 		vector<pair<Cell *, Cell *>> result;
