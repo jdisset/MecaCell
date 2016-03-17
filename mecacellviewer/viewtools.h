@@ -4,6 +4,8 @@
 #include <QDir>
 #include <QOpenGLFunctions>
 #include <memory>
+#include <QColor>
+#include <QVector4D>
 #include <math.h>
 #include <iostream>
 #include <utility>
@@ -14,6 +16,7 @@ using std::tuple_size;
 using std::remove_reference;
 
 enum cellMode { plain, centers };
+enum ColorMode { color_normal, color_pressure };
 extern bool culling;
 extern QOpenGLFunctions* GL;
 extern double scaleFactor;
@@ -48,6 +51,23 @@ template <class Tuple, class Func> void forEach(Tuple&& t, Func&& f, int_<1>) {
 template <class Tuple, class Func> void forEach(Tuple&& t, Func&& f) {
 	const size_t Tsize = tuple_size<typename remove_reference<Tuple>::type>::value;
 	forEach(std::forward<Tuple>(t), std::forward<Func>(f), int_<Tsize>());
+}
+
+template <typename C>
+QVector4D cellColorToQVector(const C* c, bool selected,
+                             const ColorMode& colormode = color_normal) {
+	if (selected) return QVector4D(1.0, 1.0, 1.0, 1.0);
+	switch (colormode) {
+		case color_pressure: {
+			QColor col =
+			    QColor::fromHsvF(0.8f - 0.8f * (float)c->getNormalizedPressure(), 0.8, 0.70);
+			return QVector4D(col.redF(), col.greenF(), col.blueF(), 1.0);
+			break;
+		}
+		default:
+			return QVector4D(c->getColor(0), c->getColor(1), c->getColor(2), 1.0);
+			break;
+	}
 }
 }
 #endif

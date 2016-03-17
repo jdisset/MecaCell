@@ -27,13 +27,13 @@ template <typename R> class DeformableCellGroup : public PaintStep<R> {
 		sphere.load(shader);
 	}
 
-	vector<QVector4D> getColorVector(const C *c, bool selected) {
-		QVector4D color(c->getColor(0), c->getColor(1), c->getColor(2), 1.0);
-		if (selected) color = QVector4D(1.0, 1.0, 1.0, 1.0);
-		return vector<QVector4D>(sphere.vert.size(), color);
+	vector<QVector4D> getColorVector(const C *c, bool selected,
+	                                 const ColorMode &colormode = color_normal) {
+		return vector<QVector4D>(sphere.vert.size(),
+		                         cellColorToQVector(c, selected, colormode));
 	}
 
-	void call(R *r, const QString &s) {
+	void call(R *r, const ColorMode &colormode = color_normal) {
 		const auto &cells = r->getScenario().getWorld().cells;
 		if (cells.size() > 0) {
 			const QMatrix4x4 view = r->getViewMatrix();
@@ -66,9 +66,10 @@ template <typename R> class DeformableCellGroup : public PaintStep<R> {
 						for (auto &v : newvert) {
 							auto vr = rotation.rotatedVector(v);
 							decltype((*cells.begin())->getPosition()) d(vr.x(), vr.y(), vr.z());
-							v *= c->getMembraneDistance(d) * scaleFactor;
+							v *= std::max(c->getMembraneDistance(d), c->getBoundingBoxRadius()) *
+							     scaleFactor;
 						}
-						sphere.update(newvert, getColorVector(c, selected == c), shader);
+						sphere.update(newvert, getColorVector(c, selected == c, colormode), shader);
 					} else {
 						model.scale(QVector3D(0.1, 0.1, 0.1));
 					}

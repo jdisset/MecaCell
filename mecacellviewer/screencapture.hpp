@@ -16,11 +16,25 @@ template <typename R> class MenuScreenCapture : public ScreenManager<R> {
 	int cap = 0;
 	int NBFRAMEPERSCREEN = 1;
 
+	void saveImg(int W, int H) {
+		std::vector<GLubyte> pixels;
+		pixels.resize(3 * W * H);
+		GL->glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+		GL->glReadPixels(0, 0, W, H, GL_RGB, GL_UNSIGNED_BYTE, &pixels[0]);
+		QImage img(&pixels[0], W, H, QImage::Format_RGB888);
+		img.mirrored().save(path + QString("capture_") + QString::number(cap++) + ".jpg");
+	}
+
+	// void saveImg() {
+	// r->getCurrentFBO()->toImage().save(path + QString("capture_") +
+	// QString::number(cap++) + ".png");
+	//}
 	void call(R* r) {
 		if (r->getCurrentFBO()) {
 			if (r->getFrame() % NBFRAMEPERSCREEN == 0) {
-				r->getCurrentFBO()->toImage().save(path + QString("capture_") +
-				                                   QString::number(cap++) + ".png");
+				auto s = r->getWindow()->renderTargetSize();
+				// saveImg(s.width(), s.height());
+				saveImg(r->getWindow()->width(), r->getWindow()->height());
 			}
 		}
 	}

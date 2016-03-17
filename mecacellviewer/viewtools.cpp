@@ -46,6 +46,7 @@ QString shaderWithHeader(QString filename) {
 	return addShaderHeader(in.readAll());
 }
 
+
 std::vector<QVector3D> getSpherePointsPacking(unsigned int n) {
 	// we simulate n mutually repulsive points on a sphere
 	std::vector<QVector3D> p;
@@ -64,8 +65,7 @@ std::vector<QVector3D> getSpherePointsPacking(unsigned int n) {
 		double r = sqrt(1.0 - y * y);
 		double phi = i * inc;
 		p.push_back(QVector3D(static_cast<float>(cos(phi) * r), static_cast<float>(y),
-		                      static_cast<float>(sin(phi) * r))
-		                .normalized());
+		                      static_cast<float>(sin(phi) * r)).normalized());
 	}
 
 	// then perfect with a few electrostatic repulsion iterations

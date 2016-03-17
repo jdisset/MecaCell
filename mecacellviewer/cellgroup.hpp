@@ -25,12 +25,7 @@ template <typename R> class CellGroup : public PaintStep<R> {
 		sphere.load(shader);
 	}
 
-	QVector4D getColorVector(const C *c, bool selected) {
-		if (selected) return QVector4D(1.0, 1.0, 1.0, 1.0);
-		return QVector4D(c->getColor(0), c->getColor(1), c->getColor(2), 1.0);
-	}
-
-	void call(R *r, const QString &mode) {
+	void call(R *r, bool centersOnly = false, const ColorMode &colormode = color_normal) {
 		const auto &cells = r->getScenario().getWorld().cells;
 		if (cells.size() > 0) {
 			const QMatrix4x4 view = r->getViewMatrix();
@@ -46,6 +41,7 @@ template <typename R> class CellGroup : public PaintStep<R> {
 			shader.setUniformValue(shader.uniformLocation("nmap"), 0);
 			shader.setUniformValue(shader.uniformLocation("projection"), projection);
 			shader.setUniformValue(shader.uniformLocation("view"), view);
+			shader.setUniformValue(shader.uniformLocation("useUniformColor"), true);
 			decltype((*cells.begin())->getPosition()) viewVec(viewV.x(), viewV.y(), viewV.z());
 			decltype((*cells.begin())->getPosition()) camVec(camPos.x(), camPos.y(),
 			                                                 camPos.z());
@@ -56,7 +52,7 @@ template <typename R> class CellGroup : public PaintStep<R> {
 					QVector3D center = toQV3D(c->getPosition());
 					model.translate(center);
 					const double r = c->getBoundingBoxRadius();
-					if (mode == "centers")
+					if (centersOnly)
 						model.scale(1, 1, 1);
 					else
 						model.scale(r, r, r);
@@ -65,7 +61,7 @@ template <typename R> class CellGroup : public PaintStep<R> {
 					QMatrix4x4 nmatrix = (model).inverted().transposed();
 					shader.setUniformValue(shader.uniformLocation("model"), model);
 					shader.setUniformValue(shader.uniformLocation("normalMatrix"), nmatrix);
-					auto color = getColorVector(c, selected == c);
+					auto color = cellColorToQVector(c, selected == c, colormode);
 					shader.setUniformValue(shader.uniformLocation("color"), color);
 					GL->glDrawElements(GL_TRIANGLES, sphere.indices.size(), GL_UNSIGNED_INT, 0);
 				}

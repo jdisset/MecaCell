@@ -19,6 +19,7 @@
 #include "msaa.hpp"
 #include "ssao.hpp"
 #include "blur.hpp"
+#include "modelviewer.hpp"
 #include <QMap>
 #include <QOpenGLFramebufferObject>
 #include <QQmlApplicationEngine>
@@ -83,6 +84,7 @@ template <typename Scenario> class Viewer : public SignalSlotRenderer {
 	char **argv;
 	Scenario scenario;
 	int frame = 0;
+	int nbLoopsPerFrame = 1;
 
 	// Visual elements & config
 	Camera camera;
@@ -163,6 +165,10 @@ template <typename Scenario> class Viewer : public SignalSlotRenderer {
 		     {"Display connections", false},
 		     {"Display basis", false},
 		     {"Display velocities", false}}};
+		MenuElement<R> modelsMenu = {"3D Objects",
+		                             {{"Display",
+		                               elementType::exclusiveGroup,
+		                               {{"Disabled", false}, {"Uniform color", true}}}}};
 
 		this->window = wdw;
 		viewportSize = QSize(static_cast<int>(wdw->width()), static_cast<int>(wdw->height()));
@@ -176,6 +182,7 @@ template <typename Scenario> class Viewer : public SignalSlotRenderer {
 		paintSteps.emplace("Skybox", psptr(new Skybox<R>()));
 		paintSteps.emplace("DeformableCells", psptr(new DeformableCellGroup<R>()));
 		paintSteps.emplace("SphereCells", psptr(new CellGroup<R>()));
+		paintSteps.emplace("Models", psptr(new ModelViewer<ModelType, R>()));
 		paintSteps.emplace("Arrows", psptr(new ArrowsGroup<R>()));
 		paintSteps.emplace("Connections", psptr(new ConnectionsGroup<R>()));
 		paintSteps.emplace(
@@ -192,23 +199,28 @@ template <typename Scenario> class Viewer : public SignalSlotRenderer {
 		// TODO: absolutely TERRIBLE performance wise, cool ease-of-use wise. Enhance!
 		cellsMenu.onToggled = [&](R *r, MenuElement<R> *me) {
 			if (me->isChecked()) {
+				if (me->at("Colors").at("Normal").isChecked())
+					r->currentColorMode = color_normal;
+				else if (me->at("Colors").at("Pressure").isChecked())
+					r->currentColorMode = color_pressure;
+
 				if (me->at("Mesh type").at("Sphere").isChecked()) {
 					paintStepsMethods[10] = [&](R *r) {
 						CellGroup<R> *cells =
 						    dynamic_cast<CellGroup<R> *>(paintSteps["SphereCells"].get());
-						cells->call(r, "normal");
+						cells->call(r, false, r->currentColorMode);
 					};
 				} else if (me->at("Mesh type").at("Deformable mesh").isChecked()) {
 					paintStepsMethods[10] = [&](R *r) {
 						DeformableCellGroup<R> *cells = dynamic_cast<DeformableCellGroup<R> *>(
 						    paintSteps["DeformableCells"].get());
-						cells->call(r, "normal");
+						cells->call(r, r->currentColorMode);
 					};
 				} else if (me->at("Mesh type").at("Centers only").isChecked()) {
 					paintStepsMethods[10] = [&](R *r) {
 						CellGroup<R> *cells =
 						    dynamic_cast<CellGroup<R> *>(paintSteps["SphereCells"].get());
-						cells->call(r, "centers");
+						cells->call(r, true, r->currentColorMode);
 					};
 				} else {
 					paintStepsMethods.erase(10);
@@ -228,6 +240,17 @@ template <typename Scenario> class Viewer : public SignalSlotRenderer {
 				};
 			} else {
 				paintStepsMethods.erase(17);
+			}
+		};
+		modelsMenu.at("Display").onToggled = [&](R *r, MenuElement<R> *me) {
+			if (!me->at("Disabled").isChecked()) {
+				paintStepsMethods[7] = [&](R *r) {
+					ModelViewer<ModelType, R> *mv =
+					    dynamic_cast<ModelViewer<ModelType, R> *>(paintSteps["Models"].get());
+					mv->call(r);
+				};
+			} else {
+				paintStepsMethods.erase(7);
 			}
 		};
 		cellsMenu.at("Display basis").onToggled = [&](R *r, MenuElement<R> *me) {
@@ -306,12 +329,13 @@ template <typename Scenario> class Viewer : public SignalSlotRenderer {
 		};
 		MenuElement<R> postProcMenu = {"Post processing",
 		                               {ssaoPostproc, menublurPostproc, screenCap}};
-		displayMenu = {"Rendered elements", {cellsMenu, postProcMenu}};
+		displayMenu = {"Rendered elements", {cellsMenu, modelsMenu, postProcMenu}};
 		for (auto &p : plugins_onLoad) p(this);
 		displayMenu.print();
 		displayMenu.callAll(this);
 	}
 
+	ColorMode currentColorMode = color_normal;
 	void applyInterfaceAdditions(SignalSlotBase *b) {
 		QObject *root = b->window();
 		for (auto &b : buttons) {
@@ -489,7 +513,7 @@ template <typename Scenario> class Viewer : public SignalSlotRenderer {
 	void updateScenario() {
 		if (loopStep || worldUpdate) {
 			for (auto &p : plugins_preLoop) p(this);
-			scenario.loop();
+			for (int i = 0; i < nbLoopsPerFrame; ++i) scenario.loop();
 			if (!selectedCellStillExists()) selectedCell = nullptr;
 			loopStep = false;
 		}
@@ -505,6 +529,7 @@ template <typename Scenario> class Viewer : public SignalSlotRenderer {
 		worldUpdate = false;
 		loopStep = false;
 	}
+	void setNbLoopsPerFrame(int n) { nbLoopsPerFrame = n; }
 	void play() { worldUpdate = true; }
 	/**************************
 	 *           GET

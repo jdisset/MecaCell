@@ -6,7 +6,7 @@
 using std::vector;
 
 namespace MecacellViewer {
-template <typename Model> struct ModelViewer {
+template <typename M> struct Model {
 	QOpenGLShaderProgram shader;
 	QOpenGLVertexArrayObject vao;
 	vector<float> vertices;
@@ -14,8 +14,15 @@ template <typename Model> struct ModelViewer {
 	vector<float> uv;
 	vector<unsigned int> indices;
 	QOpenGLBuffer vbuf, nbuf, tbuf, bitanbuf, ibuf;
+	Model() {
+		shader.addShaderFromSourceCode(QOpenGLShader::Vertex,
+		                               shaderWithHeader(":/shaders/mvp.vert"));
+		shader.addShaderFromSourceCode(QOpenGLShader::Fragment,
+		                               shaderWithHeader(":/shaders/flat.frag"));
+		shader.link();
+	}
 
-	void load(const Model &m) {
+	void load(const M &m) {
 		// extracting vertices, normals and uv (if available)
 		for (auto &v : m.vertices) {
 			vertices.push_back(v.x());
@@ -39,17 +46,8 @@ template <typename Model> struct ModelViewer {
 			}
 		}
 
-		cerr << vertices.size() << " vertices, " << normals.size() << "normals, " << uv.size()
-		     << " uv" << endl;
-
-		// creating and binding shaders/vao/vbos
 		// TODO : directly use model's transformed vertices and normals
 
-		shader.addShaderFromSourceCode(QOpenGLShader::Vertex,
-		                               shaderWithHeader(":/shaders/mvp.vert"));
-		shader.addShaderFromSourceCode(QOpenGLShader::Fragment,
-		                               shaderWithHeader(":/shaders/model.frag"));
-		shader.link();
 		shader.bind();
 		vao.create();
 		vao.bind();
@@ -81,18 +79,18 @@ template <typename Model> struct ModelViewer {
 		shader.release();
 	}
 
-	void draw(const QMatrix4x4 &view, const QMatrix4x4 &projection, const Model &m) {
+	void draw(const QMatrix4x4 &view, const QMatrix4x4 &projection, const M &m) {
 		shader.bind();
 		vao.bind();
 		QMatrix4x4 model;
 		shader.setUniformValue(shader.uniformLocation("projection"), projection);
 		shader.setUniformValue(shader.uniformLocation("view"), view);
 		shader.setUniformValue(shader.uniformLocation("model"), model);
-		QVector4D color(0.9, 0.9, 0.9, 1.0);
+		QVector4D color(1.0, 1.0, 1.0, 1.0);
 		shader.setUniformValue(shader.uniformLocation("color"), color);
 		QMatrix4x4 nmatrix = model.inverted().transposed();
 		shader.setUniformValue(shader.uniformLocation("normalMatrix"), nmatrix);
-		GL->glDisable(GL_CULL_FACE);
+		// GL->glDisable(GL_CULL_FACE);
 		GL->glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0);
 		vao.release();
 		shader.release();
