@@ -208,6 +208,7 @@ class BasicWorld {
 		models.emplace(name, path);
 		models.at(name).name = name;
 	}
+
 	void removeModel(const string &name) {
 		if (models.count(name)) {
 			models.erase(name);

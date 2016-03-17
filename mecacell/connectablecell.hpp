@@ -144,7 +144,7 @@ class ConnectableCell : public Movable, public Orientable {
 	inline float_t getRelativeVolume() const { return getVolume() / getBaseVolume(); }
 	float_t getNormalizedPressure() const {
 		float_t sign = getPressure() >= 0 ? 1 : -1;
-		return 0.5 + sign * 0.5 * (1.0 - exp(-abs(100.0 * getPressure())));
+		return 0.5 + sign * 0.5 * (1.0 - exp(-abs(60.0 * getPressure())));
 	}
 	bool alreadyTested() const { return tested; }
 	int getNbConnections() const { return connectedCells.size(); }

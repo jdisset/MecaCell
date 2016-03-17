@@ -61,7 +61,7 @@ template <typename Cell> class VolumeMembrane {
 	using CellCellConnectionType = typename CCCM::ConnectionType;
 	using CellCellConnectionContainer = typename CCCM::CellCellConnectionContainer;
 	using CellModelConnectionContainer = int;
-	static const bool hasModelCollisions = false;
+	static const bool hasModelCollisions = true;
 	static const bool forcesOnMembrane =
 	    false;  // are forces applied directly to membrane or to the cell's center?
 
@@ -132,15 +132,15 @@ template <typename Cell> class VolumeMembrane {
 		float_t closestDist = dynamicRadius;
 		for (auto &cc : cccm.cellConnections) {
 			auto con = CCCM::getConnection(cc);
-			auto normal = cell == con->cells.first ? -con->normal : con->normal;
+			auto normal = cell == con->c0 ? -con->normal : con->normal;
 			float_t dot = normal.dot(d);
 			if (dot < 0) {
 				const auto &midpoint =
-				    cell == con->cells.first ? con->midpoint.first : con->midpoint.second;
+				    cell == con->c0 ? con->midpoint.first : con->midpoint.second;
 				float_t l = -midpoint / dot;
 				if (l < closestDist) {
 					closestDist = l;
-					closestCell = con->cells.first == cell ? con->cells.second : con->cells.first;
+					closestCell = con->c0 == cell ? con->c1 : con->c0;
 				}
 			}
 		}
@@ -172,8 +172,7 @@ template <typename Cell> class VolumeMembrane {
 		float_t volumeLoss = 0;
 		for (auto &cc : cccm.cellConnections) {
 			auto con = CCCM::getConnection(cc);
-			auto &midpoint =
-			    cell == con->cells.first ? con->midpoint.first : con->midpoint.second;
+			auto &midpoint = cell == con->c0 ? con->midpoint.first : con->midpoint.second;
 			auto h = dynamicRadius - midpoint;
 			volumeLoss += (M_PI * h / 6.0) * (3.0 * con->sqradius + h * h);
 		}
@@ -190,8 +189,7 @@ template <typename Cell> class VolumeMembrane {
 		float_t surfaceLoss = 0;
 		for (auto &cc : cccm.cellConnections) {
 			auto con = CCCM::getConnection(cc);
-			auto &midpoint =
-			    cell == con->cells.first ? con->midpoint.first : con->midpoint.second;
+			auto &midpoint = cell == con->c0 ? con->midpoint.first : con->midpoint.second;
 			surfaceLoss += 2.0 * M_PI * dynamicRadius * (dynamicRadius - midpoint) - con->area;
 		}
 		float_t baseArea = 4.0 * M_PI * dynamicRadius * dynamicRadius;
@@ -291,8 +289,16 @@ template <typename Cell> class VolumeMembrane {
 			}
 		}
 		for (const auto &nc : newConnections) {
-			CCCM::createConnection(cellCellConnections, nc, nc);
+			CCCM::createConnection(cellCellConnections, nc, nc.first, nc.second);
 		}
+	}
+
+	template <typename SpacePartition>
+	static void checkForCellModelCollisions(
+	    vector<Cell *> &cells, unordered_map<string, Model>,
+	    CellModelConnectionContainer &cellModelConnections, SpacePartition &modelGrid) {
+		// on créé une contactSurface entre chaque paire cellule triangle
+		// et voilà.
 	}
 
 	static void updateCellCellConnections(CellCellConnectionContainer &concon, float_t dt) {
@@ -307,15 +313,16 @@ template <typename Cell> class VolumeMembrane {
 			}
 		}
 		for (CellCellConnectionType *c : toDisconnect) {
-			CCCM::disconnect(concon, c->cells.first, c->cells.second, c);
+			CCCM::disconnect(concon, c->c0, c->c1, c);
 		}
 	}
+	static void updateCellModelConnections(CellModelConnectionContainer &con, float_t dt) {}
 
 	static inline void disconnectAndDeleteAllConnections(Cell *c0,
 	                                                     CellCellConnectionContainer &con) {
 		auto cop = c0->membrane.cccm.cellConnections;
 		for (auto &cc : cop) {
-			CCCM::disconnect(con, cc->cells.first, cc->cells.second, cc);
+			CCCM::disconnect(con, cc->c0, cc->c1, cc);
 		}
 	}
 };

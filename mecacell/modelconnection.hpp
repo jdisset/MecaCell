@@ -63,7 +63,6 @@ template <typename Cell> struct CellModelConnection {
 	CMConnection bounce;  // always perpendicular, only classic spring
 	float_t maxTeta = 0.1; // this is for the anchor, and should always be smaller than the
 	                      // actual connection's maxTeta
-
 	void computeForces(float_t dt) {
 		anchor.computeForces(dt);
 		bounce.computeForces(dt);

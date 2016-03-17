@@ -30,16 +30,10 @@ struct CellCellConnectionManager_map {
 		ConnectionType *newConnection = container.at(cells).get();
 		cells.first->membrane.cccm.cellConnections.push_back(newConnection);
 		cells.second->membrane.cccm.cellConnections.push_back(newConnection);
-		//std::cerr << BOLDGREEN << "Created connection " << RESET << newConnection << " btwn "
-				  //<< cells.first << " (" << cells.first->id << ") & " << cells.second << " ("
-				  //<< cells.second->id << ")" << std::endl;
 	}
 	// deletions, should be ok...
 	static inline void disconnect(CellCellConnectionContainer &container, Cell *c0,
 	                              Cell *c1, ConnectionType *connection) {
-		//std::cerr << BOLDRED << "Deleting connection " << RESET << connection << " btwn "
-				  //<< c0 << " (" << c0->id << ") & " << c1 << " (" << c1->id << ")"
-				  //<< std::endl;
 		eraseFromVector(connection, c0->membrane.cccm.cellConnections);
 		eraseFromVector(connection, c1->membrane.cccm.cellConnections);
 		c0->connectedCells.erase(c1);

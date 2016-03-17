@@ -110,8 +110,8 @@ TEST_CASE("connections form and disappear") {
 		REQUIRE(w.cells.size() == 3);
 		REQUIRE(w.cells[0]->membrane.cccm.cellConnections.size() == 2);
 		REQUIRE(w.cells[1]->membrane.cccm.cellConnections.size() == 2);
-		REQUIRE(w.cells[0]->membrane.cccm.cellConnections[0]->cells.first == w.cells[0]);
-		REQUIRE(w.cells[0]->membrane.cccm.cellConnections[0]->cells.second == w.cells[1]);
+		REQUIRE(w.cells[0]->membrane.cccm.cellConnections[0]->c0 == w.cells[0]);
+		REQUIRE(w.cells[0]->membrane.cccm.cellConnections[0]->c1 == w.cells[1]);
 		REQUIRE(w.cells[0]->membrane.cccm.cellConnections[0] ==
 		        w.cells[1]->membrane.cccm.cellConnections[0]);
 		REQUIRE(w.cellCellConnections.size() == 3);
@@ -150,16 +150,15 @@ template <typename W> void printCells(W& w) {
 			          << std::endl;
 		std::cerr << " -- cellConnections:" << std::endl;
 		for (auto& co : c->membrane.cccm.cellConnections) {
-			std::cerr << "    |> Connection " << co << " btwn " << co->cells.first->id << " & "
-			          << co->cells.second->id << std::endl;
+			std::cerr << "    |> Connection " << co << " btwn " << co->c0->id << " & "
+			          << co->c1->id << std::endl;
 		}
 	}
 	std::cerr << BOLDYELLOW << ">>> World stored connections ("
 	          << w.cellCellConnections.size() << "): " << RESET << std::endl;
 	for (auto& co : w.cellCellConnections) {
 		std::cerr << "    |> (" << co.second.get() << ") between cells " << BOLDBLUE
-		          << co.second->cells.first->id << " & " << co.second->cells.second->id
-		          << RESET << std::endl;
+		          << co.second->c0->id << " & " << co.second->c1->id << RESET << std::endl;
 	}
 }
 
