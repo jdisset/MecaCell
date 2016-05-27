@@ -1,9 +1,10 @@
 #ifndef LOGGER_HPP
 #define LOGGER_HPP
-#include <iostream>
 #include <algorithm>
-#include <sstream>
+#include <chrono>
 #include <iomanip>
+#include <iostream>
+#include <sstream>
 
 using std::ostream;
 using std::string;
@@ -50,80 +51,43 @@ using std::endl;
 #define BOLDWHITE ""
 #endif
 
-#define LOGGERINSTANCE(var, logger) auto var = logger
-#define DEBUG(name) Log(#name, LogLvl::debug, __func__)
-#define ERROR(name) Log(#name, LogLvl::error, __func__)
-#define WARNING(name) Log(#name, LogLvl::warning, __func__)
+#define concat(first, second) first second
 
-// example usage:
-// DBG(membrane) << "kikoo" << endl;
+// LOGGER
+template <typename T> std::string sublogger(T&& t) {
+	std::ostringstream os;
+	os << t;
+	return os.str();
+}
 
-class Formatter {
- public:
-	Formatter() {}
-	~Formatter() {}
+template <typename T, typename... Args> std::string sublogger(T&& t, Args&&... args) {
+	std::ostringstream os;
+	os << t << sublogger(std::forward<Args>(args)...);
+	return os.str();
+}
 
-	template <typename Type> Formatter& operator<<(const Type& value) {
-		stream_ << value;
-		return *this;
-	}
-
-	std::string str() const { return stream_.str(); }
-	operator std::string() const { return stream_.str(); }
-
-	enum ConvertToString { to_str };
-	std::string operator>>(ConvertToString) { return stream_.str(); }
-
- private:
-	std::stringstream stream_;
-
-	Formatter(const Formatter&);
-	Formatter& operator=(Formatter&);
+struct WARN {
+	static constexpr auto tag = concat(concat(YELLOW, " ⚠  [WARNING]"), RESET);
 };
 
-enum class LogLvl { error, warning, debug };
-struct LogBuf : public std::stringbuf {
-	string header;
-	string name;
-	LogLvl lvl;
-	string func;
-
-	explicit LogBuf(const LogBuf& lb)
-	    : std::stringbuf(), header(lb.header), name(lb.name), lvl(lb.lvl), func(lb.func) {}
-	LogBuf(const string&& n, const LogLvl& l, const string&& f)
-	    : name(std::move(n)), lvl(l), func(std::move(f)) {
-		std::transform(name.begin(), name.end(), name.begin(), ::toupper);
-		std::stringstream headerstream;
-		string COLOR;
-		switch (lvl) {
-			case LogLvl::error:
-				COLOR = RED;
-				break;
-			case LogLvl::warning:
-				COLOR = MAGENTA;
-				break;
-			default:
-			case LogLvl::debug:
-				COLOR = BOLDGREEN;
-				break;
-		}
-		headerstream << COLOR << name << " " << BOLDBLACK << func << COLOR << "┣  " << RESET;
-		header = headerstream.str();
-	}
-
-	virtual int sync() {
-		cerr << header << str();
-		str(std::string());
-		return 0;
-	}
+struct ERR {
+	static constexpr auto tag = concat(concat(RED, " ✖ [ERROR]"), RESET);
+};
+struct INF {
+	static constexpr auto tag = " ⟢ ";
+};
+struct SUC {
+	static constexpr auto tag = concat(concat(BOLDGREEN, " ✓ [SUCCESS]"), RESET);
 };
 
-struct Log : public std::ostream {
-	LogBuf buf;
-	Log(Log&& l) : buf(l.buf) {}
+template <typename Type, typename... Args> void logger(Args&&... args) {
+	std::time_t t = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+	std::string tstr(ctime(&t));
+	tstr = tstr.substr(0, tstr.size() - 1);
+	std::ostringstream os;
+	os << BOLDBLACK << tstr << RESET << "| " << Type::tag << "𝌅 ";
+	os << sublogger(std::forward<Args>(args)...) << std::endl;
+	std::cerr << os.str();
+}
 
-	template <typename... Args>
-	Log(Args&&... args)
-	    : std::ostream(&buf), buf(std::forward<Args>(args)...) {}
-};
 #endif

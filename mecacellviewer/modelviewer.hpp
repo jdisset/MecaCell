@@ -1,8 +1,8 @@
 #ifndef MECACELLVIEWER_MODELVIEWER_HPP
 #define MECACELLVIEWER_MODELVIEWER_HPP
-#include "model.hpp"
 #include <string>
 #include <unordered_map>
+#include "model.hpp"
 
 namespace MecacellViewer {
 template <typename M, typename R> struct ModelViewer : public PaintStep<R> {

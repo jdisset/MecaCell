@@ -10,6 +10,7 @@ Model::Model(const string &filepath) : obj(filepath) {
 	updateFacesFromObj();
 	// computeAdjacency();
 	updateFromTransformation();
+	logger<INF>("added model");
 }
 
 void Model::scale(const Vec &s) {
@@ -42,12 +43,14 @@ void Model::updateFromTransformation() {
 	}
 	changed = true;
 }
+
 void Model::updateFacesFromObj() {
 	for (auto &f : obj.faces) {
 		faces.push_back(f.at("v"));
 	}
 	changed = true;
 }
+
 void Model::computeAdjacency() {
 	for (size_t i = 0; i < faces.size(); ++i) {
 		Triangle &ti = faces[i];

@@ -19,7 +19,7 @@ const float screenGamma = 2.2;
 
 void main(){
 	vec4 modelDiffuseColor = color;
-	vec4 modelAmbientColor = vec4(modelDiffuseColor.xyz * 0.07, modelDiffuseColor.a); 
+	vec4 modelAmbientColor = vec4(modelDiffuseColor.xyz * 0.07, modelDiffuseColor.a);
 
 	DirectionalLight lights[nbLights];
 	lights[0].direction = vec3(10,10,5);
@@ -43,7 +43,7 @@ void main(){
 
 		vec3 lightPos = vec3(5000.0,5000.0,-200.0);
 		/*vec3 lightDir = normalize(lightPos - surfacePosition);*/
-		vec3 lightDir = normalize(lights[i].direction);	
+		vec3 lightDir = normalize(lights[i].direction);
 		/*vec3 lightDir = lights[i].direction;*/
 
 		float lambertian = max(dot(lightDir,normal), 0.0);

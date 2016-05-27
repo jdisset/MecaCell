@@ -1,45 +1,46 @@
 #ifndef QTVIEWER_H
 #define QTVIEWER_H
-#include "signalslotbase.h"
-#include "keyboardmanager.hpp"
-#include "mousemanager.hpp"
-#include "connectionsgroup.hpp"
-#include "paintstep.hpp"
-#include "screenmanager.hpp"
-#include "camera.hpp"
-#include "button.hpp"
-#include "viewtools.h"
-#include "arrowsgroup.hpp"
-#include "screencapture.hpp"
-#include "cellgroup.hpp"
-#include "deformableCellGroup.hpp"
-#include "gridviewer.hpp"
-#include "plugins.hpp"
-#include "skybox.hpp"
-#include "msaa.hpp"
-#include "ssao.hpp"
-#include "blur.hpp"
-#include "modelviewer.hpp"
-#include <QMap>
-#include <QOpenGLFramebufferObject>
-#include <QQmlApplicationEngine>
-#include <QMatrix4x4>
-#include <QQuickView>
-#include <QQmlContext>
-#include <QGuiApplication>
 #include <QApplication>
+#include <QGuiApplication>
+#include <QMap>
+#include <QMatrix4x4>
 #include <QOpenGLContext>
+#include <QOpenGLFramebufferObject>
 #include <QOpenGLFunctions>
-#include <QQuickItem>
+#include <QQmlApplicationEngine>
 #include <QQmlContext>
+#include <QQmlContext>
+#include <QQuickItem>
+#include <QQuickView>
+#include <chrono>
+#include <functional>
+#include <iostream>
+#include <set>
 #include <string>
-#include <vector>
 #include <unordered_map>
 #include <unordered_set>
-#include <set>
 #include <utility>
-#include <functional>
-#include <chrono>
+#include <vector>
+#include "arrowsgroup.hpp"
+#include "blur.hpp"
+#include "button.hpp"
+#include "camera.hpp"
+#include "cellgroup.hpp"
+#include "connectionsgroup.hpp"
+#include "deformableCellGroup.hpp"
+#include "gridviewer.hpp"
+#include "keyboardmanager.hpp"
+#include "modelviewer.hpp"
+#include "mousemanager.hpp"
+#include "msaa.hpp"
+#include "paintstep.hpp"
+#include "plugins.hpp"
+#include "screencapture.hpp"
+#include "screenmanager.hpp"
+#include "signalslotbase.h"
+#include "skybox.hpp"
+#include "ssao.hpp"
+#include "viewtools.h"
 
 #define MECACELL_VIEWER
 #include "macros.h"
@@ -307,8 +308,9 @@ template <typename Scenario> class Viewer : public SignalSlotRenderer {
 			if (me->isChecked()) {
 				paintStepsMethods[1000000] = [&](R *r) { paintSteps["SSAO"]->call(r); };
 			} else {
-				paintStepsMethods[1000000] =
-				    [&](R *r) { dynamic_cast<SSAO<R> *>(paintSteps["SSAO"].get())->callDumb(r); };
+				paintStepsMethods[1000000] = [&](R *r) {
+					dynamic_cast<SSAO<R> *>(paintSteps["SSAO"].get())->callDumb(r);
+				};
 			}
 		};
 		MenuElement<R> menublurPostproc = {"Blurred menu"};
@@ -603,6 +605,7 @@ template <typename Scenario> class Viewer : public SignalSlotRenderer {
 		               Qt::WindowTitleHint | Qt::WindowCloseButtonHint |
 		               Qt::WindowFullscreenButtonHint);
 		SignalSlotBase *ssb = root->findChild<SignalSlotBase *>("renderer");
+
 		engine->rootContext()->setContextProperty("glview", ssb);
 		ssb->init(this);
 		view->show();

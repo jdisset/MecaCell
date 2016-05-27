@@ -1,7 +1,7 @@
 #ifndef MECACELLVIEWER_MODEL_HPP
 #define MECACELLVIEWER_MODEL_HPP
-#include "viewtools.h"
 #include <vector>
+#include "viewtools.h"
 
 using std::vector;
 
