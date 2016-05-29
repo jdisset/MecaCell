@@ -1,21 +1,18 @@
 #ifndef SPHEREMEMBRANE_HPP
 #define SPHEREMEMBRANE_HPP
-#include "tools.h"
+#include <unordered_map>
+#include <utility>
+#include <vector>
+#include "cellcellconnectionmanager.hpp"
 #include "connection.h"
 #include "model.h"
 #include "modelconnection.hpp"
-#include "cellcellconnectionmanager.hpp"
-#include <utility>
-#include <vector>
-#include <unordered_map>
+#include "tools.h"
 
 // default breaking connection angle
 #define DEFAULT_MAX_TETA M_PI / 12.0
 // threshold (dot product) above which we want two model connections to be merged
 #define MIN_MODEL_CONNECTION_SIMILARITY 0.8
-
-#undef DBG
-#define DBG DEBUG(spheremembrane)
 
 CREATE_METHOD_CHECKS(getAdhesionWith);
 namespace MecaCell {
@@ -321,8 +318,9 @@ template <typename Cell> class SphereMembrane {
 					if (cellModelConnections.count(mf.first) &&
 					    cellModelConnections[mf.first].count(c)) {
 						for (auto &otherconn : cellModelConnections[mf.first][c]) {
-							Vec prevDirection = (otherconn->bounce.getNode0().getPosition() -
-							                     c->getPrevposition()).normalized();
+							Vec prevDirection =
+							    (otherconn->bounce.getNode0().getPosition() - c->getPrevposition())
+							        .normalized();
 							if (prevDirection.dot(currentDirection) > MIN_MODEL_CONNECTION_SIMILARITY) {
 								alreadyExist = true;
 								otherconn->dirty = false;
@@ -342,9 +340,10 @@ template <typename Cell> class SphereMembrane {
 									    currentDirection.cross(currentDirection.cross(anchorDirection));
 									if (crossp.sqlength() > c->getConstMembrane().radius * 0.02) {
 										crossp.normalize();
-										float_t projLength = min((otherconn->anchor.getNode0().getPosition() -
-										                          c->getPosition()).dot(crossp),
-										                         c->getConstMembrane().radius);
+										float_t projLength = min(
+										    (otherconn->anchor.getNode0().getPosition() - c->getPosition())
+										        .dot(crossp),
+										    c->getConstMembrane().radius);
 										otherconn->anchor.getNode0().position =
 										    c->getPosition() + projLength * crossp;
 									}

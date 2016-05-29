@@ -1,11 +1,11 @@
 #ifndef CELLCELLCONNECTIONMANAGER_HPP
 #define CELLCELLCONNECTIONMANAGER_HPP
-#include "tools.h"
+#include <utility>
+#include <vector>
 #include "connection.h"
 #include "model.h"
 #include "modelconnection.hpp"
-#include <utility>
-#include <vector>
+#include "tools.h"
 
 #undef DBG
 #define DBG DEBUG(CCCM)
@@ -18,7 +18,6 @@ struct CellCellConnectionManager_map {
 
 	vector<ConnectionType *> cellConnections;
 	// connections creation
-	// template<typename... Args>
 	template <typename... Args>
 	static inline void createConnection(CellCellConnectionContainer &container,
 	                                    ordered_pair<Cell *> cells,

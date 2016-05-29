@@ -166,6 +166,8 @@ template <typename K, typename V> struct ordered_hash_map {
 		return vec[um[k]].second;
 	}
 
+	bool count(const K &k) { return um.count(k); }
+
 	size_t size() const { return vec.size(); }
 	V &at(const K &k) { return vec[um.at(k)].second; }
 

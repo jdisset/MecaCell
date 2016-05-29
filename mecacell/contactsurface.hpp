@@ -1,16 +1,15 @@
 #ifndef CONTACTSURFACE_HPP
 #define CONTACTSURFACE_HPP
-#include "tools.h"
-#include "spring.hpp"
-#include <utility>
 #include <cmath>
+#include <utility>
+#include "spring.hpp"
+#include "tools.h"
 
 #undef DBG
 #define DBG DEBUG(contact)
 namespace MecaCell {
 //  pour les connections avec obj, on crée une cellule virtuelle gigantesque
 //  ratachée à un point sur le modele
-
 
 template <typename Cell, typename Other = Cell> struct ContactSurface {
 	// Other can either be a cell or a 3D obj

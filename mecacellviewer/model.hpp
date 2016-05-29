@@ -90,7 +90,7 @@ template <typename M> struct Model {
 		shader.setUniformValue(shader.uniformLocation("color"), color);
 		QMatrix4x4 nmatrix = model.inverted().transposed();
 		shader.setUniformValue(shader.uniformLocation("normalMatrix"), nmatrix);
-		// GL->glDisable(GL_CULL_FACE);
+		GL->glDisable(GL_CULL_FACE);
 		GL->glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0);
 		vao.release();
 		shader.release();

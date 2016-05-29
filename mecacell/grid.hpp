@@ -1,12 +1,12 @@
 #ifndef GRID_HPP
 #define GRID_HPP
 
-#include <vector>
-#include <set>
+#include <array>
 #include <deque>
 #include <iostream>
+#include <set>
 #include <unordered_map>
-#include <array>
+#include <vector>
 #include "tools.h"
 using namespace std;
 
@@ -20,6 +20,7 @@ template <typename O> class Grid {
 
  public:
 	Grid(float_t cs) : cellSize(1.0 / cs) {}
+	size_t size() { return um.size(); };
 
 	float_t getCellSize() const { return 1.0 / cellSize; }
 	const vector<std::pair<Vec, vector<O>>> &getContent() const { return orderedVec; }

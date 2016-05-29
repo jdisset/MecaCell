@@ -1,19 +1,19 @@
 #ifndef MECACELL_WORLD_H
 #define MECACELL_WORLD_H
-#include "tools.h"
+#include <cxxabi.h>
+#include <algorithm>
+#include <cstdint>
+#include <cstdlib>
+#include <deque>
+#include <map>
+#include <typeinfo>
+#include <vector>
 #include "connection.h"
 #include "grid.hpp"
-#include "model.h"
 #include "integrators.hpp"
+#include "model.h"
 #include "modelconnection.hpp"
-#include <deque>
-#include <vector>
-#include <algorithm>
-#include <map>
-#include <cstdlib>
-#include <cstdint>
-#include <typeinfo>
-#include <cxxabi.h>
+#include "tools.h"
 
 using namespace std;
 
@@ -34,8 +34,8 @@ class BasicWorld {
 	using CellModelConnectionContainer = typename Cell::CellModelConnectionContainer;
 
  protected:
-	float_t dt = 1.0 / 50.0;  // interval btwn updates
-	int nbAddedCells = 0;     // used for each added cell's unique id
+	float_t dt = 1.0 / 100.0;  // interval btwn updates
+	int nbAddedCells = 0;      // used for each added cell's unique id
 
 	// space partition hashmap for cells
 	SpacePartition<Cell *> cellSpacePartition =
@@ -43,7 +43,7 @@ class BasicWorld {
 
 	// space partition hashmap for 3Dobj faces
 	SpacePartition<std::pair<model_type *, unsigned long>> modelSpacePartition =
-	    SpacePartition<std::pair<model_type *, unsigned long>>(100);
+	    SpacePartition<std::pair<model_type *, unsigned long>>(5 * DEFAULT_CELL_RADIUS);
 
 	// enabled collisions & connections checks
 	bool cellCellCollisions = true;
@@ -191,6 +191,7 @@ class BasicWorld {
 	}
 
 	void update() {
+		updateModelGrid();
 		prepareCellForNextUpdate();
 		addWorldSpecificForces();
 		updateExistingCollisionsAndConnections();

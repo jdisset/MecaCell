@@ -1,19 +1,18 @@
 #ifndef VOLUMEMEMBRANE_HPP
 #define VOLUMEMEMBRANE_HPP
-#include "tools.h"
-#include "connection.h"
-#include "model.h"
-#include "contactsurface.hpp"
-#include "modelconnection.hpp"
-#include "cellcellconnectionmanager.hpp"
+#include <map>
 #include <utility>
 #include <vector>
-#include <map>
-
-#undef DBG
-#define DBG DEBUG(volumemembrane)
+#include "cellcellconnectionmanager.hpp"
+#include "connection.h"
+#include "contactsurface.hpp"
+#include "model.h"
+#include "modelconnection.hpp"
+#include "tools.h"
 
 #define FOUR_THIRD_PI 4.1887902047863909846168578443726705
+
+#define MIN_MODEL_CONNECTION_SIMILARITY 0.8
 
 namespace MecaCell {
 template <typename Cell> class VolumeMembrane {
@@ -57,10 +56,15 @@ template <typename Cell> class VolumeMembrane {
  public:
 	using CCCM = CellCellConnectionManager_map<Cell, ContactSurface<Cell>>;
 	friend CCCM;
-	friend class ContactSurface<Cell>;
+	friend struct ContactSurface<Cell>;
 	using CellCellConnectionType = typename CCCM::ConnectionType;
 	using CellCellConnectionContainer = typename CCCM::CellCellConnectionContainer;
-	using CellModelConnectionContainer = int;
+
+	using ModelConnectionType = CellModelConnection<Cell>;
+	using CellModelConnectionContainer =
+	    unordered_map<Model *,
+	                  unordered_map<Cell *, vector<unique_ptr<CellModelConnection<Cell>>>>>;
+
 	static const bool hasModelCollisions = true;
 	static const bool forcesOnMembrane =
 	    false;  // are forces applied directly to membrane or to the cell's center?
@@ -86,6 +90,9 @@ template <typename Cell> class VolumeMembrane {
 	float_t restVolume = FOUR_THIRD_PI * restRadius * restRadius;
 	float_t currentVolume = restVolume;
 	float_t pressure = 0;
+
+	// 3D obj model connections
+	vector<ModelConnectionType *> modelConnections;
 
  public:
 	VolumeMembrane(Cell *c) : cell(c) { updateStats(); };
@@ -293,12 +300,144 @@ template <typename Cell> class VolumeMembrane {
 		}
 	}
 
+	/******************** with 3D models **********************/
+	void addModelConnection(ModelConnectionType *con) {
+		std::cerr << " add model Connection" << std::endl;
+		modelConnections.push_back(con);
+	}
+	void removeModelConnection(ModelConnectionType *con) {
+		modelConnections.erase(remove(modelConnections.begin(), modelConnections.end(), con),
+		                       modelConnections.end());
+	}
 	template <typename SpacePartition>
 	static void checkForCellModelCollisions(
 	    vector<Cell *> &cells, unordered_map<string, Model>,
 	    CellModelConnectionContainer &cellModelConnections, SpacePartition &modelGrid) {
-		// on créé une contactSurface entre chaque paire cellule triangle
-		// et voilà.
+		std::cerr << "hello cfcmc" << std::endl;
+		for (auto &m : cellModelConnections) {
+			for (auto &c : m.second) {
+				for (auto &conn : c.second) {
+					conn->dirty = true;
+				}
+			}
+		}
+		for (auto &c : cells) {
+			// for each cell, we find if a cell - model collision is possible.
+			auto toTest = modelGrid.retrieve(c->getPosition(), c->getBoundingBoxRadius());
+			std::cerr << "modelGrid.size = " << modelGrid.size() << std::endl;
+			std::cerr << "totest.size = " << toTest.size() << std::endl;
+			for (const auto &mf : toTest) {
+				// for each pair <model*, faceId> mf potentially colliding with c
+				const Vec &p0 = mf.first->vertices[mf.first->faces[mf.second].indices[0]];
+				const Vec &p1 = mf.first->vertices[mf.first->faces[mf.second].indices[1]];
+				const Vec &p2 = mf.first->vertices[mf.first->faces[mf.second].indices[2]];
+				// checking if cell c is in contact with triangle p0, p1, p2
+				pair<bool, Vec> projec = projectionIntriangle(p0, p1, p2, c->getPosition());
+				// projec = {projection inside triangle, projection coordinates}
+				// TODO: we also need to check if the connection should be on a vertice
+
+				Vec currentDirection = projec.second - c->getPosition();
+				if (projec.first &&
+				    currentDirection.sqlength() < pow(c->getBoundingBoxRadius(), 2)) {
+					// we have a potential connection. Now we consider 2 cases:
+					// 1 - brand new connection (easy)
+					// 2 - older connection	(we need to update it)
+					//  => same cell/model pair + similar bounce angle (same face or similar
+					//  normal)
+					currentDirection.normalize();
+					bool alreadyExist = false;
+					std::cerr << " potential connetion btwn cell & model" << std::endl;
+					if (cellModelConnections.count(mf.first) &&
+					    cellModelConnections[mf.first].count(c)) {
+						for (auto &otherconn : cellModelConnections[mf.first][c]) {
+							Vec prevDirection =
+							    (otherconn->bounce.getNode0().getPosition() - c->getPrevposition())
+							        .normalized();
+							if (prevDirection.dot(currentDirection) > MIN_MODEL_CONNECTION_SIMILARITY) {
+								alreadyExist = true;
+								otherconn->dirty = false;
+								// case n° 2, we want to update otherconn
+								// first, the bounce spring
+								otherconn->bounce.getNode0().position = projec.second;
+								otherconn->bounce.getNode0().face = mf.second;
+								// then the anchor. It's just another simple spring that is always at
+								// the
+								// same height as the cell (orthogonal to the bounce spring)
+								// it has a restlength of 0 and follows the cell when its length is more
+								// than the cell's radius;
+								if (otherconn->anchor.getSc().length > 0) {
+									// first we keep the anchor at cell height
+									const Vec &anchorDirection = otherconn->anchor.getSc().direction;
+									Vec crossp =
+									    currentDirection.cross(currentDirection.cross(anchorDirection));
+									if (crossp.sqlength() > c->getConstMembrane().dynamicRadius * 0.02) {
+										crossp.normalize();
+										float_t projLength = min(
+										    (otherconn->anchor.getNode0().getPosition() - c->getPosition())
+										        .dot(crossp),
+										    c->getConstMembrane().dynamicRadius);
+										otherconn->anchor.getNode0().position =
+										    c->getPosition() + projLength * crossp;
+									}
+								}
+								break;
+							}
+						}
+					}
+					if (!alreadyExist) {
+						std::cerr << "YES" << std::endl;
+						// TODO
+						float_t adh = c->getAdhesionWithModel(mf.first->name);
+						float_t l =
+						    mix(MAX_CELL_ADH_LENGTH * c->getConstMembrane().dynamicRadius,
+						        MIN_CELL_ADH_LENGTH * c->getConstMembrane().dynamicRadius, adh);
+						const float_t STIF = 20.0;
+						const float_t DAMP = 2.0;
+						unique_ptr<CellModelConnection<Cell>> cmc(new CellModelConnection<Cell>(
+						    Connection<SpaceConnectionPoint, Cell *>(
+						        {SpaceConnectionPoint(c->getPosition()), c},  // N0, N1
+						        Spring(100, DAMP,
+						               0)),  // anchor
+						    Connection<ModelConnectionPoint, Cell *>(
+						        {ModelConnectionPoint(mf.first, projec.second, mf.second),
+						         c},                   // N0, N1
+						        Spring(STIF, DAMP, l)  // bounce
+						        )));
+						cmc->anchor.tjEnabled = false;
+						c->getMembrane().addModelConnection(cmc.get());
+						cellModelConnections[mf.first][c].push_back(move(cmc));
+					}
+				}
+			}
+		}
+		// clean up: dirty connections
+		for (auto &m : cellModelConnections) {
+			for (auto &c : m.second) {
+				for (auto it = c.second.begin(); it != c.second.end();) {
+					if ((*it)->dirty) {
+						c.first->getMembrane().removeModelConnection(it->get());
+						it = c.second.erase(it);
+					} else {
+						++it;
+					}
+				}
+			}
+		}
+		// clean up: empty entries
+		for (auto itM = cellModelConnections.begin(); itM != cellModelConnections.end();) {
+			if (itM->second.empty()) {
+				itM = cellModelConnections.erase(itM);
+			} else {
+				for (auto itC = itM->second.begin(); itC != itM->second.end();) {
+					if (itC->second.empty()) {
+						itC = itM->second.erase(itC);
+					} else {
+						++itC;
+					}
+				}
+				++itM;
+			}
+		}
 	}
 
 	static void updateCellCellConnections(CellCellConnectionContainer &concon, float_t dt) {
@@ -316,7 +455,16 @@ template <typename Cell> class VolumeMembrane {
 			CCCM::disconnect(concon, c->c0, c->c1, c);
 		}
 	}
-	static void updateCellModelConnections(CellModelConnectionContainer &con, float_t dt) {}
+
+	static void updateCellModelConnections(CellModelConnectionContainer &con, float_t dt) {
+		for (auto &mod : con) {
+			for (auto &vec : mod.second) {
+				for (auto &c : vec.second) {
+					c->computeForces(dt);
+				}
+			}
+		}
+	}
 
 	static inline void disconnectAndDeleteAllConnections(Cell *c0,
 	                                                     CellCellConnectionContainer &con) {
