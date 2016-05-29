@@ -313,7 +313,6 @@ template <typename Cell> class VolumeMembrane {
 	static void checkForCellModelCollisions(
 	    vector<Cell *> &cells, unordered_map<string, Model>,
 	    CellModelConnectionContainer &cellModelConnections, SpacePartition &modelGrid) {
-		std::cerr << "hello cfcmc" << std::endl;
 		for (auto &m : cellModelConnections) {
 			for (auto &c : m.second) {
 				for (auto &conn : c.second) {
@@ -324,8 +323,6 @@ template <typename Cell> class VolumeMembrane {
 		for (auto &c : cells) {
 			// for each cell, we find if a cell - model collision is possible.
 			auto toTest = modelGrid.retrieve(c->getPosition(), c->getBoundingBoxRadius());
-			std::cerr << "modelGrid.size = " << modelGrid.size() << std::endl;
-			std::cerr << "totest.size = " << toTest.size() << std::endl;
 			for (const auto &mf : toTest) {
 				// for each pair <model*, faceId> mf potentially colliding with c
 				const Vec &p0 = mf.first->vertices[mf.first->faces[mf.second].indices[0]];
@@ -346,7 +343,6 @@ template <typename Cell> class VolumeMembrane {
 					//  normal)
 					currentDirection.normalize();
 					bool alreadyExist = false;
-					std::cerr << " potential connetion btwn cell & model" << std::endl;
 					if (cellModelConnections.count(mf.first) &&
 					    cellModelConnections[mf.first].count(c)) {
 						for (auto &otherconn : cellModelConnections[mf.first][c]) {
@@ -361,8 +357,7 @@ template <typename Cell> class VolumeMembrane {
 								otherconn->bounce.getNode0().position = projec.second;
 								otherconn->bounce.getNode0().face = mf.second;
 								// then the anchor. It's just another simple spring that is always at
-								// the
-								// same height as the cell (orthogonal to the bounce spring)
+								// the same height as the cell (orthogonal to the bounce spring)
 								// it has a restlength of 0 and follows the cell when its length is more
 								// than the cell's radius;
 								if (otherconn->anchor.getSc().length > 0) {
@@ -385,7 +380,6 @@ template <typename Cell> class VolumeMembrane {
 						}
 					}
 					if (!alreadyExist) {
-						std::cerr << "YES" << std::endl;
 						// TODO
 						float_t adh = c->getAdhesionWithModel(mf.first->name);
 						float_t l =
