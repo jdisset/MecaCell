@@ -1,8 +1,8 @@
 #include "catch.hpp"
 #define protected public
 #define private public
-#include "../mecacell/mecacell.h"
 #include "../mecacell/logger.hpp"
+#include "../mecacell/mecacell.h"
 #include "../mecacell/tools.h"
 #undef protected
 #undef private
@@ -74,7 +74,7 @@ class VolCell : public MecaCell::ConnectableCell<VolCell, VolumeMembrane> {
 };
 
 template <typename W> void checkThatCellsAreIdentical(W& w0, W& w1) {
-	for (int c = 0; c < w0.cells.size(); ++c) {
+	for (size_t c = 0; c < w0.cells.size(); ++c) {
 		REQUIRE(w0.cells[c]->id == w1.cells[c]->id);
 		REQUIRE(w0.cells[c]->getPosition() == w1.cells[c]->getPosition());
 		REQUIRE(w0.cells[c]->getVelocity() == w1.cells[c]->getVelocity());
@@ -110,8 +110,8 @@ TEST_CASE("connections form and disappear") {
 		REQUIRE(w.cells.size() == 3);
 		REQUIRE(w.cells[0]->membrane.cccm.cellConnections.size() == 2);
 		REQUIRE(w.cells[1]->membrane.cccm.cellConnections.size() == 2);
-		REQUIRE(w.cells[0]->membrane.cccm.cellConnections[0]->c0 == w.cells[0]);
-		REQUIRE(w.cells[0]->membrane.cccm.cellConnections[0]->c1 == w.cells[1]);
+		REQUIRE(w.cells[0]->membrane.cccm.cellConnections[0]->cells.first == w.cells[0]);
+		REQUIRE(w.cells[0]->membrane.cccm.cellConnections[0]->cells.second == w.cells[1]);
 		REQUIRE(w.cells[0]->membrane.cccm.cellConnections[0] ==
 		        w.cells[1]->membrane.cccm.cellConnections[0]);
 		REQUIRE(w.cellCellConnections.size() == 3);

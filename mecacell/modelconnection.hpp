@@ -1,15 +1,15 @@
 #ifndef MECACELL_MODELCONNECTION_H
 #define MECACELL_MODELCONNECTION_H
-#include "connection.h"
-#include "model.h"
-#include "matrix4x4.h"
-#include "objmodel.h"
-#include "tools.h"
-#include <vector>
 #include <string>
-#include <vector>
 #include <unordered_map>
 #include <unordered_set>
+#include <vector>
+#include <vector>
+#include "connection.h"
+#include "matrix4x4.h"
+#include "model.h"
+#include "objmodel.h"
+#include "tools.h"
 
 using std::string;
 using std::vector;
@@ -19,7 +19,7 @@ using std::pair;
 
 namespace MecaCell {
 
-struct SpaceConnectionPoint { // just a connection point with anything anywhere
+struct SpaceConnectionPoint {  // just a connection point with anything anywhere
 	SpaceConnectionPoint(Vec p) : position(p) {}
 	Vec position;
 	size_t face;
@@ -59,17 +59,17 @@ template <typename Cell> struct CellModelConnection {
 	using CMConnection = Connection<ModelConnectionPoint, Cell *>;
 	using CSConnection = Connection<SpaceConnectionPoint, Cell *>;
 	Model *model;
-	CSConnection anchor;  // slide and anchor, only angular
-	CMConnection bounce;  // always perpendicular, only classic spring
-	float_t maxTeta = 0.1; // this is for the anchor, and should always be smaller than the
-	                      // actual connection's maxTeta
+	CSConnection anchor;    // slide and anchor, only angular
+	CMConnection bounce;    // always perpendicular, only classic spring
+	float_t maxTeta = 0.1;  // this is for the anchor, and should always be smaller than the
+	                        // actual connection's maxTeta
 	void computeForces(float_t dt) {
 		anchor.computeForces(dt);
 		bounce.computeForces(dt);
 	}
 	CellModelConnection() {}
 	CellModelConnection(CSConnection a, CMConnection b) : anchor(a), bounce(b) {}
-	bool dirty = false; // does this connection need to be deleted?
+	bool dirty = false;  // does this connection need to be deleted?
 };
 }
 #endif

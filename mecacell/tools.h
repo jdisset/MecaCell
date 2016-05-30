@@ -176,7 +176,7 @@ template <typename K, typename V> struct ordered_hash_map {
 	void erase(const K &k) {
 		if (um.count(k)) {
 			auto id = um[k];
-			vec.erase(vec.begin() + id);
+			vec.erase(vec.begin() + (int)id);
 			um.erase(k);
 			for (auto &u : um) {
 				if (u.second > id) u.second--;

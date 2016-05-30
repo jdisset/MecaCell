@@ -1,7 +1,7 @@
 #ifndef CONNECTION_H
 #define CONNECTION_H
-#include "tools.h"
 #include "spring.hpp"
+#include "tools.h"
 
 #define MAX_TS_INCL \
 	0.1  // max angle before we need to reproject our torsion joint rotation
@@ -166,7 +166,7 @@ template <typename N0, typename N1 = N0> struct Connection {
 			fjNode.updateDelta();
 			if (fjNode.maxTetaAutoCorrect &&
 			    fjNode.delta.teta > fjNode.maxTeta) {  // if we passed flex break angle
-				float dif = fjNode.delta.teta - fjNode.maxTeta;
+				float_t dif = fjNode.delta.teta - fjNode.maxTeta;
 				fjNode.r = fjNode.r + Rotation<Vec>(fjNode.delta.n, dif);
 				fjNode.direction = fjNode.direction.rotated(Rotation<Vec>(fjNode.delta.n, dif));
 				fjNode.r = node->getOrientationRotation().inverted() +
@@ -174,9 +174,11 @@ template <typename N0, typename N1 = N0> struct Connection {
 				                                                     fjNode.direction.ortho()));
 			}
 			// flex torque and force
-			float_t d = scEnabled ? sc.length : (ptr(connected.first)->getPosition() -
-			                                     ptr(connected.second)->getPosition())
-			                                        .length();
+			float_t d =
+			    scEnabled ?
+			        sc.length :
+			        (ptr(connected.first)->getPosition() - ptr(connected.second)->getPosition())
+			            .length();
 			// std::cerr << "currentK = " << fjNode.currentK << std::endl;
 			float_t torque =
 			    fjNode.currentK * fjNode.delta.teta +

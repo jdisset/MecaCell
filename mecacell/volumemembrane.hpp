@@ -4,6 +4,7 @@
 #include <utility>
 #include <vector>
 #include "cellcellconnectionmanager.hpp"
+#include "cellmodelcontactsurface.hpp"
 #include "connection.h"
 #include "contactsurface.hpp"
 #include "model.h"
@@ -60,10 +61,9 @@ template <typename Cell> class VolumeMembrane {
 	using CellCellConnectionType = typename CCCM::ConnectionType;
 	using CellCellConnectionContainer = typename CCCM::CellCellConnectionContainer;
 
-	using ModelConnectionType = CellModelConnection<Cell>;
-	using CellModelConnectionContainer =
-	    unordered_map<Model *,
-	                  unordered_map<Cell *, vector<unique_ptr<CellModelConnection<Cell>>>>>;
+	using ModelConnectionType = CellModelContactSurface<Cell>;
+	using CellModelConnectionContainer = unordered_map<
+	    Model *, unordered_map<Cell *, vector<unique_ptr<CellModelContactSurface<Cell>>>>>;
 
 	static const bool hasModelCollisions = true;
 	static const bool forcesOnMembrane =
@@ -139,15 +139,15 @@ template <typename Cell> class VolumeMembrane {
 		float_t closestDist = dynamicRadius;
 		for (auto &cc : cccm.cellConnections) {
 			auto con = CCCM::getConnection(cc);
-			auto normal = cell == con->c0 ? -con->normal : con->normal;
+			auto normal = cell == con->cells.first ? -con->normal : con->normal;
 			float_t dot = normal.dot(d);
 			if (dot < 0) {
 				const auto &midpoint =
-				    cell == con->c0 ? con->midpoint.first : con->midpoint.second;
+				    cell == con->cells.first ? con->midpoint.first : con->midpoint.second;
 				float_t l = -midpoint / dot;
 				if (l < closestDist) {
 					closestDist = l;
-					closestCell = con->c0 == cell ? con->c1 : con->c0;
+					closestCell = con->cells.first == cell ? con->cells.second : con->cells.first;
 				}
 			}
 		}
@@ -177,11 +177,18 @@ template <typename Cell> class VolumeMembrane {
 
 	void computeCurrentVolume() {
 		float_t volumeLoss = 0;
+		// cell connections
 		for (auto &cc : cccm.cellConnections) {
 			auto con = CCCM::getConnection(cc);
-			auto &midpoint = cell == con->c0 ? con->midpoint.first : con->midpoint.second;
+			auto &midpoint =
+			    cell == con->cells.first ? con->midpoint.first : con->midpoint.second;
 			auto h = dynamicRadius - midpoint;
 			volumeLoss += (M_PI * h / 6.0) * (3.0 * con->sqradius + h * h);
+		}
+		// model connections
+		for (auto &cm : modelConnections) {
+			auto h = dynamicRadius - cm->bounceLength;
+			volumeLoss += (M_PI * h / 6.0) * (3.0 * cm->sqradius + h * h);
 		}
 		// TODO : soustraire les overlapps
 		float_t baseVol = FOUR_THIRD_PI * dynamicRadius * dynamicRadius * dynamicRadius;
@@ -196,7 +203,8 @@ template <typename Cell> class VolumeMembrane {
 		float_t surfaceLoss = 0;
 		for (auto &cc : cccm.cellConnections) {
 			auto con = CCCM::getConnection(cc);
-			auto &midpoint = cell == con->c0 ? con->midpoint.first : con->midpoint.second;
+			auto &midpoint =
+			    cell == con->cells.first ? con->midpoint.first : con->midpoint.second;
 			surfaceLoss += 2.0 * M_PI * dynamicRadius * (dynamicRadius - midpoint) - con->area;
 		}
 		float_t baseArea = 4.0 * M_PI * dynamicRadius * dynamicRadius;
@@ -296,7 +304,8 @@ template <typename Cell> class VolumeMembrane {
 			}
 		}
 		for (const auto &nc : newConnections) {
-			CCCM::createConnection(cellCellConnections, nc, nc.first, nc.second);
+			CCCM::createConnection(cellCellConnections, nc,
+			                       make_ordered_cell_pair(nc.first, nc.second));
 		}
 	}
 
@@ -331,8 +340,7 @@ template <typename Cell> class VolumeMembrane {
 				// checking if cell c is in contact with triangle p0, p1, p2
 				pair<bool, Vec> projec = projectionIntriangle(p0, p1, p2, c->getPosition());
 				// projec = {projection inside triangle, projection coordinates}
-				// TODO: we also need to check if the connection should be on a vertice
-
+				// TODO: we should also check if the connection is with a vertice
 				Vec currentDirection = projec.second - c->getPosition();
 				if (projec.first &&
 				    currentDirection.sqlength() < pow(c->getBoundingBoxRadius(), 2)) {
@@ -347,59 +355,23 @@ template <typename Cell> class VolumeMembrane {
 					    cellModelConnections[mf.first].count(c)) {
 						for (auto &otherconn : cellModelConnections[mf.first][c]) {
 							Vec prevDirection =
-							    (otherconn->bounce.getNode0().getPosition() - c->getPrevposition())
-							        .normalized();
-							if (prevDirection.dot(currentDirection) > MIN_MODEL_CONNECTION_SIMILARITY) {
+							    (otherconn->bounce.position - c->getPrevposition()).normalized();
+							if (abs(prevDirection.dot(currentDirection)) >
+							    MIN_MODEL_CONNECTION_SIMILARITY) {
 								alreadyExist = true;
 								otherconn->dirty = false;
 								// case n° 2, we want to update otherconn
-								// first, the bounce spring
-								otherconn->bounce.getNode0().position = projec.second;
-								otherconn->bounce.getNode0().face = mf.second;
-								// then the anchor. It's just another simple spring that is always at
-								// the same height as the cell (orthogonal to the bounce spring)
-								// it has a restlength of 0 and follows the cell when its length is more
-								// than the cell's radius;
-								if (otherconn->anchor.getSc().length > 0) {
-									// first we keep the anchor at cell height
-									const Vec &anchorDirection = otherconn->anchor.getSc().direction;
-									Vec crossp =
-									    currentDirection.cross(currentDirection.cross(anchorDirection));
-									if (crossp.sqlength() > c->getConstMembrane().dynamicRadius * 0.02) {
-										crossp.normalize();
-										float_t projLength = min(
-										    (otherconn->anchor.getNode0().getPosition() - c->getPosition())
-										        .dot(crossp),
-										    c->getConstMembrane().dynamicRadius);
-										otherconn->anchor.getNode0().position =
-										    c->getPosition() + projLength * crossp;
-									}
-								}
+								otherconn->update(projec.second, mf.second);
 								break;
 							}
 						}
 					}
 					if (!alreadyExist) {
-						// TODO
-						float_t adh = c->getAdhesionWithModel(mf.first->name);
-						float_t l =
-						    mix(MAX_CELL_ADH_LENGTH * c->getConstMembrane().dynamicRadius,
-						        MIN_CELL_ADH_LENGTH * c->getConstMembrane().dynamicRadius, adh);
-						const float_t STIF = 20.0;
-						const float_t DAMP = 2.0;
-						unique_ptr<CellModelConnection<Cell>> cmc(new CellModelConnection<Cell>(
-						    Connection<SpaceConnectionPoint, Cell *>(
-						        {SpaceConnectionPoint(c->getPosition()), c},  // N0, N1
-						        Spring(100, DAMP,
-						               0)),  // anchor
-						    Connection<ModelConnectionPoint, Cell *>(
-						        {ModelConnectionPoint(mf.first, projec.second, mf.second),
-						         c},                   // N0, N1
-						        Spring(STIF, DAMP, l)  // bounce
-						        )));
-						cmc->anchor.tjEnabled = false;
-						c->getMembrane().addModelConnection(cmc.get());
-						cellModelConnections[mf.first][c].push_back(move(cmc));
+						unique_ptr<CellModelContactSurface<Cell>> cmcs(
+						    new CellModelContactSurface<Cell>(
+						        c, ModelConnectionPoint(mf.first, projec.second, mf.second)));
+						c->getMembrane().addModelConnection(cmcs.get());
+						cellModelConnections[mf.first][c].push_back(move(cmcs));
 					}
 				}
 			}
@@ -446,7 +418,7 @@ template <typename Cell> class VolumeMembrane {
 			}
 		}
 		for (CellCellConnectionType *c : toDisconnect) {
-			CCCM::disconnect(concon, c->c0, c->c1, c);
+			CCCM::disconnect(concon, c->cells.first, c->cells.second, c);
 		}
 	}
 
@@ -464,7 +436,7 @@ template <typename Cell> class VolumeMembrane {
 	                                                     CellCellConnectionContainer &con) {
 		auto cop = c0->membrane.cccm.cellConnections;
 		for (auto &cc : cop) {
-			CCCM::disconnect(con, cc->c0, cc->c1, cc);
+			CCCM::disconnect(con, cc->cells.first, cc->cells.second, cc);
 		}
 	}
 };
