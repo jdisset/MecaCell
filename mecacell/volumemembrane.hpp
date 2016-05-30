@@ -310,10 +310,7 @@ template <typename Cell> class VolumeMembrane {
 	}
 
 	/******************** with 3D models **********************/
-	void addModelConnection(ModelConnectionType *con) {
-		std::cerr << " add model Connection" << std::endl;
-		modelConnections.push_back(con);
-	}
+	void addModelConnection(ModelConnectionType *con) { modelConnections.push_back(con); }
 	void removeModelConnection(ModelConnectionType *con) {
 		modelConnections.erase(remove(modelConnections.begin(), modelConnections.end(), con),
 		                       modelConnections.end());

@@ -10,17 +10,20 @@ template <typename Cell> struct CellModelContactSurface {
 	SpaceConnectionPoint anchor;  // connection position (where the springs are)
 	// the anchor point is orthogonal to the bounce spring and always at its height
 
-	float_t maxAnchorLength = 2.0;
+	float_t maxAnchorLength = 5.0;
 	float_t bounceLength = 10.0;
 	float_t area = 0.0;
 	float_t sqradius = 0.0;
 	Vec prevnormal;
 	Vec normal;
+	Vec anchorDir;
+	float_t anchorLength = 0;
 	bool dirty = false;  // does this connection need to be deleted?
+	static constexpr float_t baseBondStrength = 0.005;
 
 	float_t minDist = 1.0;
 
-	const float_t BOUNCE_ABSORB = 0.5;
+	const float_t BOUNCE_ABSORB = 0.1;
 
 	CellModelContactSurface(Cell* C, const ModelConnectionPoint& mcp)
 	    : c(C), bounce(mcp), anchor(mcp.position) {
@@ -29,16 +32,15 @@ template <typename Cell> struct CellModelContactSurface {
 	}
 
 	void update(Vec bounceProjection, size_t bounceFace) {
-		std::cerr << "updating. bounce position = " << bounce.position << std::endl;
 		bounce.position = bounceProjection;
 		bounce.face = bounceFace;
-		std::cerr << " now, position = " << bounce.position << std::endl;
 		// anchor update
-		Vec BA = anchor.position - bounce.position;
-		auto anchorLength = BA.length();
+		anchorDir = anchor.position - bounce.position;
+		anchorLength = anchorDir.length();
+		anchorDir = anchorDir / anchorLength;
 		if (anchorLength > maxAnchorLength) {
 			// if the anchor is too far away we reproject it closer
-			anchor.position = bounce.position + (BA / anchorLength) * maxAnchorLength;
+			anchor.position = bounce.position + anchorDir * maxAnchorLength;
 		}
 		updateInternals();
 	}
@@ -56,30 +58,21 @@ template <typename Cell> struct CellModelContactSurface {
 	}
 
 	void computeForces(float_t) {
-		std::cerr << "computing forces" << std::endl;
-		std::cerr << " Bouncelength = " << bounceLength << ", area = " << area
-		          << ", pressure = " << c->getPressure() << ", normal = " << normal
-		          << ", prvnormal = " << prevnormal << ", faceId = " << bounce.face
-		          << std::endl;
 		// two main forces : repulsion due to pressure
 		// and attraction due to adhesion (anchor)
 		// REPULSIVE FORCE :
 		if (prevnormal.dot(normal) <= 0) {
 			// la cellule essaie de traverser...
-			std::cerr << "tentative de traversure. cell pos = " << c->getPosition()
-			          << std::endl;
 			normal = prevnormal;
-			c->setPosition(c->getPosition() + normal * bounceLength);
+			c->setPosition(c->getPosition() + normal * (1.1 + bounceLength));
 			c->setVelocity(BOUNCE_ABSORB *
 			               (c->getVelocity() - 2.0 * c->getVelocity().dot(normal) * normal));
 			c->setForce(Vec(0, 0, 0));
-			std::cerr << "apres correction. cell pos = " << c->getPosition() << std::endl;
 		}
 		auto F = area * max(0.0, c->getPressure()) * normal;
 		c->receiveForce(F);
-		std::cerr << " F = " << F << std::endl;
-		// ADHESIVE FORCE:
-		 float_t adhIntensity = c->getAdhesionWithModel(bounce.model->name);
+		// FRICTION FORCE:
+		// ADHESION FORCE:
 	}
 };
 }
