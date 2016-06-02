@@ -1,14 +1,14 @@
 #ifndef MECACELL_OBJMODEL_H
 #define MECACELL_OBJMODEL_H
 
-#include "tools.h"
-#include <vector>
 #include <array>
-#include <unordered_map>
 #include <fstream>
+#include <iostream>
 #include <sstream>
 #include <string>
-#include <iostream>
+#include <unordered_map>
+#include <vector>
+#include "tools.h"
 
 using std::vector;
 using std::string;
@@ -40,6 +40,7 @@ class ObjModel {
 	ObjModel(const string &filepath) {
 		std::ifstream file(filepath);
 		string line;
+
 		while (std::getline(file, line)) {
 			vector<string> vs = splitStr(line, ' ');
 			if (vs.size() > 1) {
@@ -63,9 +64,9 @@ class ObjModel {
 				}
 			}
 		}
-		// std::cout << "Object loaded, vertices.size = " << vertices.size() << ",
-		// normals.size = " << normals.size()
-		//<< ", faces.size = " << faces.size() << std::endl;
+		std::cout << "Object loaded, vertices.size = " << vertices.size()
+		          << ", normals.size = " << normals.size()
+		          << ", faces.size = " << faces.size() << std::endl;
 	}
 };
 }

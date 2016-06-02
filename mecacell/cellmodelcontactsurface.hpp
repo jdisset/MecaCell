@@ -23,7 +23,7 @@ template <typename Cell> struct CellModelContactSurface {
 
 	float_t minDist = 1.0;
 
-	const float_t BOUNCE_ABSORB = 0.1;
+	const float_t BOUNCE_ABSORB = 1.0;
 
 	CellModelContactSurface(Cell* C, const ModelConnectionPoint& mcp)
 	    : c(C), bounce(mcp), anchor(mcp.position) {
@@ -58,8 +58,6 @@ template <typename Cell> struct CellModelContactSurface {
 	}
 
 	void computeForces(float_t) {
-		// two main forces : repulsion due to pressure
-		// and attraction due to adhesion (anchor)
 		// REPULSIVE FORCE :
 		if (prevnormal.dot(normal) <= 0) {
 			// la cellule essaie de traverser...
@@ -71,6 +69,7 @@ template <typename Cell> struct CellModelContactSurface {
 		}
 		auto F = area * max(0.0, c->getPressure()) * normal;
 		c->receiveForce(F);
+
 		// FRICTION FORCE:
 		// ADHESION FORCE:
 	}

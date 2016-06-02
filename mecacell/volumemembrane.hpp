@@ -207,6 +207,11 @@ template <typename Cell> class VolumeMembrane {
 			    cell == con->cells.first ? con->midpoint.first : con->midpoint.second;
 			surfaceLoss += 2.0 * M_PI * dynamicRadius * (dynamicRadius - midpoint) - con->area;
 		}
+		// model connections
+		for (auto &cm : modelConnections) {
+			auto h = dynamicRadius - cm->bounceLength;
+			surfaceLoss += 2.0 * M_PI * dynamicRadius * (dynamicRadius - h) - cm->area;
+		}
 		float_t baseArea = 4.0 * M_PI * dynamicRadius * dynamicRadius;
 		currentArea = baseArea - surfaceLoss;
 		// TODO : soustraire les overlapps, avoir une meilleure précision
@@ -335,7 +340,7 @@ template <typename Cell> class VolumeMembrane {
 				const Vec &p1 = mf.first->vertices[mf.first->faces[mf.second].indices[1]];
 				const Vec &p2 = mf.first->vertices[mf.first->faces[mf.second].indices[2]];
 				// checking if cell c is in contact with triangle p0, p1, p2
-				pair<bool, Vec> projec = projectionIntriangle(p0, p1, p2, c->getPosition());
+				pair<bool, Vec> projec = projectionIntriangle(p0, p1, p2, c->getPosition(), 10.0);
 				// projec = {projection inside triangle, projection coordinates}
 				// TODO: we should also check if the connection is with a vertice
 				Vec currentDirection = projec.second - c->getPosition();
