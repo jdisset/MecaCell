@@ -340,7 +340,7 @@ template <typename Cell> class VolumeMembrane {
 				const Vec &p1 = mf.first->vertices[mf.first->faces[mf.second].indices[1]];
 				const Vec &p2 = mf.first->vertices[mf.first->faces[mf.second].indices[2]];
 				// checking if cell c is in contact with triangle p0, p1, p2
-				pair<bool, Vec> projec = projectionIntriangle(p0, p1, p2, c->getPosition(), 10.0);
+				pair<bool, Vec> projec = projectionIntriangle(p0, p1, p2, c->getPosition());
 				// projec = {projection inside triangle, projection coordinates}
 				// TODO: we should also check if the connection is with a vertice
 				Vec currentDirection = projec.second - c->getPosition();
