@@ -14,7 +14,7 @@ template <typename R> class MenuScreenCapture : public ScreenManager<R> {
 	MenuScreenCapture(R* r, QString p = "./")
 	    : ScreenManager<R>("menuScreenCapture"), path(p) {}
 	int cap = 0;
-	int NBFRAMEPERSCREEN = 1;
+	int NBFRAMEPERSCREEN = 10;
 
 	void saveImg(int W, int H) {
 		std::vector<GLubyte> pixels;
@@ -34,7 +34,7 @@ template <typename R> class MenuScreenCapture : public ScreenManager<R> {
 			if (r->getFrame() % NBFRAMEPERSCREEN == 0) {
 				auto s = r->getWindow()->renderTargetSize();
 				// saveImg(s.width(), s.height());
-				saveImg(r->getWindow()->width(), r->getWindow()->height());
+				saveImg(r->getWindow()->width()*2.0, r->getWindow()->height()*2.0);
 			}
 		}
 	}

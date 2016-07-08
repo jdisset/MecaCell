@@ -11,8 +11,8 @@ Window {
 	property var paintStepsCategories: new Object();
 	property var paintStepsSubgroups: new Object();
 	property var paintStepsElem: new Object();
-	width: 1000
-	height: 800
+	width: 1920
+	height:1080 
 	id: main
 	function createDisplayMenu(m){Logic.createDisplayMenu(m);} 
 	function addPaintStepComponent(a,b,c,d){Logic.addPaintStepComponent(a,b,c,d);}
