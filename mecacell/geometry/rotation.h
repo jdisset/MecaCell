@@ -6,7 +6,7 @@ namespace MecaCell {
 
 template <typename V> struct Rotation {
 	V n = V(0, 1, 0);
-	float_t teta = 0;
+	double teta = 0;
 
 	Rotation() {}
 

@@ -1,39 +1,39 @@
 #ifndef CONNECTABLECELL_HPP
 #define CONNECTABLECELL_HPP
-#include "rotation.h"
-#include "movable.h"
-#include "orientable.h"
-#include "model.h"
-#include "tools.h"
-#include "spheremembrane.hpp"
-#include "volumemembrane.hpp"
-#include <vector>
-#include <deque>
 #include <array>
-#include <sstream>
 #include <cmath>
 #include <cstdlib>
 #include <iostream>
 #include <memory>
-#include <functional>
+#include <sstream>
+#include <vector>
+#include "geometry/rotation.h"
+#include "movable.h"
+#include "orientable.h"
+#include "utilities/unique_vector.hpp"
+#include "utilities/utils.h"
 
 namespace MecaCell {
 
+/**
+ * @brief Basis for every cell a user might want to use.
+ *
+ * It uses the curriously reccuring template pattern : Derived is the user's type
+ * inheriting ConnectableCell.
+ * Membrane is the type of membrane used by the cell. A membrane is a low level class
+ * that handles everything related to physics (deformations, connections, volume).
+ * A ConnectableCell is a more abstract interface meant to expose higher instinctive,
+ * meaningful parameters and methods. It also represents the cell's center, which can
+ * be seen as its kernel (it is NOT always the center of mass, but often close enough)
+ *
+ * @tparam Derived the user's cell class inheriting from ConnectableCell
+ * @tparam Membrane the membrane implemebtation (which contains most of the core logic)
+ */
 template <typename Derived, template <class> class Membrane = VolumeMembrane>
 class ConnectableCell : public Movable, public Orientable {
-	friend class SphereMembrane<Derived>;
 	friend class Membrane<Derived>;
 	friend typename Membrane<Derived>::CCCM;
-	/************************ ConnectableCell class template ******************************/
-	// Abstract:
-	// A ConnectableCell is the basis for every cell a user might want to use in mecacell.
-	// It uses the curriously reccuring template pattern : Derived is the user's type
-	// inheriting ConnectableCell.
-	// Membrane is the type of membrane used by the cell. A membrane is a low level class
-	// that handles everything related to physics (deformations, connections, volume).
-	// A ConnectableCell is a more abstract interface meant to expose higher instinctive,
-	// meaningful parameters and methods. It also represents the cell's center, which can
-	// be seen as its kernel (it is NOT always the center of mass, but often close enough)
+
  public:
 	using membrane_t = Membrane<Derived>;
 	static constexpr bool hasModelCollisions = membrane_t::hasModelCollisions;
@@ -41,12 +41,37 @@ class ConnectableCell : public Movable, public Orientable {
 	using CellModelConnectionContainer = typename membrane_t::CellModelConnectionContainer;
 
  protected:
-	membrane_t membrane;
+	membrane_t membrane;  // core implementation
 	bool dead = false;
-	array<float_t, 3> color = {{0.75, 0.12, 0.07}};
-	bool tested = false;  // has already been tested for collision
-	unique_vector<Derived *> connectedCells;
-	bool visible = true;
+	array<double, 3> color = {{0.75, 0.12, 0.07}};
+	bool tested = false;                      // has already been tested for collision
+	unique_vector<Derived *> connectedCells;  // list of currently connected cells
+
+	/**
+	 * @brief disconnect a neighboring cell
+	 *
+	 * removes it from the connectedCells contianer
+	 *
+	 * @param cell pointer to the cell to be disconnected
+	 */
+	void eraseCell(Derived *cell) {
+		connectedCells.erase(remove(connectedCells.begin(), connectedCells.end(), cell),
+		                     connectedCells.end());
+	}
+
+	// raises/lower flag for collision detection
+	void markAsTested() { tested = true; }
+	void markAsNotTested() { tested = false; }
+	bool alreadyTested() const { return tested; }
+
+	// helpers & shortcuts
+	inline Derived *selfptr() { return static_cast<Derived *>(this); }
+	inline Derived &self() { return static_cast<Derived &>(*this); }
+	const Derived &selfconst() const { return static_cast<const Derived &>(*this); }
+	static inline void checkAndCreateConnection(Derived *c0, Derived *c1,
+	                                            CellCellConnectionContainer &con) {
+		membrane_t::checkAndCreateConnection(c0, c1, con);
+	}
 
  public:
 	size_t id = 0;  // mostly for debugging, num of cell by order of addition in world
@@ -60,12 +85,31 @@ class ConnectableCell : public Movable, public Orientable {
 	ConnectableCell(const ConnectableCell &c)
 	    : ConnectableCell(static_cast<const Derived &>(c)) {}
 
+	/**
+	 * @brief Copy constructor
+	 *
+	 * @param c the other cell
+	 */
 	ConnectableCell(const Derived *c) : ConnectableCell(*c) {}
 
+	/**
+	 * @brief Constructor
+	 *
+	 * @param pos initial position of the cell's kernel
+	 */
 	ConnectableCell(Vec pos) : Movable(pos), membrane(static_cast<Derived *>(this)) {
 		randomColor();
 	}
 
+	/**
+	 * @brief Copy constructor with translation
+	 *
+	 * Useful for division, for example. Shifts the created cell relatively to the copied
+	 * one.
+	 *
+	 * @param c the copied cell
+	 * @param translation the vector by which the created cell is translated
+	 */
 	ConnectableCell(const Derived &c, const Vec &translation)
 	    : Movable(c.getPosition() + translation, c.mass),
 	      membrane(static_cast<Derived *>(this), c.membrane),
@@ -73,170 +117,61 @@ class ConnectableCell : public Movable, public Orientable {
 	      color(c.color),
 	      tested(false) {}
 
-	/*************** STATIC **************/
-	template <typename SpacePartition>
-	static inline void checkForCellCellConnections(
-	    vector<Derived *> &cells, CellCellConnectionContainer &cellCellConnections,
-	    SpacePartition &grid) {
-		membrane_t::checkForCellCellConnections(cells, cellCellConnections, grid);
-	}
-	// model collisions (only enabled if membrane can handle them
-	template <typename SpacePartition, typename T = void>
-	static inline typename enable_if<hasModelCollisions, T>::type
-	    checkForCellModelConnections(vector<Derived *> &cells,
-	                                 unordered_map<string, Model> &models,
-	                                 CellModelConnectionContainer &cellModelConnections,
-	                                 SpacePartition &modelGrid) {
-		membrane_t::checkForCellModelCollisions(cells, models, cellModelConnections,
-		                                        modelGrid);
-	}
-	template <typename SpacePartition, typename T = void>
-	static inline typename enable_if<!hasModelCollisions, T>::type
-	    checkForCellModelConnections(vector<Derived *> &, unordered_map<string, Model> &,
-	                                 CellModelConnectionContainer &, SpacePartition &) {}
-	template <typename T = void>
-	static inline typename enable_if<hasModelCollisions, T>::type
-	    updateCellModelConnections(CellModelConnectionContainer &c, float_t dt) {
-		membrane_t::updateCellModelConnections(c, dt);
-	}
-	template <typename T = void>
-	static inline typename enable_if<!hasModelCollisions, T>::type
-	    updateCellModelConnections(CellModelConnectionContainer &, float_t) {}
+	/*************** UPDATES **************/
 
-	static inline void updateCellCellConnections(CellCellConnectionContainer &c,
-	                                             float_t dt) {
-		membrane_t::updateCellCellConnections(c, dt);
-	}
-
-	static inline void disconnectAndDeleteAllConnections(Derived *c0,
-	                                                     CellCellConnectionContainer &con) {
-		membrane_t::disconnectAndDeleteAllConnections(c0, con);
-	}
-
+	/**
+	 * @brief Calls the membrane's core update routine
+	 *
+	 * @tparam Integrator
+	 * @param dt
+	 */
 	template <typename Integrator> void inline updatePositionsAndOrientations(double dt) {
 		membrane.template updatePositionsAndOrientations<Integrator>(dt);
 	}
 
-	/************** GET ******************/
-	// basics
-	inline membrane_t &getMembrane() { return membrane; }
-	inline const membrane_t &getConstMembrane() const { return membrane; }
-	inline float_t getBaseVolume() const { return membrane.getBaseVolume(); }
-	inline float_t getVolume() const { return membrane.getVolume(); }
-	inline float_t getMembraneDistance(const Vec &d) const {
-		return membrane.getPreciseMembraneDistance(d);
-	};
-	inline float_t getBoundingBoxRadius() const { return membrane.getBoundingBoxRadius(); }
-	inline float_t getColor(unsigned int i) const {
-		if (i < 3) return color[i];
-		return 0;
-	}
-	inline const std::vector<Derived *> &getConnectedCells() const {
-		return connectedCells.getUnderlyingVector();
-	}
-	inline float_t getPressure() const { return membrane.getPressure(); }
+	/**
+	 * @brief calls the membrane's update method
+	 */
+	void updateStats() { membrane.updateStats(); }
 
-	inline float_t getAdhesionWithModel(const string &) const { return 0.7; }
-
-	// computed
-
-	inline float_t getMomentOfInertia() const { return membrane.getMomentOfInertia(); }
-	inline float_t getRelativeVolume() const { return getVolume() / getBaseVolume(); }
-	float_t getNormalizedPressure() const {
-		float_t sign = getPressure() >= 0 ? 1 : -1;
-		return 0.5 + sign * 0.5 * (1.0 - exp(-abs(60.0 * getPressure())));
-	}
-	bool alreadyTested() const { return tested; }
-	int getNbConnections() const { return connectedCells.size(); }
-	bool getVisible() const { return visible; }
-
-	template <typename M = membrane_t>
-	vector<pair<Vec, Vec>> getAllForces(
-	    typename std::enable_if<!M::forcesOnMembrane>::type * = nullptr) const {
-		return {{getPosition(), getForce()}};
-	}
-
-	template <typename M = membrane_t>
-	vector<pair<Vec, Vec>> getAllVelocities(
-	    typename std::enable_if<!M::forcesOnMembrane>::type * = nullptr) const {
-		return {{getPosition(), getVelocity()}};
-	}
-
-	string toString() {
-		stringstream s;
-		s << "Cell " << id << " :" << endl;
-		s << " position = " << position << endl;
-		s << " velocity = " << velocity << ", angular velocity = " << angularVelocity << endl;
-		s << " force = " << force << ", torque " << torque << endl;
-		s << " nbConnections = " << connectedCells.size();
-		return s.str();
-	}
-
-	/************** SET ******************/
-	void setVisible(bool v) { visible = v; }
-	void markAsTested() { tested = true; }
-	void markAsNotTested() { tested = false; }
-	void setVolume(float_t v) { membrane.setVolume(v); }
-	inline void resetForces() { membrane.resetForces(); }
-	// return the connection length with another cell
-	// according to an adhesion coef (0 <= adh <= 1)
-	inline Derived *selfptr() { return static_cast<Derived *>(this); }
-	inline Derived &self() { return static_cast<Derived &>(*this); }
-	const Derived &selfconst() const { return static_cast<const Derived &>(*this); }
-
-	template <typename C = Derived> C *divide() { return divide<C>(Vec::randomUnit()); }
-
-	template <typename C = Derived> C *divide(const Vec &direction) {
-		setMass(getBaseMass());
-		membrane.division();
-		C *newC =
-		    new C(selfconst(), direction.normalized() * getMembraneDistance(direction) * 0.8);
-		return newC;
-	}
-
-	void grow(float_t qtty) {
-		float_t rv = getRelativeVolume() + qtty;
+	/**
+	 * @brief orders the cell to grow
+	 *
+	 * @param qtty percentage relative to the base volume by which the cell must grow
+	 */
+	void grow(double qtty) {
+		double rv = getRelativeVolume() + qtty;
 		setVolume(getBaseVolume() * rv);
 		setMass(getBaseMass() * rv);
 	}
 
-	// erase cell from the connectedCells container
-	void eraseCell(Derived *cell) {
-		unsigned int prevC = connectedCells.size();
-		connectedCells.erase(remove(connectedCells.begin(), connectedCells.end(), cell),
-		                     connectedCells.end());
-		assert(connectedCells.size() == prevC - 1 || prevC == 0);
-	}
-
-	static inline void checkAndCreateConnection(Derived *c0, Derived *c1,
-	                                            CellCellConnectionContainer &con) {
-		membrane_t::checkAndCreateConnection(c0, c1, con);
-	}
-
-	/******************************
-	 * division and control
-	 *****************************/
-
-	void updateStats() { membrane.updateStats(); }
-
-	/************************************
-	 * optional users class methods
-	 **********************************/
+	/**
+	 * @brief flags the cell as dead so it can be cleanly removed from the world
+	 */
 	void die() { dead = true; }
 	bool isDead() { return dead; }
+
+	/**
+	 * @brief setsThe current volume of the cell
+	 *
+	 * @param v
+	 */
+	void setVolume(double v) { membrane.setVolume(v); }
+
+	void resetForces() { membrane.resetForces(); }
 
 	void setColorRGB(int r, int g, int b) {
 		color = {{static_cast<double>(r) / 255.0, static_cast<double>(g) / 255.0,
 		          static_cast<double>(b) / 255.0}};
 	}
 
-	void setColorHSV(float_t H, float_t S, float_t V) {
+	void setColorHSV(double H, double S, double V) {
 		// h =	[0, 360]; s, v = [0, 1]
-		float_t C = V * S;  // Chroma
-		float_t HPrime = fmod(H / 60.0, 6.0);
-		float_t X = C * (1.0 - fabs(fmod(HPrime, 2.0) - 1.0));
-		float_t M = V - C;
-		float_t R, G, B;
+		double C = V * S;  // Chroma
+		double HPrime = fmod(H / 60.0, 6.0);
+		double X = C * (1.0 - fabs(fmod(HPrime, 2.0) - 1.0));
+		double M = V - C;
+		double R, G, B;
 		if (0 <= HPrime && HPrime < 1) {
 			R = C;
 			G = X;
@@ -271,31 +206,51 @@ class ConnectableCell : public Movable, public Orientable {
 		B += M;
 		color = {{R, G, B}};
 	}
-	void randomColor() {
-		float_t r0 = 0.0001 * (rand() % 10000);
-		float_t r1 = 0.0001 * (rand() % 10000);
-		if (false) {
-			if (r0 < 1.0 / 3.0) {
-				/// green
-				color[0] = 0.1 + (0.4 * r1);
-				color[1] = 0.78 + (0.2 * r0);  // + (0.1 * r0);
-				color[2] = 0.06 + 0.6 * r0;
-			} else if (r0 < 2.0 / 3.0) {
-				// yellow
-				color[0] = 0.9 + (0.1 * r1);
-				color[1] = 0.73;  // + (0.1 * r0);
-				color[2] = 0.36 + 0.2 * r0;
-			} else {
-				// blue
-				color[0] = 0.05 * r1;
-				color[1] = 0.6 + (0.1 * r1);
-				color[2] = 0.7 + (0.2 * r0);
-			}
-		}
-		color[0] = 0.6 + (0.3 * r1);
-		color[1] = 0.3 * r1;
-		color[2] = 0.05 + (0.2 * r0);
+
+	/**
+	 * @brief dumps internal infos
+	 *
+	 * @return a formatted string
+	 */
+	string toString() {
+		stringstream s;
+		s << "Cell " << id << " :" << std::endl;
+		s << " position = " << position << std::endl;
+		s << " velocity = " << velocity << ", angular velocity = " << angularVelocity
+		  << std::endl;
+		s << " force = " << force << ", torque " << torque << std::endl;
+		s << " nbConnections = " << connectedCells.size();
+		return s.str();
 	}
+
+	/************** GET ******************/
+	membrane_t &getMembrane() { return membrane; }
+	const membrane_t &getConstMembrane() const { return membrane; }
+	double getBaseVolume() const { return membrane.getBaseVolume(); }
+	double getVolume() const { return membrane.getVolume(); }
+	double getMembraneDistance(const Vec &d) const {
+		return membrane.getPreciseMembraneDistance(d);
+	};
+	double getBoundingBoxRadius() const { return membrane.getBoundingBoxRadius(); }
+	double getColor(unsigned int i) const {
+		if (i < 3) return color[i];
+		return 0;
+	}
+	const std::vector<Derived *> &getConnectedCells() const {
+		return connectedCells.getUnderlyingVector();
+	}
+	double getPressure() const { return membrane.getPressure(); }
+	double getAdhesionWithModel(const string &) const { return 0.7; }
+
+	// computed
+
+	double getMomentOfInertia() const { return membrane.getMomentOfInertia(); }
+	double getRelativeVolume() const { return getVolume() / getBaseVolume(); }
+	double getNormalizedPressure() const {
+		double sign = getPressure() >= 0 ? 1 : -1;
+		return 0.5 + sign * 0.5 * (1.0 - exp(-abs(60.0 * getPressure())));
+	}
+	int getNbConnections() const { return connectedCells.size(); }
 };
 }
 #endif

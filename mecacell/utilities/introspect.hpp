@@ -1,11 +1,11 @@
 #ifndef MECACELL_INTROSPECT_HPP
 #define MECACELL_INTROSPECT_HPP
+#include <cxxabi.h>
+#include <functional>
 #include <iostream>
 #include <string>
-#include <functional>
 #include <typeinfo>
 #include <utility>
-#include <cxxabi.h>
 
 // displays type name, for debugging purpose
 #define DEBUG_TYPE(x)       \
@@ -51,8 +51,9 @@ template <typename T> struct debug_type {
 		using SIG = Ret (C::*)(Args...);                                                     \
 		template <typename T>                                                                \
 		static constexpr auto has(int) ->                                                    \
-		    typename is_same<SIG, decltype(static_cast<SIG>(&T::method))>::type;             \
-		template <typename T> static constexpr auto has(...) -> typename false_type::type;   \
+		    typename std::is_same<SIG, decltype(static_cast<SIG>(&T::method))>::type;        \
+		template <typename T>                                                                \
+		static constexpr auto has(...) -> typename std::false_type::type;                    \
                                                                                          \
 		static void debug() {                                                                \
 			std::cout << " ---------------- signature -------------" << std::endl;             \

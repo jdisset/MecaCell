@@ -6,10 +6,8 @@
 #define ADD_BUTTON(...)
 #endif
 
-//#define PARRALEL
-#include "types.h"
-#include "integrators.hpp"
+#include "utilities/config.hpp"
 #include "connectablecell.hpp"
-#include "basicworld.hpp"
-#include "spheremembrane.hpp"
+#include "integrators.hpp"
+#include "world.hpp"
 #endif

@@ -1,9 +1,9 @@
 #include "catch.hpp"
 #define protected public
 #define private public
-#include "../mecacell/logger.hpp"
 #include "../mecacell/mecacell.h"
-#include "../mecacell/tools.h"
+#include "../mecacell/utilities/logger.hpp"
+#include "../mecacell/utilities/utils.h"
 #undef protected
 #undef private
 #include <iostream>

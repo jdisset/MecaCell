@@ -7,7 +7,7 @@ template <typename RefFrame> struct SurfaceControlPoint {
 	RefFrame *rf = nullptr;  // (can be a cell... just needs a basis)
 	Rotation<Vec> restRotation, currentRotation;
 	Vec restDirection, currentDirection;
-	float_t restDist, currentDist;
+	double restDist, currentDist;
 
 	SurfaceControlPoint(){};
 	SurfaceControlPoint(RefFrame *RF, const SurfaceControlPoint &scp)

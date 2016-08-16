@@ -10,20 +10,20 @@ template <typename Cell> struct CellModelContactSurface {
 	SpaceConnectionPoint anchor;  // connection position (where the springs are)
 	// the anchor point is orthogonal to the bounce spring and always at its height
 
-	float_t maxAnchorLength = 5.0;
-	float_t bounceLength = 10.0;
-	float_t area = 0.0;
-	float_t sqradius = 0.0;
+	double maxAnchorLength = 5.0;
+	double bounceLength = 10.0;
+	double area = 0.0;
+	double sqradius = 0.0;
 	Vec prevnormal;
 	Vec normal;
 	Vec anchorDir;
-	float_t anchorLength = 0;
+	double anchorLength = 0;
 	bool dirty = false;  // does this connection need to be deleted?
-	static constexpr float_t baseBondStrength = 0.005;
+	static constexpr double baseBondStrength = 0.005;
 
-	float_t minDist = 1.0;
+	double minDist = 1.0;
 
-	const float_t BOUNCE_ABSORB = 1.0;
+	const double BOUNCE_ABSORB = 1.0;
 
 	CellModelContactSurface(Cell* C, const ModelConnectionPoint& mcp)
 	    : c(C), bounce(mcp), anchor(mcp.position) {
@@ -57,7 +57,7 @@ template <typename Cell> struct CellModelContactSurface {
 		}
 	}
 
-	void computeForces(float_t) {
+	void computeForces(double) {
 		// REPULSIVE FORCE :
 		if (prevnormal.dot(normal) <= 0) {
 			// la cellule essaie de traverser...

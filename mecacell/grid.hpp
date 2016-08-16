@@ -7,22 +7,21 @@
 #include <set>
 #include <unordered_map>
 #include <vector>
-#include "tools.h"
+#include "utilities/utils.h"
 using namespace std;
 
 namespace MecaCell {
 template <typename O> class Grid {
-	// TODO::deterministic
  private:
-	float_t cellSize;  // actually it's 1/cellSize, just so we can multiply
+	double cellSize;  // actually it's 1/cellSize, just so we can multiply
 	unordered_map<Vec, size_t> um;
 	vector<std::pair<Vec, vector<O>>> orderedVec;
 
  public:
-	Grid(float_t cs) : cellSize(1.0 / cs) {}
+	Grid(double cs) : cellSize(1.0 / cs) {}
 	size_t size() { return um.size(); };
 
-	float_t getCellSize() const { return 1.0 / cellSize; }
+	double getCellSize() const { return 1.0 / cellSize; }
 	const vector<std::pair<Vec, vector<O>>> &getContent() const { return orderedVec; }
 
 	array<vector<vector<O>>, 8> getThreadSafeGrid() const {
@@ -52,7 +51,7 @@ template <typename O> class Grid {
 
 	void insert(const O &obj) {
 		const Vec &center = ptr(obj)->getPosition();
-		const float_t &radius = ptr(obj)->getBoundingBoxRadius();
+		const double &radius = ptr(obj)->getBoundingBoxRadius();
 		Vec minCorner = getIndexFromPosition(center - radius);
 		Vec maxCorner = getIndexFromPosition(center + radius);
 		for (double i = minCorner.x(); i <= maxCorner.x(); ++i) {
@@ -67,9 +66,9 @@ template <typename O> class Grid {
 	void insertPrecise(const O &obj) {
 		// good for gridSize << boundingboxRadius
 		const Vec &center = ptr(obj)->getPosition();
-		const float_t &radius = ptr(obj)->getBoundingBoxRadius();
-		const float_t sqRadius = radius * radius;
-		const float_t cubeSize = 1.0 / cellSize;
+		const double &radius = ptr(obj)->getBoundingBoxRadius();
+		const double sqRadius = radius * radius;
+		const double cubeSize = 1.0 / cellSize;
 		Vec minCorner = getIndexFromPosition(center - radius);
 		Vec maxCorner = getIndexFromPosition(center + radius);
 		for (double i = minCorner.x(); i <= maxCorner.x(); ++i) {
@@ -92,7 +91,7 @@ template <typename O> class Grid {
 		        min(p0.z(), min(p1.z(), p2.z())));
 		Vec trb(max(p0.x(), max(p1.x(), p2.x())), max(p0.y(), max(p1.y(), p2.y())),
 		        max(p0.z(), max(p1.z(), p2.z())));
-		float_t cs = 1.0 / cellSize;
+		double cs = 1.0 / cellSize;
 		getIndexFromPosition(blf).iterateTo(getIndexFromPosition(trb) + 1, [&](const Vec &v) {
 			Vec center = cs * v;
 			std::pair<bool, Vec> projec = projectionIntriangle(p0, p1, p2, center);
@@ -109,7 +108,7 @@ template <typename O> class Grid {
 		return Vec(floor(res.x()), floor(res.y()), floor(res.z()));
 	}
 
-	vector<O> retrieve(const Vec &center, float_t radius) const {
+	vector<O> retrieve(const Vec &center, double radius) const {
 		unique_vector<O> res;
 		Vec minCorner = getIndexFromPosition(center - radius);
 		Vec maxCorner = getIndexFromPosition(center + radius);
@@ -130,25 +129,25 @@ template <typename O> class Grid {
 		return retrieve(ptr(obj)->getPosition(), ptr(obj)->getBoundingBoxRadius());
 	}
 
-	float_t computeSurface() const {
+	double computeSurface() const {
 		if (Vec::dimension == 3) {
-			float_t res = 0.0;  // first = surface, second = volume;
-			float_t faceArea = pow(1.0 / cellSize, 2);
+			double res = 0.0;  // first = surface, second = volume;
+			double faceArea = pow(1.0 / cellSize, 2);
 			for (auto &i : um) {
-				res += (6.0 - static_cast<float_t>(getNbNeighbours(i.first))) * faceArea;
+				res += (6.0 - static_cast<double>(getNbNeighbours(i.first))) * faceArea;
 			}
 			return res;
 		}
-		return pow(1.0 / cellSize, 2) * static_cast<float_t>(um.size());
+		return pow(1.0 / cellSize, 2) * static_cast<double>(um.size());
 	}
 
-	float_t getVolume() const {
+	double getVolume() const {
 		if (Vec::dimension == 3)
-			return pow(1.0 / cellSize, 3) * static_cast<float_t>(um.size());
+			return pow(1.0 / cellSize, 3) * static_cast<double>(um.size());
 		return 0.0;
 	}
 
-	float_t computeSphericity() const {
+	double computeSphericity() const {
 		auto s = computeSurface();
 		if (s <= 0) return -1;
 		return (cbrt(M_PI) * (pow(6.0 * getVolume(), (2.0 / 3.0)))) / s;

@@ -9,7 +9,7 @@
 #include "matrix4x4.h"
 #include "model.h"
 #include "objmodel.h"
-#include "tools.h"
+#include "utils.h"
 
 using std::string;
 using std::vector;
@@ -30,8 +30,8 @@ struct SpaceConnectionPoint {  // just a connection point with anything anywhere
 	Vec getAngularVelocity() { return Vec::zero(); }
 	Basis<Vec> getOrientation() { return Basis<Vec>(); }
 	Rotation<Vec> getOrientationRotation() { return Rotation<Vec>(); }
-	float_t getInertia() { return 1; }
-	void receiveForce(float_t, const Vec &, bool) {}
+	double getInertia() { return 1; }
+	void receiveForce(double, const Vec &, bool) {}
 	void receiveForce(const Vec &) {}
 	void receiveTorque(const Vec &) {}
 };
@@ -49,8 +49,8 @@ struct ModelConnectionPoint {
 	Vec getAngularVelocity() { return Vec::zero(); }
 	Basis<Vec> getOrientation() { return Basis<Vec>(); }
 	Rotation<Vec> getOrientationRotation() { return Rotation<Vec>(); }
-	float_t getInertia() { return 1; }
-	void receiveForce(float_t, const Vec &, bool) {}
+	double getInertia() { return 1; }
+	void receiveForce(double, const Vec &, bool) {}
 	void receiveForce(const Vec &) {}
 	void receiveTorque(const Vec &) {}
 };
@@ -61,9 +61,9 @@ template <typename Cell> struct CellModelConnection {
 	Model *model;
 	CSConnection anchor;    // slide and anchor, only angular
 	CMConnection bounce;    // always perpendicular, only classic spring
-	float_t maxTeta = 0.1;  // this is for the anchor, and should always be smaller than the
+	double maxTeta = 0.1;  // this is for the anchor, and should always be smaller than the
 	                        // actual connection's maxTeta
-	void computeForces(float_t dt) {
+	void computeForces(double dt) {
 		anchor.computeForces(dt);
 		bounce.computeForces(dt);
 	}

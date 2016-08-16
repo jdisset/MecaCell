@@ -8,7 +8,7 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
-#include "tools.h"
+#include "utils.h"
 
 using std::vector;
 using std::string;
@@ -18,8 +18,8 @@ using std::array;
 namespace MecaCell {
 
 struct UV {
-	float_t u, v;
-	UV(float_t U, float_t V) : u(U), v(V){};
+	double u, v;
+	UV(double U, double V) : u(U), v(V){};
 };
 
 struct Triangle {

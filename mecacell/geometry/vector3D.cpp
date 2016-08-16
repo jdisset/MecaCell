@@ -1,19 +1,18 @@
-#include "vector3D.h"
 #include <cmath>
+#include <cstdlib>
 #include <functional>
 #include <iostream>
-#include <sstream>
 #include <random>
-#include <cstdlib>
-#include "rotation.h"
+#include <sstream>
 #include "quaternion.h"
-#include "tools.h"
+#include "rotation.h"
+#include "vector3D.h"
 
-using namespace std;
 namespace MecaCell {
 
+// shortcut for Vector3D
 void Vector3D::random() {
-	std::normal_distribution<float_t> nDist(0.0, 1.0);
+	std::normal_distribution<double> nDist(0.0, 1.0);
 	coords = {{nDist(globalRand), nDist(globalRand), nDist(globalRand)}};
 	normalize();
 }
@@ -24,8 +23,8 @@ Vector3D Vector3D::randomUnit() {
 	return v;
 }
 
-Vector3D Vector3D::deltaDirection(const float_t amount) {
-	std::normal_distribution<float_t> nDist(0.0, amount);
+Vector3D Vector3D::deltaDirection(double amount) {
+	std::normal_distribution<double> nDist(0.0, amount);
 	return Vector3D(coords[0] + nDist(globalRand), coords[1] + nDist(globalRand),
 	                coords[2] + nDist(globalRand))
 	    .normalized();
@@ -37,10 +36,10 @@ bool Vector3D::isZero() const {
 	return (coords[0] == 0.0 && coords[1] == 0.0 && coords[2] == 0.0);
 }
 
-float_t Vector3D::length() const {
+double Vector3D::length() const {
 	return sqrt(coords[0] * coords[0] + coords[1] * coords[1] + coords[2] * coords[2]);
 }
-float_t Vector3D::sqlength() const {
+double Vector3D::sqlength() const {
 	return coords[0] * coords[0] + coords[1] * coords[1] + coords[2] * coords[2];
 }
 
@@ -80,15 +79,15 @@ Vector3D Vector3D::ortho(const Vector3D &v) const {
 	return ortho();
 }
 
-Vector3D Vector3D::rotated(const float_t &angle, const Vector3D &vec) const {
-	float_t halfangle = angle * 0.5;
+Vector3D Vector3D::rotated(double angle, const Vector3D &vec) const {
+	double halfangle = angle * 0.5;
 	Vector3D v = vec * sin(halfangle);
 	Vector3D vcV = 2.0 * v.cross(*this);
 	return *this + cos(halfangle) * vcV + v.cross(vcV);
 }
 
 Vector3D Vector3D::rotated(const Rotation<Vector3D> &r) const {
-	float_t halfangle = r.teta * 0.5;
+	double halfangle = r.teta * 0.5;
 	Vector3D v = r.n * sin(halfangle);
 	Vector3D vcV = 2.0 * v.cross(*this);
 	return *this + cos(halfangle) * vcV + v.cross(vcV);
@@ -108,7 +107,7 @@ Rotation<Vector3D> Vector3D::addRotations(const Rotation<Vector3D> &R0,
 }
 
 void Vector3D::addAsAngularVelocity(const Vector3D &v, Rotation<Vector3D> &r) {
-	float_t dTeta = v.length();
+	double dTeta = v.length();
 	Vector3D n0(0, 1, 0);
 	if (dTeta > 0) {
 		n0 = v / dTeta;
@@ -116,13 +115,13 @@ void Vector3D::addAsAngularVelocity(const Vector3D &v, Rotation<Vector3D> &r) {
 	r = addRotations(r, Rotation<Vector3D>(n0, dTeta));
 }
 
-float_t Vector3D::rayCast(const Vector3D &o, const Vector3D &n, const Vector3D &p,
+double Vector3D::rayCast(const Vector3D &o, const Vector3D &n, const Vector3D &p,
                           const Vector3D &r) {
 	// returns l such that p + l.r lies on the plane defined by its normal n and an offset o
 	// l > 0 means that the ray hits the plane,
 	// l < 0 means that the racoords[1] does not face the plane
 	// l = 0 means that the ray is parallel to the plane or that p is on the plane
-	float_t nr = n.dot(r);
+	double nr = n.dot(r);
 	return (nr == 0) ? 0 : n.dot(o - p) / nr;
 }
 
@@ -142,7 +141,7 @@ Vector3D Vector3D::getProjection(const Vector3D &origin, const Vector3D &B,
 
 Rotation<Vector3D> Vector3D::getRotation(const Vector3D &v0, const Vector3D &v1) {
 	Rotation<Vector3D> res;
-	res.teta = acos(min<float_t>(1.0, max<float_t>(-1.0, v0.dot(v1))));
+	res.teta = acos(min<double>(1.0, max<double>(-1.0, v0.dot(v1))));
 	Vector3D cross = v0.cross(v1);
 	if (cross.sqlength() == 0) {
 		cross = Vector3D(0, 1, 0);

@@ -14,14 +14,14 @@ void Matrix4x4::translate(const Vec &v) {
 }
 
 void Matrix4x4::rotate(const Rotation<Vec> &r) {
-	float_t squ = r.n.x() * r.n.x();
-	float_t sqv = r.n.y() * r.n.y();
-	float_t sqw = r.n.z() * r.n.z();
-	float_t uv = r.n.x() * r.n.y();
-	float_t uw = r.n.x() * r.n.z();
-	float_t vw = r.n.y() * r.n.z();
-	float_t costeta = cos(r.teta);
-	float_t sinteta = sin(r.teta);
+	double squ = r.n.x() * r.n.x();
+	double sqv = r.n.y() * r.n.y();
+	double sqw = r.n.z() * r.n.z();
+	double uv = r.n.x() * r.n.y();
+	double uw = r.n.x() * r.n.z();
+	double vw = r.n.y() * r.n.z();
+	double costeta = cos(r.teta);
+	double sinteta = sin(r.teta);
 
 	Matrix4x4 rm(
 	    {{{{squ + (1.0f - squ) * costeta, uv * (1.0f - costeta) - r.n.z() * sinteta,

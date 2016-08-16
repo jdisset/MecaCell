@@ -5,7 +5,9 @@
 #include "connection.h"
 #include "model.h"
 #include "modelconnection.hpp"
-#include "tools.h"
+#include "ordered_hash_map.hpp"
+#include "ordered_pair.hpp"
+#include "utils.h"
 
 #undef DBG
 #define DBG DEBUG(CCCM)

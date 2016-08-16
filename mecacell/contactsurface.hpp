@@ -1,9 +1,8 @@
 #ifndef CONTACTSURFACE_HPP
 #define CONTACTSURFACE_HPP
-#include "tools.h"
-#include "spring.hpp"
-#include <utility>
 #include <cmath>
+#include <utility>
+#include "utilities/utils.h"
 
 #undef DBG
 #define DBG DEBUG(contact)
@@ -14,44 +13,44 @@ template <typename Cell> struct ContactSurface {
 	/***********************************************************
 	 *                SETTABLE PARAMETERS
 	 **********************************************************/
-	float_t staticFrictionCoef = 7.0, dynamicFrictionCoef = 5.0;
+	double staticFrictionCoef = 7.0, dynamicFrictionCoef = 5.0;
 	bool pressureEnabled = true;
 	bool adhesionEnabled = true;
 	bool frictionEnabled = false;
 
 	/////////////// adhesion ///////////////
-	float_t adhCoef = 0.5;    // adhesion Coef [0;1]
-	float_t dampCoef = 0.01;  // damping [0;1]
-	float_t bondMaxL = 5.0;   // max length a surface bond can reach before breaking
-	float_t bondReach = 1.0;  // when are new connection created [0;bondMaxL[
-	float_t currentDamping = 0.0;
+	double adhCoef = 0.5;    // adhesion Coef [0;1]
+	double dampCoef = 0.01;  // damping [0;1]
+	double bondMaxL = 5.0;   // max length a surface bond can reach before breaking
+	double bondReach = 1.0;  // when are new connection created [0;bondMaxL[
+	double currentDamping = 0.0;
 
 	/*********************************************************
 	 * 				     	INTERNALS
 	 ********************************************************/
-	static constexpr float_t DIST_EPSILON = 1e-20;
+	static constexpr double DIST_EPSILON = 1e-20;
 	Vec normal;  // normal of the actual contact surface (from cell 0 to cell 1)
-	std::pair<float_t, float_t> midpoint;  // distance to center (viewed from each cell)
-	float_t sqradius = 0;                  // squared radius of the contact disk
-	float_t area = 0, adhArea = 0;         // area of the contact disk
-	float_t centersDist = 0, prevCentersDist = 0;  // distance of the two cells centers
-	float_t prevLinAdhElongation = 0, linAdhElongation = 0;  // the elongation of the
+	std::pair<double, double> midpoint;  // distance to center (viewed from each cell)
+	double sqradius = 0;                  // squared radius of the contact disk
+	double area = 0, adhArea = 0;         // area of the contact disk
+	double centersDist = 0, prevCentersDist = 0;  // distance of the two cells centers
+	double prevLinAdhElongation = 0, linAdhElongation = 0;  // the elongation of the
 	                                                         // connections caused by the
 	                                                         // cells separation or flexion
 	//////////////// friction ////////////////
 	// TODO: implement friction...
 	bool atRest = false;  // are the cells at rest, relatively to each other ?
-	static constexpr float_t REST_EPSILON =
+	static constexpr double REST_EPSILON =
 	    1e-10;  // minimal speed to consider the connected Cells not to be at rest
 
 	////////////// adhesion //////////////////
-	static constexpr float_t baseBondStrength = 0.005;
-	static constexpr float_t MIN_ADH_DIST = 8.0;
+	static constexpr double baseBondStrength = 0.005;
+	static constexpr double MIN_ADH_DIST = 8.0;
 	struct TargetSurface {
 		Basis<Vec> b;  // X is the normal of the surface, Y is the up vector
 		// b is expressed in the cell's basis, thus if we want to compute b in world basis :
 		// Bw = b.rotated(cell->getOrientationRotation());
-		float_t d;  // distance to center of cell
+		double d;  // distance to center of cell
 	};
 
 	std::pair<TargetSurface, TargetSurface> targets;
@@ -79,7 +78,7 @@ template <typename Cell> struct ContactSurface {
 	/*********************************************************
 	 * 				        MAIN UPDATE
 	 ********************************************************/
-	void update(float_t dt) {
+	void update(double dt) {
 		// first we update all the internals
 		updateInternals();
 		// then we apply all the forces
@@ -108,7 +107,7 @@ template <typename Cell> struct ContactSurface {
 		            (-normal).rotated(cells.second->getOrientationRotation().inverted())));
 	}
 
-	std::pair<float_t, float_t> computeMidpoints(float_t distanceBtwnCenters) {
+	std::pair<double, double> computeMidpoints(double distanceBtwnCenters) {
 		// return the current contact disk's center distance to each cells centers
 		if (distanceBtwnCenters <= DIST_EPSILON) return {0, 0};
 
@@ -117,12 +116,12 @@ template <typename Cell> struct ContactSurface {
 		                       cells.first :
 		                       cells.second;
 		auto smallestCell = biggestCell == cells.first ? cells.second : cells.first;
-		float_t biggestCellMidpoint =
+		double biggestCellMidpoint =
 		    0.5 * (distanceBtwnCenters +
 		           (std::pow(biggestCell->getMembrane().getDynamicRadius(), 2) -
 		            std::pow(smallestCell->getMembrane().getDynamicRadius(), 2)) /
 		               distanceBtwnCenters);
-		float_t smallestCellMidpoint = distanceBtwnCenters - biggestCellMidpoint;
+		double smallestCellMidpoint = distanceBtwnCenters - biggestCellMidpoint;
 		if (biggestCell == cells.first)
 			return {biggestCellMidpoint, smallestCellMidpoint};
 		else
@@ -139,7 +138,7 @@ template <typename Cell> struct ContactSurface {
 	void applyPressureForces(double dt) {
 		// force from pressure is normal to the actual contact surface
 		// and proportional to its surface
-		float_t adhSpeed = (centersDist - prevCentersDist) / dt;
+		double adhSpeed = (centersDist - prevCentersDist) / dt;
 		auto F = 0.5 * (area * (max(0.0, cells.first->getPressure()) +
 		                        max(0.0, cells.second->getPressure()))) *
 		         normal;
@@ -193,7 +192,7 @@ template <typename Cell> struct ContactSurface {
 			o0o1 /= linAdhElongation;
 			if (linAdhElongation > bondMaxL) {
 				// some bonds are going to break
-				float_t halfD = 0.5 * (linAdhElongation - bondMaxL);
+				double halfD = 0.5 * (linAdhElongation - bondMaxL);
 				o.first += halfD * o0o1;
 				o.second -= halfD * o0o1;
 				auto newX = (o.first - cells.first->getPosition());
@@ -216,8 +215,8 @@ template <typename Cell> struct ContactSurface {
 				targets.second.d = newD;
 				linAdhElongation = bondMaxL;
 			}
-			float_t springSpeed = (linAdhElongation - prevLinAdhElongation) / dt;
-			float_t k = adhArea * adhCoef * baseBondStrength;
+			double springSpeed = (linAdhElongation - prevLinAdhElongation) / dt;
+			double k = adhArea * adhCoef * baseBondStrength;
 			currentDamping =
 			    dampingFromRatio(dampCoef, cells.first->getMass() + cells.second->getMass(), k);
 

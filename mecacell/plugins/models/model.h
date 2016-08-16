@@ -2,7 +2,7 @@
 #define MECACELL_MODEL_H
 #include "matrix4x4.h"
 #include "objmodel.h"
-#include "tools.h"
+#include "utils.h"
 #include <vector>
 #include <string>
 #include <vector>

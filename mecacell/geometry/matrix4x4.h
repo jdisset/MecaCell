@@ -1,16 +1,17 @@
 #ifndef MATRIX4X4_HPP
 #define MATRIX4X4_HPP
 #include <array>
-#include "tools.h"
+#include "../utilities/utils.h"
 #include "rotation.h"
 
 namespace MecaCell {
 
 using std::array;
 struct Matrix4x4 {
-	array<array<float_t, 4>, 4> m = {{{{1, 0, 0, 0}}, {{0, 1, 0, 0}}, {{0, 0, 1, 0}}, {{0, 0, 0, 1}}}};
+	array<array<double, 4>, 4> m = {
+	    {{{1, 0, 0, 0}}, {{0, 1, 0, 0}}, {{0, 0, 1, 0}}, {{0, 0, 0, 1}}}};
 	Matrix4x4() {}
-	Matrix4x4(array<array<float_t, 4>, 4> a) : m(a) {}
+	Matrix4x4(array<array<double, 4>, 4> a) : m(a) {}
 	void scale(const Vec &s);
 	void translate(const Vec &t);
 	void rotate(const Rotation<Vec> &r);
