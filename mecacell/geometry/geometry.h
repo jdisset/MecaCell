@@ -8,7 +8,7 @@ std::pair<bool, Vec> rayInTriangle(const Vec &v0, const Vec &v1, const Vec &v2,
                                    const Vec &o, const Vec &r, const double tolerance);
 double closestDistToTriangleEdge(const Vec &, const Vec &, const Vec &, const Vec &);
 std::pair<bool, Vec> projectionIntriangle(const Vec &v0, const Vec &v1, const Vec &v2,
-                                          const Vec &p, const double tolerance);
+                                          const Vec &p, const double tolerance = 0);
 
 // getSpherePointsPacking(n) returns the positions of n points uniformly distributed on
 // the surface of a unit sphere

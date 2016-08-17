@@ -4,12 +4,9 @@
 #include <utility>
 #include <vector>
 #include "cellcellconnectionmanager.hpp"
-#include "cellmodelcontactsurface.hpp"
-#include "connection.h"
 #include "contactsurface.hpp"
-#include "model.h"
-#include "modelconnection.hpp"
-#include "utils.h"
+#include "utilities/introspect.hpp"
+#include "utilities/utils.h"
 
 #define FOUR_THIRD_PI 4.1887902047863909846168578443726705
 
@@ -60,12 +57,6 @@ template <typename Cell> class VolumeMembrane {
 	friend struct ContactSurface<Cell>;
 	using CellCellConnectionType = typename CCCM::ConnectionType;
 	using CellCellConnectionContainer = typename CCCM::CellCellConnectionContainer;
-
-	using ModelConnectionType = CellModelContactSurface<Cell>;
-	using CellModelConnectionContainer = unordered_map<
-	    Model *, unordered_map<Cell *, vector<unique_ptr<CellModelContactSurface<Cell>>>>>;
-
-	static const bool hasModelCollisions = true;
 	static const bool forcesOnMembrane =
 	    false;  // are forces applied directly to membrane or to the cell's center?
 
@@ -78,11 +69,11 @@ template <typename Cell> class VolumeMembrane {
 	double membraneStiffness = 3;
 
 	// internal stuff
-	double baseRadius = DEFAULT_CELL_RADIUS;
-	double restRadius = DEFAULT_CELL_RADIUS;
+	double baseRadius = Config::DEFAULT_CELL_RADIUS;
+	double restRadius = Config::DEFAULT_CELL_RADIUS;
 	// dynamic target radius:
-	double dynamicRadius = DEFAULT_CELL_RADIUS;
-	double prevDynamicRadius = DEFAULT_CELL_RADIUS;
+	double dynamicRadius = Config::DEFAULT_CELL_RADIUS;
+	double prevDynamicRadius = Config::DEFAULT_CELL_RADIUS;
 	static constexpr double MAX_DYN_RADIUS_RATIO = 2.0;
 	// this is the effective Radius, the one we deduce from the membrane area:
 	double deducedRadius = restRadius;
@@ -90,9 +81,6 @@ template <typename Cell> class VolumeMembrane {
 	double restVolume = FOUR_THIRD_PI * restRadius * restRadius;
 	double currentVolume = restVolume;
 	double pressure = 0;
-
-	// 3D obj model connections
-	vector<ModelConnectionType *> modelConnections;
 
  public:
 	VolumeMembrane(Cell *c) : cell(c) { updateStats(); };
@@ -183,11 +171,6 @@ template <typename Cell> class VolumeMembrane {
 			auto h = dynamicRadius - midpoint;
 			volumeLoss += (M_PI * h / 6.0) * (3.0 * con->sqradius + h * h);
 		}
-		// model connections
-		for (auto &cm : modelConnections) {
-			auto h = dynamicRadius - cm->bounceLength;
-			volumeLoss += (M_PI * h / 6.0) * (3.0 * cm->sqradius + h * h);
-		}
 		// TODO : soustraire les overlapps
 		double baseVol = FOUR_THIRD_PI * dynamicRadius * dynamicRadius * dynamicRadius;
 		currentVolume = baseVol - volumeLoss;
@@ -204,11 +187,6 @@ template <typename Cell> class VolumeMembrane {
 			auto &midpoint =
 			    cell == con->cells.first ? con->midpoint.first : con->midpoint.second;
 			surfaceLoss += 2.0 * M_PI * dynamicRadius * (dynamicRadius - midpoint) - con->area;
-		}
-		// model connections
-		for (auto &cm : modelConnections) {
-			auto h = dynamicRadius - cm->bounceLength;
-			surfaceLoss += 2.0 * M_PI * dynamicRadius * (dynamicRadius - h) - cm->area;
 		}
 		double baseArea = 4.0 * M_PI * dynamicRadius * dynamicRadius;
 		currentArea = baseArea - surfaceLoss;
@@ -312,100 +290,6 @@ template <typename Cell> class VolumeMembrane {
 		}
 	}
 
-	/******************** with 3D models **********************/
-	void addModelConnection(ModelConnectionType *con) { modelConnections.push_back(con); }
-	void removeModelConnection(ModelConnectionType *con) {
-		modelConnections.erase(remove(modelConnections.begin(), modelConnections.end(), con),
-		                       modelConnections.end());
-	}
-	template <typename SpacePartition>
-	static void checkForCellModelCollisions(
-	    vector<Cell *> &cells, unordered_map<string, Model>,
-	    CellModelConnectionContainer &cellModelConnections, SpacePartition &modelGrid) {
-		for (auto &m : cellModelConnections) {
-			for (auto &c : m.second) {
-				for (auto &conn : c.second) {
-					conn->dirty = true;
-				}
-			}
-		}
-		for (auto &c : cells) {
-			// for each cell, we find if a cell - model collision is possible.
-			auto toTest = modelGrid.retrieve(c->getPosition(), c->getBoundingBoxRadius());
-			for (const auto &mf : toTest) {
-				// for each pair <model*, faceId> mf potentially colliding with c
-				const Vec &p0 = mf.first->vertices[mf.first->faces[mf.second].indices[0]];
-				const Vec &p1 = mf.first->vertices[mf.first->faces[mf.second].indices[1]];
-				const Vec &p2 = mf.first->vertices[mf.first->faces[mf.second].indices[2]];
-				// checking if cell c is in contact with triangle p0, p1, p2
-				pair<bool, Vec> projec = projectionIntriangle(p0, p1, p2, c->getPosition());
-				// projec = {projection inside triangle, projection coordinates}
-				// TODO: we should also check if the connection is with a vertice
-				Vec currentDirection = projec.second - c->getPosition();
-				if (projec.first &&
-				    currentDirection.sqlength() < pow(c->getBoundingBoxRadius(), 2)) {
-					// we have a potential connection. Now we consider 2 cases:
-					// 1 - brand new connection (easy)
-					// 2 - older connection	(we need to update it)
-					//  => same cell/model pair + similar bounce angle (same face or similar
-					//  normal)
-					currentDirection.normalize();
-					bool alreadyExist = false;
-					if (cellModelConnections.count(mf.first) &&
-					    cellModelConnections[mf.first].count(c)) {
-						for (auto &otherconn : cellModelConnections[mf.first][c]) {
-							Vec prevDirection =
-							    (otherconn->bounce.position - c->getPrevposition()).normalized();
-							if (abs(prevDirection.dot(currentDirection)) >
-							    MIN_MODEL_CONNECTION_SIMILARITY) {
-								alreadyExist = true;
-								otherconn->dirty = false;
-								// case n° 2, we want to update otherconn
-								otherconn->update(projec.second, mf.second);
-								break;
-							}
-						}
-					}
-					if (!alreadyExist) {
-						unique_ptr<CellModelContactSurface<Cell>> cmcs(
-						    new CellModelContactSurface<Cell>(
-						        c, ModelConnectionPoint(mf.first, projec.second, mf.second)));
-						c->getMembrane().addModelConnection(cmcs.get());
-						cellModelConnections[mf.first][c].push_back(move(cmcs));
-					}
-				}
-			}
-		}
-		// clean up: dirty connections
-		for (auto &m : cellModelConnections) {
-			for (auto &c : m.second) {
-				for (auto it = c.second.begin(); it != c.second.end();) {
-					if ((*it)->dirty) {
-						c.first->getMembrane().removeModelConnection(it->get());
-						it = c.second.erase(it);
-					} else {
-						++it;
-					}
-				}
-			}
-		}
-		// clean up: empty entries
-		for (auto itM = cellModelConnections.begin(); itM != cellModelConnections.end();) {
-			if (itM->second.empty()) {
-				itM = cellModelConnections.erase(itM);
-			} else {
-				for (auto itC = itM->second.begin(); itC != itM->second.end();) {
-					if (itC->second.empty()) {
-						itC = itM->second.erase(itC);
-					} else {
-						++itC;
-					}
-				}
-				++itM;
-			}
-		}
-	}
-
 	static void updateCellCellConnections(CellCellConnectionContainer &concon, double dt) {
 		// we update forces & delete impossible connections (cells not in contact
 		// anymore...)
@@ -419,16 +303,6 @@ template <typename Cell> class VolumeMembrane {
 		}
 		for (CellCellConnectionType *c : toDisconnect) {
 			CCCM::disconnect(concon, c->cells.first, c->cells.second, c);
-		}
-	}
-
-	static void updateCellModelConnections(CellModelConnectionContainer &con, double dt) {
-		for (auto &mod : con) {
-			for (auto &vec : mod.second) {
-				for (auto &c : vec.second) {
-					c->computeForces(dt);
-				}
-			}
 		}
 	}
 

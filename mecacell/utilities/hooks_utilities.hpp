@@ -35,12 +35,12 @@ CREATE_METHOD_CHECKS(addCell);
 CREATE_METHOD_CHECKS(destructor);
 
 template <typename R, typename P> struct HookChecker {
-	HOOKCHECK(beginUpdate);
-	HOOKCHECK(preBehaviorUpdate);
-	HOOKCHECK(postBehaviorUpdate);
-	HOOKCHECK(endUpdate);
-	HOOKCHECK(addCell);
-	HOOKCHECK(destructor);
+	HOOKCHECK(beginUpdate)
+	HOOKCHECK(preBehaviorUpdate)
+	HOOKCHECK(postBehaviorUpdate)
+	HOOKCHECK(endUpdate)
+	HOOKCHECK(addCell)
+	HOOKCHECK(destructor)
 };
 
 #define REGISTERH(hName) HookChecker<R, P>::register_##hName(renderer, p);

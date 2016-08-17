@@ -12,6 +12,7 @@
 #include "orientable.h"
 #include "utilities/unique_vector.hpp"
 #include "utilities/utils.h"
+#include "volumemembrane.hpp"
 
 namespace MecaCell {
 
@@ -38,7 +39,6 @@ class ConnectableCell : public Movable, public Orientable {
 	using membrane_t = Membrane<Derived>;
 	static constexpr bool hasModelCollisions = membrane_t::hasModelCollisions;
 	using CellCellConnectionContainer = typename membrane_t::CellCellConnectionContainer;
-	using CellModelConnectionContainer = typename membrane_t::CellModelConnectionContainer;
 
  protected:
 	membrane_t membrane;  // core implementation
@@ -97,9 +97,7 @@ class ConnectableCell : public Movable, public Orientable {
 	 *
 	 * @param pos initial position of the cell's kernel
 	 */
-	ConnectableCell(Vec pos) : Movable(pos), membrane(static_cast<Derived *>(this)) {
-		randomColor();
-	}
+	ConnectableCell(Vec pos) : Movable(pos), membrane(static_cast<Derived *>(this)) {}
 
 	/**
 	 * @brief Copy constructor with translation
@@ -240,7 +238,6 @@ class ConnectableCell : public Movable, public Orientable {
 		return connectedCells.getUnderlyingVector();
 	}
 	double getPressure() const { return membrane.getPressure(); }
-	double getAdhesionWithModel(const string &) const { return 0.7; }
 
 	// computed
 

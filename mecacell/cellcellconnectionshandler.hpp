@@ -3,7 +3,16 @@
 #include <utility>
 #include <vector>
 #include "grid.hpp"
+#include "utilities/ordered_pair.hpp"
+#include "utilities/unique_vector.hpp"
+#include "utilities/utils.h"
 
+namespace MecaCell {
+/**
+ * @brief a simple container for the cells connections
+ *
+ * @tparam W the world
+ */
 template <typename W> struct CellCellConnectionsHandler {
 	using cell_t = typename W::cell_t;
 	using CellCellConnectionContainer = typename cell_t::CellCellConnectionContainer;
@@ -28,4 +37,5 @@ template <typename W> struct CellCellConnectionsHandler {
 	}
 	size_t getNbOfCellCellConnections() { return getConnectedCellsList().size(); }
 };
+}
 #endif

@@ -73,16 +73,11 @@ template <typename Cell, typename Integrator = Euler> class World {
 	}
 
  public:
-	cellPlugin_t cellPlugin;  // instance of the embedded cell plugin type
-	                          // (cellPlugin_t default to a dumb char if not specified)
-
+	cellPlugin_t cellPlugin;    // instance of the embedded cell plugin type
+	                            // (dumb byte if not specified)
 	std::vector<Cell *> cells;  /// all the cells are in this container
 
-	/**
-	 * @brief World constructor, registers the (optional) cell type's embedded plugin
-	 * instance.
-	 */
-	World() { registerPlugins(cellPlugin); }
+	World() {}
 
 	/**********************************************
 	 *               HOOKS & PLUGINS              *

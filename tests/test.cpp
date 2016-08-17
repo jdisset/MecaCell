@@ -98,7 +98,7 @@ template <typename W> void checkThatCellsAreIdentical(W& w0, W& w1) {
 
 TEST_CASE("connections form and disappear") {
 	using Cell = VolCell;
-	using World = MecaCell::BasicWorld<Cell>;
+	using World = MecaCell::World<Cell>;
 	for (int i = 0; i < 1; ++i) {
 		World w;
 		w.addCell(new Cell(MecaCell::Vec(0, 20, 0)));
@@ -164,7 +164,7 @@ template <typename W> void printCells(W& w) {
 
 TEST_CASE("cell dying bug") {
 	using Cell = VolCell;
-	using World = MecaCell::BasicWorld<Cell>;
+	using World = MecaCell::World<Cell>;
 	World w;
 	const double nbC = 2.0;
 	const double space = 50.0;
@@ -194,7 +194,7 @@ TEST_CASE("cell dying bug") {
 
 TEST_CASE("cells update are deterministic") {
 	using Cell = VolCell;
-	using World = MecaCell::BasicWorld<Cell>;
+	using World = MecaCell::World<Cell>;
 	for (int n = 0; n < 15; ++n) {
 		World w0, w1, w2;
 		const int nbC = 8;

@@ -7,10 +7,16 @@
 #include <set>
 #include <unordered_map>
 #include <vector>
+#include "geometry/geometry.h"
 #include "utilities/utils.h"
-using namespace std;
 
 namespace MecaCell {
+
+/**
+ * @brief Infinite grid of fixed cell size for space partitioning
+ *
+ * @tparam O the type of object that are stored
+ */
 template <typename O> class Grid {
  private:
 	double cellSize;  // actually it's 1/cellSize, just so we can multiply

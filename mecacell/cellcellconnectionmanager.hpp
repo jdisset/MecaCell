@@ -2,17 +2,12 @@
 #define CELLCELLCONNECTIONMANAGER_HPP
 #include <utility>
 #include <vector>
-#include "connection.h"
-#include "model.h"
-#include "modelconnection.hpp"
-#include "ordered_hash_map.hpp"
-#include "ordered_pair.hpp"
-#include "utils.h"
+#include "utilities/ordered_hash_map.hpp"
+#include "utilities/ordered_pair.hpp"
+#include "utilities/utils.h"
 
-#undef DBG
-#define DBG DEBUG(CCCM)
 namespace MecaCell {
-template <typename Cell, typename CCC = Connection<Cell *>>
+template <typename Cell, typename CCC>
 struct CellCellConnectionManager_map {
 	using ConnectionType = CCC;
 	using CellCellConnectionContainer =
