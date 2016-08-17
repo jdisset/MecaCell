@@ -5,7 +5,7 @@
 *.obj
 
 # Precompiled Headers
-*.gch
+*.gch*
 *.pch
 
 # Compiled Dynamic libraries
