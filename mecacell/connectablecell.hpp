@@ -74,6 +74,7 @@ class ConnectableCell : public Movable, public Orientable {
 	}
 
  public:
+
 	size_t id = 0;  // mostly for debugging, num of cell by order of addition in world
 	ConnectableCell(const Derived &c)
 	    : Movable(c.getPosition()),
@@ -98,6 +99,8 @@ class ConnectableCell : public Movable, public Orientable {
 	 * @param pos initial position of the cell's kernel
 	 */
 	ConnectableCell(Vec pos) : Movable(pos), membrane(static_cast<Derived *>(this)) {}
+
+	ConnectableCell() : ConnectableCell(Vec(0, 0, 0)) {}
 
 	/**
 	 * @brief Copy constructor with translation

@@ -38,13 +38,16 @@ template <typename Cell, typename Integrator = Euler> class World {
 	// -------------------------------------
 	// The following code detects if any embedded plugin type is specified and defaults
 	// to the instantiation of a useles byte if not.
-	template <class T> struct embedded_plugin_type {
-		using type = char;  // dumb type if no embedded plugin is defined
+	template <class, class = void_t<>> struct embedded_plugin_type {  // declaration
+		using type = char;  // defaults to dummy char type if no embedded plugin is defined
 	};
-	template <class T, void_t<typename T::embedded_plugin_t>> struct embedded_plugin_type {
-		using type = T::embedded_plugin_t;  // embedded plugin detected
+	template <class T>  // specialization
+	struct embedded_plugin_type<T, void_t<typename T::embedded_plugin_t>> {
+		using type = typename T::embedded_plugin_t;  // embedded plugin detected
 	};
-	using cellPlugin_t = embedded_plugin_type<cell_t>::type;
+	using cellPlugin_t = typename embedded_plugin_type<cell_t>::type;  // either char or the
+	                                                                   // plugin type
+	                                                                   // defined by Cell
 
  protected:
 	double dt = 1.0 / 100.0;  /// The amount by which time is increased every update
@@ -105,9 +108,11 @@ template <typename Cell, typename Integrator = Euler> class World {
 	 * Signatures of hooks methods must be void (World*)
 	 * Available hooks are:
 	 *  - beginUpdate: called at each world update before everything else
-	 *  - preBehaviorUpdate: called the world calls every individual updateBehavior() cells
+	 *  - preBehaviorUpdate: called the world calls every individual updateBehavior(World&)
+	 * cells
 	 * methods
-	 *  - postBehaviorUpdate: called after updateBehavior() and just before dead cells are
+	 *  - postBehaviorUpdate: called after updateBehavior(World&) and just before dead cells
+	 * are
 	 * removed (this is where death-related cleanup should be made, before the cell is
 	 * automatically effectively removed from the world)
 	 *  - endUpdate: called at the end of each world update routine
@@ -122,7 +127,7 @@ template <typename Cell, typename Integrator = Euler> class World {
 		registerPlugin(std::forward<P>(p));
 		registerPlugins(std::forward<Rest>(otherPlugins)...);
 	}
-	template <typename P> void registerPlugins() {}  /// end of recursion
+	void registerPlugins() {}  /// end of recursion
 	template <typename P> void registerPlugin(P &p) {
 		loadPluginHooks(this, p);
 	}  /// for a single plugin
@@ -145,14 +150,6 @@ template <typename Cell, typename Integrator = Euler> class World {
 	 * @return
 	 */
 	size_t getNbUpdates() const { return frame; }
-
-	/**
-	 * @brief get the connection handler
-	 *
-	 * @return a reference to the cellcellconnectionshandler, where cell to cell connections
-	 * are stored.
-	 */
-	auto &getCellCellConnectionsHandler() { return ccch; }
 
 	/**
 	 * @brief adds a cell to the cells container.
