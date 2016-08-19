@@ -67,8 +67,10 @@ template <typename W> void printCells(W& w) {
 
 TEST_CASE("World creation, cell additions & deletion") {
 	MecaCell::World<VolCell> w;
+	REQUIRE(w.getNbUpdates() == 0);
 	w.update();
 	REQUIRE(w.cells.size() == 0);
+	REQUIRE(w.getNbUpdates() == 1);
 	w.addCell(new VolCell());
 	REQUIRE(w.cells.size() == 1);
 	w.update();
