@@ -1,12 +1,12 @@
 #ifndef SSAO_HPP
 #define SSAO_HPP
-#include "viewtools.h"
-#include "renderquad.hpp"
-#include "screenmanager.hpp"
-#include <memory>
-#include <QSize>
 #include <QOpenGLFramebufferObject>
 #include <QOpenGLFramebufferObjectFormat>
+#include <QSize>
+#include <memory>
+#include "../primitives/renderquad.hpp"
+#include "../utilities/viewtools.h"
+#include "screenmanager.hpp"
 
 namespace MecacellViewer {
 template <typename R> class SSAO : public ScreenManager<R> {

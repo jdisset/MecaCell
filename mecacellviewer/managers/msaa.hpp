@@ -1,11 +1,11 @@
 #ifndef MSAA_HPP
 #define MSAA_HPP
-#include "viewtools.h"
-#include "paintstep.hpp"
-#include <memory>
-#include <QSize>
 #include <QOpenGLFramebufferObject>
 #include <QOpenGLFramebufferObjectFormat>
+#include <QSize>
+#include <memory>
+#include "../paintstep.hpp"
+#include "../utilities/viewtools.h"
 
 namespace MecacellViewer {
 template <typename R> class MSAA : public ScreenManager<R> {

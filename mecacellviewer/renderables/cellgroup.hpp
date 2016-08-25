@@ -1,7 +1,7 @@
 #ifndef CELLGROUP_HPP
 #define CELLGROUP_HPP
-#include "viewtools.h"
-#include "primitives/sphere.hpp"
+#include "../primitives/sphere.hpp"
+#include "../utilities/viewtools.h"
 
 namespace MecacellViewer {
 template <typename R> class CellGroup : public PaintStep<R> {

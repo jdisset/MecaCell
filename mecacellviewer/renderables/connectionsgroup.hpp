@@ -1,10 +1,10 @@
 #ifndef CONNECTIONSGROUP_HPP
 #define CONNECTIONSGROUP_HPP
-#include "viewtools.h"
-#include "primitives/lines.hpp"
-#include "primitives/cube.hpp"
-#include "paintstep.hpp"
 #include <vector>
+#include "../paintstep.hpp"
+#include "../primitives/cube.hpp"
+#include "../primitives/lines.hpp"
+#include "../utilities/viewtools.h"
 namespace MecacellViewer {
 template <typename R> class ConnectionsGroup : public PaintStep<R> {
 	QOpenGLShaderProgram shaderCube;

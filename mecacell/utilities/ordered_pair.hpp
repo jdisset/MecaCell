@@ -1,5 +1,6 @@
 #ifndef ORDERED_PAIR
 #define ORDERED_PAIR
+#include <cassert>
 #include <unordered_map>
 #include <utility>
 namespace MecaCell {

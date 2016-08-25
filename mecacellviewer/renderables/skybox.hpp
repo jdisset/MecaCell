@@ -1,8 +1,8 @@
 #ifndef SKYBOX_HPP
 #define SKYBOX_HPP
-#include "viewtools.h"
-#include "primitives/sphere.hpp"
-#include "camera.hpp"
+#include "../camera.hpp"
+#include "../primitives/sphere.hpp"
+#include "../utilities/viewtools.h"
 
 namespace MecacellViewer {
 template <typename R> class Skybox : public PaintStep<R> {

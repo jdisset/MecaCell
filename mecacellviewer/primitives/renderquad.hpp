@@ -1,7 +1,7 @@
 #ifndef RENDERQUAD_HPP
 #define RENDERQUAD_HPP
-#include "viewtools.h"
-#include "primitives/quad.hpp"
+#include "../utilities/viewtools.h"
+#include "quad.hpp"
 
 namespace MecacellViewer {
 class RenderQuad {

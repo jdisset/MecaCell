@@ -1,0 +1,302 @@
+#ifndef MECACELLVIEWER_H
+#define MECACELLVIEWER_H
+#include <QMatrix4x4>
+#include <QOpenGLFramebufferObject>
+#include <QPointF>
+#include <QSize>
+#include <QSurfaceFormat>
+#include <functional>
+#include "camera.hpp"
+#include "signalslotbase.h"
+#include "utilities/keyboardmanager.h"
+#include "utilities/mousemanager.h"
+
+namespace MecacellViewer {
+template <typename Scenario> class Viewer : public SignalSlotRenderer {
+	friend class SignalSlotBase;
+
+ public:
+	using World =
+	    typename remove_reference<decltype(((Scenario *)nullptr)->getWorld())>::type;
+	using Cell = typename World::cell_t;
+	using Vec = decltype(((Cell *)nullptr)->getPosition());
+	using R = Viewer<Scenario>;
+	using Rfunc = std::function<void(R *)>;
+	using ButtonType = Button<R>;
+
+	Viewer(int c, char **v) : argc(c), argv(v) {
+#if __APPLE__
+#include "TargetConditionals.h"
+#if TARGET_OS_MAC
+		// compatibility profile (Qt's default) is not available on mac os...
+		// we have to use a core profile
+		QSurfaceFormat f;
+		f.setProfile(QSurfaceFormat::CoreProfile);
+		f.setVersion(3, 3);
+		f.setAlphaBufferSize(8);
+		f.setRenderableType(QSurfaceFormat::OpenGL);
+		QSurfaceFormat::setDefaultFormat(f);
+#endif
+#endif
+		registerPlugin(km);
+		registerPlugin(mm);
+	};
+	// default "plugins"
+	KeyboardManager km;
+	MouseManager mm;
+
+	int argc;
+	char **argv;
+	Scenario scenario;
+
+	int frame = 0;
+	int nbLoopsPerFrame = 1;
+
+	// Visual elements & config
+	Camera camera;
+	float screenScaleCoef = 1.0;
+	bool fullscreenMode = false;
+	unsigned long leftMenuSize = 200;
+	QOpenGLFramebufferObject *currentFBO = nullptr;
+	QSize viewportSize;
+	QMatrix4x4 viewMatrix, projectionMatrix;
+
+	// Events
+	int mouseWheel = 0;
+	QPointF mousePosition, mousePrevPosition;
+	QFlags<Qt::MouseButtons> mouseClickedButtons, mouseDblClickedButtons,
+	    mousePressedButtons;
+	std::set<Qt::Key> keyDown, keyPress;
+
+	// Stats
+	std::chrono::time_point<std::chrono::high_resolution_clock> t0, tfps;
+	double viewDt;
+	int nbFramesSinceLastTick = 0;
+	unsigned long currentFrameNumber = 0;
+	Cell *selectedCell = nullptr;
+	bool worldUpdate = false;
+	bool loopStep = false;
+	double fpsRefreshRate = 0.4;
+	QVariantMap guiCtrl, stats;
+	QList<QVariant> enabledPaintSteps;
+	std::vector<std::pair<QList<QVariant>, bool>> displayMenuToggled;
+
+	MenuElement<R> displayMenu;
+	bool displayMenuChanged = true;
+	ColorMode currentColorMode = color_normal;
+
+ public:
+	std::vector<Rfunc> plugins_preLoad;
+	std::vector<Rfunc> plugins_onLoad;
+	std::vector<Rfunc> plugins_preLoop;
+	std::vector<Rfunc> plugins_preDraw;
+	std::vector<Rfunc> plugins_postDraw;
+	std::vector<Rfunc> plugins_onSync;
+
+ private:
+	std::map<Qt::Key, Rfunc> keyDownMethods;
+	std::map<Qt::Key, Rfunc> keyPressMethods;
+	std::map<Qt::MouseButton, Rfunc> mouseDragMethods;
+	std::map<Qt::MouseButton, Rfunc> mouseClickMethods;
+	std::map<QString, Button<R>> buttons;
+
+	// this is just so we can store paint steps instances without making a mess
+	std::map<QString, unique_ptr<PaintStep<R>>> paintSteps;
+
+	// the actual paint steps method to be called
+	std::map<int, Rfunc> paintStepsMethods;
+
+	bool paintStepsNeedsUpdate =
+	    true;  // do we need to refresh the list of checkable paint steps?
+
+	// screen managers might affect the display. Usually manipulate fbos
+	// Inherit from paintStep because they also usually need to be called
+	// during painting. Ex: screen space ambient oclusion defines some fbos,
+	// makes operations on them and draw an object (a texture) to the screen.
+	std::vector<ScreenManager<R> *> screenManagers;
+
+	// init function for the renderer. Create all the defaults paint steps and
+	// screen managers, initializes scenario and users additions.
+	using psptr = std::unique_ptr<PaintStep<R>>;
+	virtual void initialize(QQuickWindow *wdw) {
+		MenuElement<R> cellsMenu = {
+		    "Cells",
+		    {
+		        {"Mesh type",
+		         elementType::exclusiveGroup,
+		         {
+		             {"None", false}, {"Centers only", false}, {"Sphere", false},
+		         }},
+		        {"Display connections", false},
+		    }};
+
+		this->window = wdw;
+		viewportSize = QSize(static_cast<int>(wdw->width()), static_cast<int>(wdw->height()));
+		scenario.init(argc, argv);
+		GL = QOpenGLContext::currentContext()->functions();
+		GL->initializeOpenGLFunctions();
+		////////////////////////////////
+		// list of default paint steps
+		/////////////////////////////////
+		paintSteps.emplace("MSAA", psptr(new MSAA<R>(this)));
+		paintSteps.emplace("Skybox", psptr(new Skybox<R>()));
+		paintSteps.emplace("SphereCells", psptr(new CellGroup<R>()));
+		paintSteps.emplace("Connections", psptr(new ConnectionsGroup<R>()));
+		paintSteps.emplace("SSAO", psptr(new SSAO<R>(this)));
+		paintSteps.emplace("Blur", psptr(new MenuBlur<R>(this)));
+		screenManagers.push_back(dynamic_cast<ScreenManager<R> *>(paintSteps["MSAA"].get()));
+		screenManagers.push_back(dynamic_cast<ScreenManager<R> *>(paintSteps["SSAO"].get()));
+		screenManagers.push_back(dynamic_cast<ScreenManager<R> *>(paintSteps["Blur"].get()));
+
+		cellsMenu.onToggled = [&](R *r, MenuElement<R> *me) {
+			if (me->isChecked()) {
+				if (me->at("Mesh type").at("Sphere").isChecked()) {
+					paintStepsMethods[10] = [&](R *r) {
+						CellGroup<R> *cells =
+						    dynamic_cast<CellGroup<R> *>(paintSteps["SphereCells"].get());
+						cells->call(r, false, r->currentColorMode);
+					};
+				} else if (me->at("Mesh type").at("Centers only").isChecked()) {
+					paintStepsMethods[10] = [&](R *r) {
+						CellGroup<R> *cells =
+						    dynamic_cast<CellGroup<R> *>(paintSteps["SphereCells"].get());
+						cells->call(r, true, r->currentColorMode);
+					};
+				} else
+					paintStepsMethods.erase(10);
+			} else
+				paintStepsMethods.erase(10);
+		};
+
+		cellsMenu.at("Display connections").onToggled = [&](R *r, MenuElement<R> *me) {
+			if (me->isChecked()) {
+				paintStepsMethods[17] = [&](R *r) {
+					ConnectionsGroup<R> *connections =
+					    dynamic_cast<ConnectionsGroup<R> *>(paintSteps["Connections"].get());
+					connections->template draw<Cell>(
+					    r->getScenario().getWorld().getConnectedCellsList(), r->getViewMatrix(),
+					    r->getProjectionMatrix());
+				};
+			} else
+				paintStepsMethods.erase(17);
+		};
+		MenuElement<R> ssaoPostproc = {"SSAO"};
+		ssaoPostproc.onToggled = [&](R *r, MenuElement<R> *me) {
+			if (me->isChecked()) {
+				paintStepsMethods[1000000] = [&](R *r) { paintSteps["SSAO"]->call(r); };
+			} else {
+				paintStepsMethods[1000000] = [&](R *r) {
+					dynamic_cast<SSAO<R> *>(paintSteps["SSAO"].get())->callDumb(r);
+				};
+			}
+		};
+
+		MenuElement<R> postProcMenu = {"Post processing", {ssaoPostproc}};
+		displayMenu = {"Enabled elements", {cellsMenu, postProcMenu}};
+
+		// non disablable elements
+		paintStepsMethods[0] = [&](R *r) { paintSteps["MSAA"]->call(r); };
+		paintStepsMethods[5] = [&](R *r) { paintSteps["Skybox"]->call(r); };
+		paintStepsMethods[2000000] = [&](R *r) { paintSteps["Blur"]->call(r); };
+
+		for (auto &p : plugins_onLoad) p(this);
+		displayMenu.callAll(this);
+	}
+
+	// updates Interface Additions (new buttons, new menu, ...)
+	void applyInterfaceAdditions(SignalSlotBase *b) {
+		QObject *root = b->window();
+		for (auto &b : buttons) {
+			auto &bt = b.second;
+			if (bt.needsToBeUpdated()) {
+				QMetaObject::invokeMethod(root, "addButton", Q_ARG(QVariant, bt.getName()),
+				                          Q_ARG(QVariant, bt.getMenu()),
+				                          Q_ARG(QVariant, bt.getLabel()),
+				                          Q_ARG(QVariant, bt.getColor()));
+				bt.updateOK();
+			}
+		}
+		if (displayMenuChanged) {
+			QMetaObject::invokeMethod(root, "createDisplayMenu",
+			                          Q_ARG(QVariant, displayMenu.toJSON()));
+			displayMenuChanged = false;
+		}
+	}
+
+	// called after every frame, thread safe
+	// synchronization between Qt threads
+	virtual void sync(SignalSlotBase *b) {
+		applyInterfaceAdditions(b);
+
+		// loop
+		worldUpdate = b->worldUpdate;
+		loopStep = b->loopStep;
+		b->loopStep = false;
+
+		guiCtrl = b->getGuiCtrl();
+
+		// stats
+		if (selectedCell)
+			stats["selectedCell"] = cellToQVMap(selectedCell);
+		else
+			stats.remove("selectedCell");
+		b->setStats(stats);
+		b->statsChanged();
+
+		// menu
+		displayMenuToggled = b->displayMenuToggled;
+		b->displayMenuToggled.clear();
+		displayMenu.updateCheckedFromList(this, displayMenuToggled);
+		if (displayMenuToggled.size() > 0) displayMenu.callAll(this);
+
+		// mouse
+		mouseClickedButtons = b->mouseClickedButtons;
+		b->mouseClickedButtons &= Qt::NoButton;
+		mouseDblClickedButtons = b->mouseDblClickedButtons;
+		b->mouseDblClickedButtons &= Qt::NoButton;
+		mousePrevPosition = mousePosition;
+		mousePosition = b->lastMouseEvent.localPos();
+		if (mouseClickedButtons > 0) {
+			mousePrevPosition = mousePosition;
+		}
+		mousePressedButtons = b->lastMouseEvent.buttons();
+		mouseWheel = b->mouseWheel;
+		b->mouseWheel = 0;
+
+		// keyboard
+		keyPress = b->keyPress;
+		keyDown = b->keyDown;
+		b->keyPress.clear();
+		processEvents(b);
+		for (auto &p : plugins_postDraw) p(this);
+	}
+
+	/***********************************
+	 *              EVENTS              *
+	 ***********************************/
+	// events handling routine
+	void processEvents(SignalSlotBase *b) {
+		const vector<Qt::MouseButton> acceptedButtons = {
+		    {Qt::LeftButton, Qt::RightButton, Qt::MiddleButton}};
+		// mouse drag (mouse down)
+		for (const auto &b : acceptedButtons)
+			if (mousePressedButtons.testFlag(b) && mouseDragMethods.count(b))
+				mouseDragMethods[b](this);
+		// mouse click
+		for (const auto &b : acceptedButtons)
+			if (mouseClickedButtons.testFlag(b) && mouseClickMethods.count(b))
+				mouseClickMethods[b](this);
+		// keyboard press (only once per key press)
+		for (const auto &k : keyPress)
+			if (keyPressMethods.count(k)) keyPressMethods.at(k)(this);
+		// keyboard down (key is down)
+		for (const auto &k : keyDown)
+			if (keyDownMethods.count(k)) keyDownMethods.at(k)(this);
+		// buttons
+		for (const auto &bName : b->clickedButtons)
+			if (buttons.count(bName)) buttons[bName].clicked(this);
+
+		b->clickedButtons.clear();
+	}
+};
+#endif

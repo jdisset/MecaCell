@@ -1,28 +1,15 @@
 #ifndef MECACELLVIEWER_H
 #define MECACELLVIEWER_H
-#include <QGuiApplication>
 #include <QMatrix4x4>
 #include <QOpenGLFramebufferObject>
 #include <QPointF>
-#include <QQMlApplicationEngine>
-#include <QQmlContext>
 #include <QSize>
 #include <QSurfaceFormat>
 #include <functional>
 #include "camera.hpp"
-#include "managers/blur.hpp"
-#include "managers/msaa.hpp"
-#include "managers/screenmanager.hpp"
-#include "managers/ssao.hpp"
-#include "menu/button.hpp"
-#include "menu/menuelement.hpp"
-#include "paintstep.hpp"
-#include "renderables/cellgroup.hpp"
-#include "renderables/connectionsgroup.hpp"
-#include "renderables/skybox.hpp"
+#include "managers/keyboardmanager.h"
 #include "signalslotbase.h"
-#include "utilities/keyboardmanager.hpp"
-#include "utilities/mousemanager.hpp"
+#include "utilities/mousemanager.h"
 
 namespace MecacellViewer {
 template <typename Scenario> class Viewer : public SignalSlotRenderer {
@@ -218,6 +205,34 @@ template <typename Scenario> class Viewer : public SignalSlotRenderer {
 		for (auto &p : plugins_onLoad) p(this);
 		displayMenu.callAll(this);
 	}
+
+	/**
+	 * @brief the method to call when starting the view.
+	 *
+	 * @return app's error code
+	 */
+	int exec() {
+		QGuiApplication app(argc, argv);
+		app.setQuitOnLastWindowClosed(true);
+
+		qmlRegisterType<SignalSlotBase>("SceneGraphRendering", 1, 0, "Renderer");
+		engine = new QQmlApplicationEngine((QUrl("qrc:/main.qml")));
+
+		QObject *root = engine->rootObjects().first();
+
+		view = qobject_cast<QQuickWindow *>(root);
+		view->setFlags(Qt::Window | Qt::CustomizeWindowHint | Qt::WindowMinMaxButtonsHint |
+		               Qt::WindowTitleHint | Qt::WindowCloseButtonHint |
+		               Qt::WindowFullscreenButtonHint);
+		SignalSlotBase *ssb = root->findChild<SignalSlotBase *>("renderer");
+
+		engine->rootContext()->setContextProperty("glview", ssb);
+		ssb->init(this);
+		view->show();
+		for (auto &p : plugins_preLoad) p(this);
+		QObject::connect(view, SIGNAL(closing(QQuickCloseEvent *)), &app, SLOT(quit()));
+		return app.exec();
+	}
 	// updates Interface Additions (new buttons, new menu, ...)
 	void applyInterfaceAdditions(SignalSlotBase *b) {
 		QObject *root = b->window();
@@ -251,6 +266,10 @@ template <typename Scenario> class Viewer : public SignalSlotRenderer {
 		guiCtrl = b->getGuiCtrl();
 
 		// stats
+		if (selectedCell)
+			stats["selectedCell"] = cellToQVMap(selectedCell);
+		else
+			stats.remove("selectedCell");
 		b->setStats(stats);
 		b->statsChanged();
 
@@ -354,7 +373,7 @@ template <typename Scenario> class Viewer : public SignalSlotRenderer {
 			tfps = chrono::high_resolution_clock::now();
 		}
 		stats["nbCells"] = QVariant((int)scenario.getWorld().cells.size());
-		stats["nbUpdates"] = QVariant((int)scenario.getWorld().getNbUpdates());
+		stats["nbUpdates"] = scenario.getWorld().getNbUpdates();
 		if (window) {
 			window->resetOpenGLState();
 		}
@@ -676,34 +695,5 @@ template <typename Scenario> class Viewer : public SignalSlotRenderer {
 	 * @return a pointer to the underlying QQmlApplicationEngine's instance
 	 */
 	QQmlApplicationEngine *getEngine() { return engine; }
-
-	/**
-	 * @brief the method to call when starting the view.
-	 *
-	 * @return app's error code
-	 */
-	int exec() {
-		QGuiApplication app(argc, argv);
-		app.setQuitOnLastWindowClosed(true);
-
-		qmlRegisterType<SignalSlotBase>("SceneGraphRendering", 1, 0, "Renderer");
-		engine = new QQmlApplicationEngine((QUrl("qrc:/main.qml")));
-
-		QObject *root = engine->rootObjects().first();
-
-		view = qobject_cast<QQuickWindow *>(root);
-		view->setFlags(Qt::Window | Qt::CustomizeWindowHint | Qt::WindowMinMaxButtonsHint |
-		               Qt::WindowTitleHint | Qt::WindowCloseButtonHint |
-		               Qt::WindowFullscreenButtonHint);
-		SignalSlotBase *ssb = root->findChild<SignalSlotBase *>("renderer");
-
-		engine->rootContext()->setContextProperty("glview", ssb);
-		ssb->init(this);
-		view->show();
-		for (auto &p : plugins_preLoad) p(this);
-		QObject::connect(view, SIGNAL(closing(QQuickCloseEvent *)), &app, SLOT(quit()));
-		return app.exec();
-	}
 };
-}
 #endif

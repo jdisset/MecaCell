@@ -1,13 +1,14 @@
 #ifndef DEFSPHERE
 #define DEFSPHERE
-#include "../viewtools.h"
-#include <vector>
-#include <map>
-#include <iostream>
-#include <cmath>
 #include <QVector3D>
+#include <cassert>
+#include <cmath>
+#include <iostream>
+#include <map>
 #include <unordered_map>
 #include <unordered_set>
+#include <vector>
+#include "../viewtools.h"
 
 using namespace std;
 
@@ -212,7 +213,7 @@ struct DeformableSphere {
 			vertices.push_back(v.z());
 		}
 		for (auto& c : nc) {
-			//qDebug() << "c = " << c;
+			// qDebug() << "c = " << c;
 			colors.push_back(c.x());
 			colors.push_back(c.y());
 			colors.push_back(c.z());

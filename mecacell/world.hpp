@@ -2,6 +2,8 @@
 #define MECACELL_WORLD_H
 #include <array>
 #include <functional>
+#include <unordered_set>
+#include <utility>
 #include <vector>
 #include "cellcellconnectionshandler.hpp"
 #include "integrators.hpp"
@@ -179,6 +181,21 @@ template <typename Cell, typename Integrator = Euler> class World {
 	 */
 	void setDt(double d) { dt = d; }
 
+	/**
+	 * @brief returns a list of pair of connected cells
+	 *
+	 * @return
+	 */
+	std::vector<std::pair<cell_t *, cell_t *>> getConnectedCellsList() {
+		std::unordered_set<ordered_pair<cell_t *>> res;
+		for (auto &c : cells) {
+			for (auto &connected : c->getConnectedCells())
+				res.insert(make_ordered_cell_pair(c, connected));
+		}
+		std::vector<std::pair<cell_t *, cell_t *>> vecRes;
+		for (auto &r : res) vecRes.push_back(std::make_pair(r.first, r.second));
+		return vecRes;
+	}
 	/**
 	 * @brief main update method
 	 *

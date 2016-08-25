@@ -1,9 +1,9 @@
 #ifndef BLURQUAD_HPP
 #define BLURQUAD_HPP
-#include "viewtools.h"
-#include "renderquad.hpp"
-#include "primitives/quad.hpp"
 #include <QOpenGLFramebufferObject>
+#include "../primitives/quad.hpp"
+#include "../primitives/renderquad.hpp"
+#include "../utilities/viewtools.h"
 
 namespace MecacellViewer {
 class BlurQuad {

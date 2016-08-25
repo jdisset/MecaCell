@@ -15,7 +15,7 @@ class VolCell : public MecaCell::ConnectableCell<VolCell, VolumeMembrane> {
 	using Base = MecaCell::ConnectableCell<VolCell, VolumeMembrane>;
 	using Base::Base;
 	double getAdhesionWith(const VolCell*, const MecaCell::Vec&) const { return 0.0; }
-	template <typename W> void updateBehavior(W&){};
+	template <typename W> void updateBehavior(W&){}
 };
 
 template <typename W> void checkThatWorldssAreIdentical(W& w0, W& w1) {
@@ -73,7 +73,13 @@ TEST_CASE("World creation, cell additions & deletion") {
 	REQUIRE(w.getNbUpdates() == 1);
 	w.addCell(new VolCell());
 	REQUIRE(w.cells.size() == 1);
+	REQUIRE(w.cells[0]->getPosition() == MecaCell::Vector3D(0, 0, 0));
 	w.update();
+	REQUIRE(w.cells[0]->getPosition() == MecaCell::Vector3D(0, 0, 0));
+	Vector3D secondCellPos(50, 0, 0);
+	w.addCell(new VolCell(secondCellPos));
+	REQUIRE(w.cells.size() == 2);
+	REQUIRE(w.cells[1]->getPosition() == secondCellPos);
 }
 
 // TEST_CASE("Cells update determinism") {

@@ -2,9 +2,9 @@
 #define ARROWSGROUP_HPP
 #include <QDebug>
 #include <vector>
-#include "paintstep.hpp"
-#include "primitives/cube.hpp"
-#include "viewtools.h"
+#include "../paintstep.hpp"
+#include "../primitives/cube.hpp"
+#include "../utilities/viewtools.h"
 
 namespace MecacellViewer {
 template <typename R> class ArrowsGroup : public PaintStep<R> {

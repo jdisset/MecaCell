@@ -1,8 +1,8 @@
 #ifndef DEFORMABLECELLGROUP_HPP
 #define DEFORMABLECELLGROUP_HPP
-#include "viewtools.h"
-#include "primitives/deformablesphere.hpp"
-#include "primitives/sphere.hpp"
+#include "../primitives/deformablesphere.hpp"
+#include "../primitives/sphere.hpp"
+#include "../utilities/viewtools.h"
 
 namespace MecacellViewer {
 

@@ -1,8 +1,6 @@
 #ifndef PLUGINS_HPP
 #define PLUGINS_HPP
-#include <utility>
-#include <iostream>
-#include <QDebug>
+#include <mecacell/utilities/introspect.hpp>
 using namespace std;
 
 // checks if a plugin p of type P has a hName methods, and registers it.
@@ -12,7 +10,7 @@ using namespace std;
 	    const typename std::enable_if<is_##hName##_callable<P, void(R *)>::value,  \
 	                                  T *>::type r,                                \
 	    P &p) {                                                                    \
-		r->plugins_##hName.push_back([&](R * view) { p.hName(view); });              \
+		r->plugins_##hName.push_back([&](R *view) { p.hName(view); });               \
 	}                                                                              \
 	template <typename T = R>                                                      \
 	static void register_##hName(                                                  \

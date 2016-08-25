@@ -37,7 +37,6 @@ class ConnectableCell : public Movable, public Orientable {
 
  public:
 	using membrane_t = Membrane<Derived>;
-	static constexpr bool hasModelCollisions = membrane_t::hasModelCollisions;
 	using CellCellConnectionContainer = typename membrane_t::CellCellConnectionContainer;
 
  protected:
@@ -46,6 +45,7 @@ class ConnectableCell : public Movable, public Orientable {
 	array<double, 3> color = {{0.75, 0.12, 0.07}};
 	bool tested = false;                      // has already been tested for collision
 	unique_vector<Derived *> connectedCells;  // list of currently connected cells
+	bool isVisible = true;                    // should a viewer display this cell?
 
 	/**
 	 * @brief disconnect a neighboring cell
@@ -74,7 +74,6 @@ class ConnectableCell : public Movable, public Orientable {
 	}
 
  public:
-
 	size_t id = 0;  // mostly for debugging, num of cell by order of addition in world
 	ConnectableCell(const Derived &c)
 	    : Movable(c.getPosition()),
@@ -166,6 +165,13 @@ class ConnectableCell : public Movable, public Orientable {
 		          static_cast<double>(b) / 255.0}};
 	}
 
+	/**
+	 * @brief should a viewer displpay this cell ?
+	 *
+	 * @param v
+	 */
+	void setVisible(bool v) { isVisible = v; }
+
 	void setColorHSV(double H, double S, double V) {
 		// h =	[0, 360]; s, v = [0, 1]
 		double C = V * S;  // Chroma
@@ -241,6 +247,7 @@ class ConnectableCell : public Movable, public Orientable {
 		return connectedCells.getUnderlyingVector();
 	}
 	double getPressure() const { return membrane.getPressure(); }
+	bool getVisible() { return isVisible; }
 
 	// computed
 

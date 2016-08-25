@@ -1,7 +1,7 @@
 #ifndef SCREENMANAGER_HPP
 #define SCREENMANAGER_HPP
-#include "paintstep.hpp"
 #include <string>
+#include "../paintstep.hpp"
 template <typename R> struct ScreenManager : public PaintStep<R> {
 	ScreenManager() {}
 	ScreenManager(const QString& s) : PaintStep<R>(s, "Post processing") {}

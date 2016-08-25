@@ -1,11 +1,11 @@
 #ifndef BLUR_HPP
 #define BLUR_HPP
-#include "viewtools.h"
-#include "blurquad.hpp"
-#include "screenmanager.hpp"
-#include <memory>
 #include <QOpenGLFramebufferObject>
 #include <QOpenGLFramebufferObjectFormat>
+#include <memory>
+#include "../managers/screenmanager.hpp"
+#include "../renderables/blurquad.hpp"
+#include "../utilities/viewtools.h"
 
 namespace MecacellViewer {
 template <typename R> class MenuBlur : public ScreenManager<R> {
@@ -28,9 +28,10 @@ template <typename R> class MenuBlur : public ScreenManager<R> {
 			GL->glViewport(0, 0, vps.width(), vps.height());  // viewport reset
 			blurTarget.draw(
 			    r->getCurrentFBO()->texture(), 5, vps,
-			    QRect(QPoint(0, 0), QSize(r->isFullscreen() ? 0 : r->getLeftMenuSize() *
-			                                                          wdw->devicePixelRatio(),
-			                              vps.height())));
+			    QRect(QPoint(0, 0),
+			          QSize(r->isFullscreen() ? 0 :
+			                                    r->getLeftMenuSize() * wdw->devicePixelRatio(),
+			                vps.height())));
 		}
 	}
 

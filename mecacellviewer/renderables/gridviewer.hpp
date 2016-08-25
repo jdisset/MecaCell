@@ -1,12 +1,12 @@
 #ifndef GRIDVIEWER_HPP
 #define GRIDVIEWER_HPP
-#include "viewtools.h"
-#include "primitives/cube.hpp"
-#include "paintstep.hpp"
-#include <functional>
-#include <QString>
 #include <QMatrix4x4>
+#include <QString>
 #include <QVector4D>
+#include <functional>
+#include "../paintstep.hpp"
+#include "../primitives/cube.hpp"
+#include "../utilities/viewtools.h"
 
 namespace MecacellViewer {
 template <typename R> class GridViewer : public PaintStep<R> {
