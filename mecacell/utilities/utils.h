@@ -50,7 +50,7 @@ template <typename T> inline void eraseFromVector(const T &elem, std::vector<T> 
 std::vector<std::string> splitStr(const std::string &s, char delim);
 
 // color spaces transforms
-Vector3D hsvToRgb(double h, double s, double v);
+std::array<double, 3> hsvToRgb(double h, double s, double v);
 
 // -------- metaprog (compile time) general helpersi ----------
 // power

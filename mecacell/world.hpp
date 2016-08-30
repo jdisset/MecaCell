@@ -54,7 +54,9 @@ template <typename Cell, typename Integrator = Euler> class World {
  protected:
 	double dt = 1.0 / 100.0;  /// The amount by which time is increased every update
 	size_t frame = 0;         /// +1 at each update. cf getNbUpdates()
-	size_t nbAddedCells = 0;  // +1 on cell add. Used for cell's unique ids
+	size_t nbAddedCells = 0;  /// +1 on cell add. Used for cell's unique ids
+	size_t updtBhvPeriod =
+	    1;  /// period at which the world should call the cells updateBehavior method.
 
 	std::array<std::vector<hook_t>, eToUI(Hooks::LAST)> hooks;  // where hooks are stored
 
@@ -64,17 +66,6 @@ template <typename Cell, typename Integrator = Euler> class World {
 				i = cells.erase(i), delete *i;
 			else
 				++i;
-	}
-
-	void prepareCellForNextUpdate() {
-		for (auto &c : cells) {
-			c->updateStats();
-			c->resetForces();
-			c->applyExternalForces();
-			c->applyExternalTorque();
-			c->resetExternalForces();
-			c->resetExternalTorque();
-		}
 	}
 
  public:
@@ -182,6 +173,15 @@ template <typename Cell, typename Integrator = Euler> class World {
 	void setDt(double d) { dt = d; }
 
 	/**
+	 * @brief sets the period at which the world must call the updateBehavior method of each
+	 * cell. This can be useful, for example, when the physics code must run at a different
+	 * timescale than the behavior code.
+	 *
+	 * @param p the new period. updateBehavior will be called every p updates.
+	 */
+	void setUpdateBehaviorPeriod(size_t p) { updtBhvPeriod = p; }
+
+	/**
 	 * @brief returns a list of pair of connected cells
 	 *
 	 * @return
@@ -196,6 +196,7 @@ template <typename Cell, typename Integrator = Euler> class World {
 		for (auto &r : res) vecRes.push_back(std::make_pair(r.first, r.second));
 		return vecRes;
 	}
+
 	/**
 	 * @brief main update method
 	 *
@@ -210,10 +211,9 @@ template <typename Cell, typename Integrator = Euler> class World {
 	 */
 	void update() {
 		for (auto &f : hooks[eToUI(Hooks::beginUpdate)]) f(this);
-		prepareCellForNextUpdate();
-		for (auto &c : cells) c->template updatePositionsAndOrientations<Integrator>(dt);
 		for (auto &f : hooks[eToUI(Hooks::preBehaviorUpdate)]) f(this);
-		for (auto &c : cells) c->updateBehavior(*this);
+		if (frame % updtBhvPeriod == 0)
+			for (auto &c : cells) c->updateBehavior(*this);
 		for (auto &f : hooks[eToUI(Hooks::postBehaviorUpdate)]) f(this);
 		deleteDeadCells();
 		for (auto &f : hooks[eToUI(Hooks::endUpdate)]) f(this);

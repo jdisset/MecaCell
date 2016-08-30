@@ -10,12 +10,12 @@ using namespace MecaCell;
 
 bool doubleEq(double a, double b) { return abs(a - b) < 0.000000001; }
 
-class VolCell : public MecaCell::ConnectableCell<VolCell, VolumeMembrane> {
+class VolCell : public MecaCell::ConnectableCell<VolCell> {
  public:
-	using Base = MecaCell::ConnectableCell<VolCell, VolumeMembrane>;
+	using Base = MecaCell::ConnectableCell<VolCell>;
 	using Base::Base;
 	double getAdhesionWith(const VolCell*, const MecaCell::Vec&) const { return 0.0; }
-	template <typename W> void updateBehavior(W&){}
+	template <typename W> void updateBehavior(W&) {}
 };
 
 template <typename W> void checkThatWorldssAreIdentical(W& w0, W& w1) {

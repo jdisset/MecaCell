@@ -1,15 +1,15 @@
 #ifndef VIEWTOOLS_H
 #define VIEWTOOLS_H
-#include <QVector3D>
+#include <math.h>
+#include <QColor>
 #include <QDir>
 #include <QOpenGLFunctions>
-#include <memory>
-#include <QColor>
+#include <QVector3D>
 #include <QVector4D>
-#include <math.h>
 #include <iostream>
-#include <utility>
+#include <memory>
 #include <tuple>
+#include <utility>
 
 namespace MecacellViewer {
 using std::tuple_size;
@@ -58,12 +58,12 @@ QVector4D cellColorToQVector(const C* c, bool selected,
                              const ColorMode& colormode = color_normal) {
 	if (selected) return QVector4D(1.0, 1.0, 1.0, 1.0);
 	switch (colormode) {
-		case color_pressure: {
-			QColor col =
-			    QColor::fromHsvF(0.8f - 0.8f * (float)c->getNormalizedPressure(), 0.8, 0.70);
-			return QVector4D(col.redF(), col.greenF(), col.blueF(), 1.0);
-			break;
-		}
+		/* case color_pressure: {*/
+		// QColor col =
+		// QColor::fromHsvF(0.8f - 0.8f * (float)c->getNormalizedPressure(), 0.8, 0.70);
+		// return QVector4D(col.redF(), col.greenF(), col.blueF(), 1.0);
+		// break;
+		/*}*/
 		default:
 			return QVector4D(c->getColor(0), c->getColor(1), c->getColor(2), 1.0);
 			break;

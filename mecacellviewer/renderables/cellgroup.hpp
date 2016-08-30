@@ -56,8 +56,8 @@ template <typename R> class CellGroup : public PaintStep<R> {
 						model.scale(1, 1, 1);
 					else
 						model.scale(r, r, r);
-					model.rotate(radToDeg(c->getOrientationRotation().teta),
-					             toQV3D(c->getOrientationRotation().n));
+					// model.rotate(radToDeg(c->getOrientationRotation().teta),
+					// toQV3D(c->getOrientationRotation().n));
 					QMatrix4x4 nmatrix = (model).inverted().transposed();
 					shader.setUniformValue(shader.uniformLocation("model"), model);
 					shader.setUniformValue(shader.uniformLocation("normalMatrix"), nmatrix);

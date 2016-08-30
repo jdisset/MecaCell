@@ -4,7 +4,7 @@
 #include <QMatrix4x4>
 #include <QOpenGLFramebufferObject>
 #include <QPointF>
-#include <QQMlApplicationEngine>
+#include <QQmlApplicationEngine>
 #include <QQmlContext>
 #include <QSize>
 #include <QSurfaceFormat>
@@ -141,7 +141,7 @@ template <typename Scenario> class Viewer : public SignalSlotRenderer {
 		        {"Mesh type",
 		         elementType::exclusiveGroup,
 		         {
-		             {"None", false}, {"Centers only", false}, {"Sphere", false},
+		             {"None", false}, {"Centers only", false}, {"Sphere", true},
 		         }},
 		        {"Display connections", false},
 		    }};
@@ -217,6 +217,12 @@ template <typename Scenario> class Viewer : public SignalSlotRenderer {
 
 		for (auto &p : plugins_onLoad) p(this);
 		displayMenu.callAll(this);
+
+		////////////////////////
+		// default plugins
+		// ////////////////////
+		registerPlugin(km);
+		registerPlugin(mm);
 	}
 	// updates Interface Additions (new buttons, new menu, ...)
 	void applyInterfaceAdditions(SignalSlotBase *b) {

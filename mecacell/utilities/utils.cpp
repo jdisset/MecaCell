@@ -14,8 +14,8 @@ std::vector<std::string> splitStr(const std::string &s, char delim) {
 	return res;
 }
 
-Vector3D hsvToRgb(double h, double s, double v) {
-	if (s <= 0.0) return {v, v, v};
+std::array<double, 3> hsvToRgb(double h, double s, double v) {
+	if (s <= 0.0) return {{v, v, v}};
 	double hh = h;
 	if (hh >= 360.0) hh = 0.0;
 	hh /= 60.0;
@@ -26,18 +26,18 @@ Vector3D hsvToRgb(double h, double s, double v) {
 	double t = v * (1.0 - (s * (1.0 - ff)));
 	switch (i) {
 		case 0:
-			return {v, t, p};
+			return {{v, t, p}};
 		case 1:
-			return {q, v, p};
+			return {{q, v, p}};
 		case 2:
-			return {p, v, t};
+			return {{p, v, t}};
 		case 3:
-			return {p, q, v};
+			return {{p, q, v}};
 		case 4:
-			return {t, p, v};
+			return {{t, p, v}};
 		case 5:
 		default:
-			return {v, p, q};
+			return {{v, p, q}};
 	}
 }
 }
