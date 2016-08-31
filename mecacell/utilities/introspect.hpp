@@ -36,14 +36,14 @@ template <typename T> struct debug_type {
 #define HOOKCHECK(hName)                                                         \
 	template <typename T = R>                                                      \
 	static void register_##hName(                                                  \
-	    const typename std::enable_if<is_##hName##_callable<P, void(R *)>::value,  \
+	    const typename std::enable_if<is_##hName##_callable<P, void(R &)>::value,  \
 	                                  T *>::type r,                                \
 	    P &p) {                                                                    \
 		r->registerHook(Hooks::hName, [&](R *w) { p.hName(w); });                    \
 	}                                                                              \
 	template <typename T = R>                                                      \
 	static void register_##hName(                                                  \
-	    const typename std::enable_if<!is_##hName##_callable<P, void(R *)>::value, \
+	    const typename std::enable_if<!is_##hName##_callable<P, void(R &)>::value, \
 	                                  T *>::type,                                  \
 	    P &) {                                                                     \
 		std::cerr << "No " << #hName << " plugin detected" << std::endl;            \
