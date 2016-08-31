@@ -52,7 +52,6 @@ template <typename Cell, typename Integrator = Euler> class World {
 	                                                                   // defined by Cell
 
  protected:
-	double dt = 1.0 / 100.0;  /// The amount by which time is increased every update
 	size_t frame = 0;         /// +1 at each update. cf getNbUpdates()
 	size_t nbAddedCells = 0;  /// +1 on cell add. Used for cell's unique ids
 	size_t updtBhvPeriod =
@@ -69,6 +68,7 @@ template <typename Cell, typename Integrator = Euler> class World {
 	}
 
  public:
+	double dt = 1.0 / 100.0;  /// The amount by which time is increased every update
 	cellPlugin_t cellPlugin;  // instance of the embedded cell plugin type
 	                          // (cellPlugin_t default to a dumb char if not specified)
 

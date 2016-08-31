@@ -45,7 +45,9 @@ template <typename T> struct debug_type {
 	static void register_##hName(                                                  \
 	    const typename std::enable_if<!is_##hName##_callable<P, void(R *)>::value, \
 	                                  T *>::type,                                  \
-	    P &) {}
+	    P &) {                                                                     \
+		std::cerr << "No " << #hName << " plugin detected" << std::endl;            \
+	}
 
 #define CREATE_METHOD_CHECKS(method)                                                     \
 	/* checks if Class C has a method callable using the given signature */                \

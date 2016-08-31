@@ -1,9 +1,10 @@
 #ifndef KEYBOARDMANAGER_HPP
 #define KEYBOARDMANAGER_HPP
-#include <Qt>
 #include <QDebug>
+#include <Qt>
 struct KeyboardManager {
 	template <typename R> void onLoad(R* r) {
+		qDebug() << " KEYBOARD MANAGER LOADED";
 		r->addKeyDownMethod(Qt::Key_Q,
 		                    [](R* r) { r->getCamera().left(r->getTimeSinceLastFrame()); });
 		r->addKeyDownMethod(Qt::Key_D,

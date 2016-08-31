@@ -217,12 +217,6 @@ template <typename Scenario> class Viewer : public SignalSlotRenderer {
 
 		for (auto &p : plugins_onLoad) p(this);
 		displayMenu.callAll(this);
-
-		////////////////////////
-		// default plugins
-		// ////////////////////
-		registerPlugin(km);
-		registerPlugin(mm);
 	}
 	// updates Interface Additions (new buttons, new menu, ...)
 	void applyInterfaceAdditions(SignalSlotBase *b) {
