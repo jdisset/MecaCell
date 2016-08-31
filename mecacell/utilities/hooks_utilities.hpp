@@ -29,7 +29,7 @@ template <typename R, typename P> struct HookChecker {
 
 #define REGISTERH(hName) HookChecker<R, P>::register_##hName(renderer, p);
 
-template <typename R, typename P> void loadPluginHooks(R *renderer, P &p) {
+template <typename R, typename P> void loadPluginHooks(R &renderer, P &p) {
 	REGISTERH(beginUpdate);
 	REGISTERH(preBehaviorUpdate);
 	REGISTERH(postBehaviorUpdate);

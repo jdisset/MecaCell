@@ -122,7 +122,7 @@ template <typename Cell, typename Integrator = Euler> class World {
 	}
 	void registerPlugins() {}  /// end of recursion
 	template <typename P> void registerPlugin(P &p) {
-		loadPluginHooks(this, p);
+		loadPluginHooks(*this, p);
 	}  /// for a single plugin
 
 	/**
