@@ -1,5 +1,5 @@
-#ifndef ROTATION
-#define ROTATION
+#ifndef MECACELL_ROTATION_H
+#define MECACELL_ROTATION_H
 #include <cmath>
 using namespace std;
 namespace MecaCell {
