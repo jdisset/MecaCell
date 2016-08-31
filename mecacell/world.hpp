@@ -159,7 +159,7 @@ template <typename Cell, typename Integrator = Euler> class World {
 			cells.push_back(c);
 			c->id = nbAddedCells++;
 		}
-		for (auto &f : hooks[eToUI(Hooks::addCell)]) f(this);
+		for (auto &f : hooks[eToUI(Hooks::addCell)]) f(**this);
 	}
 
 	/**
@@ -210,13 +210,13 @@ template <typename Cell, typename Integrator = Euler> class World {
 	 * - endUpdate
 	 */
 	void update() {
-		for (auto &f : hooks[eToUI(Hooks::beginUpdate)]) f(this);
-		for (auto &f : hooks[eToUI(Hooks::preBehaviorUpdate)]) f(this);
+		for (auto &f : hooks[eToUI(Hooks::beginUpdate)]) f(*this);
+		for (auto &f : hooks[eToUI(Hooks::preBehaviorUpdate)]) f(*this);
 		if (frame % updtBhvPeriod == 0)
 			for (auto &c : cells) c->updateBehavior(*this);
-		for (auto &f : hooks[eToUI(Hooks::postBehaviorUpdate)]) f(this);
+		for (auto &f : hooks[eToUI(Hooks::postBehaviorUpdate)]) f(*this);
 		deleteDeadCells();
-		for (auto &f : hooks[eToUI(Hooks::endUpdate)]) f(this);
+		for (auto &f : hooks[eToUI(Hooks::endUpdate)]) f(*this);
 		++frame;
 	}
 
@@ -224,7 +224,7 @@ template <typename Cell, typename Integrator = Euler> class World {
 	 * @brief destructor. Triggers the destructor hooks and delete all cells.
 	 */
 	~World() {
-		for (auto &f : hooks[eToUI(Hooks::destructor)]) f(this);
+		for (auto &f : hooks[eToUI(Hooks::destructor)]) f(*this);
 		while (!cells.empty()) delete cells.back(), cells.pop_back();
 	}
 };
