@@ -27,7 +27,7 @@ template <typename Cell, typename Integrator = Euler> class World {
 	using cell_t = Cell;
 	using integrator_t = Integrator;
 	using hook_t =
-	    std::function<void(World *)>;  /// hook signature, as they should appear in
+	    std::function<void(World &)>;  /// hook signature, as they should appear in
 	                                   /// plugins classes. cf. hooks & plugins section
 
 	/// A cell type can define one embedded plugin class type which will be
@@ -159,7 +159,7 @@ template <typename Cell, typename Integrator = Euler> class World {
 			cells.push_back(c);
 			c->id = nbAddedCells++;
 		}
-		for (auto &f : hooks[eToUI(Hooks::addCell)]) f(**this);
+		for (auto &f : hooks[eToUI(Hooks::addCell)]) f(*this);
 	}
 
 	/**
