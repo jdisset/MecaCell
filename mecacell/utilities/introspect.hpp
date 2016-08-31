@@ -39,7 +39,7 @@ template <typename T> struct debug_type {
 	    const typename std::enable_if<is_##hName##_callable<P, void(H &)>::value,  \
 	                                  T &>::type r,                                \
 	    P &p) {                                                                    \
-		r->registerHook(Hooks::hName, [&](H *w) { p.hName(w); });                    \
+		r.registerHook(Hooks::hName, [&](H *w) { p.hName(w); });                    \
 	}                                                                              \
 	template <typename T = H>                                                      \
 	static void register_##hName(                                                  \
