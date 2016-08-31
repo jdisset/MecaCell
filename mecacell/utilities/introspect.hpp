@@ -34,19 +34,19 @@ template <typename T> struct debug_type {
 
 // checks if a plugin p of type P has a hName methods, and registers it.
 #define HOOKCHECK(hName)                                                         \
-	template <typename T = R>                                                      \
+	template <typename T = H>                                                      \
 	static void register_##hName(                                                  \
-	    const typename std::enable_if<is_##hName##_callable<P, void(R &)>::value,  \
-	                                  T *>::type r,                                \
+	    const typename std::enable_if<is_##hName##_callable<P, void(H &)>::value,  \
+	                                  T &>::type r,                                \
 	    P &p) {                                                                    \
-		r->registerHook(Hooks::hName, [&](R *w) { p.hName(w); });                    \
+		r->registerHook(Hooks::hName, [&](H *w) { p.hName(w); });                    \
 	}                                                                              \
-	template <typename T = R>                                                      \
+	template <typename T = H>                                                      \
 	static void register_##hName(                                                  \
-	    const typename std::enable_if<!is_##hName##_callable<P, void(R &)>::value, \
-	                                  T *>::type,                                  \
+	    const typename std::enable_if<!is_##hName##_callable<P, void(H &)>::value, \
+	                                  T &>::type,                                  \
 	    P &) {                                                                     \
-		std::cerr << "No " << #hName << " plugin detected" << std::endl;            \
+		std::cerr << "No " << #hName << " plugin detected" << std::endl;             \
 	}
 
 #define CREATE_METHOD_CHECKS(method)                                                     \

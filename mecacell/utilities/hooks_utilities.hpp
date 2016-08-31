@@ -18,7 +18,7 @@ CREATE_METHOD_CHECKS(endUpdate);
 CREATE_METHOD_CHECKS(addCell);
 CREATE_METHOD_CHECKS(destructor);
 
-template <typename R, typename P> struct HookChecker {
+template <typename H, typename P> struct HookChecker {
 	HOOKCHECK(beginUpdate)
 	HOOKCHECK(preBehaviorUpdate)
 	HOOKCHECK(postBehaviorUpdate)
@@ -27,9 +27,9 @@ template <typename R, typename P> struct HookChecker {
 	HOOKCHECK(destructor)
 };
 
-#define REGISTERH(hName) HookChecker<R, P>::register_##hName(renderer, p);
+#define REGISTERH(hName) HookChecker<H, P>::register_##hName(hookableClass, p);
 
-template <typename R, typename P> void loadPluginHooks(R &renderer, P &p) {
+template <typename H, typename P> void loadPluginHooks(H &hookableClass, P &p) {
 	REGISTERH(beginUpdate);
 	REGISTERH(preBehaviorUpdate);
 	REGISTERH(postBehaviorUpdate);
