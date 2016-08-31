@@ -1,5 +1,5 @@
-#ifndef VECTOR3D_H
-#define VECTOR3D_H
+#ifndef MECACELL_VECTOR3D_H
+#define MECACELL_VECTOR3D_H
 
 #include <array>
 #include <cmath>
@@ -118,7 +118,7 @@ class Vector3D {
 	static Vector3D getProjectionOnPlane(const Vector3D &o, const Vector3D &n,
 	                                     const Vector3D &p);
 	static double rayCast(const Vector3D &o, const Vector3D &n, const Vector3D &p,
-	                       const Vector3D &r);
+	                      const Vector3D &r);
 
 	void normalize();
 	inline Vector3D normalized() const {

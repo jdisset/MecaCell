@@ -1,5 +1,5 @@
-#ifndef MATRIX4X4_HPP
-#define MATRIX4X4_HPP
+#ifndef MECACELL_MATRIX4X4_HPP
+#define MECACELL_MATRIX4X4_HPP
 #include <array>
 #include "../utilities/utils.h"
 #include "rotation.h"

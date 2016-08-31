@@ -1,5 +1,5 @@
-#ifndef GEOMETRY_H
-#define GEOMETRY_H
+#ifndef MECACELL_GEOMETRY_H
+#define MECACELL_GEOMETRY_H
 #include "../utilities/utils.h"
 namespace MecaCell {
 

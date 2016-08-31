@@ -1,5 +1,5 @@
-#ifndef QUATERNION_H
-#define QUATERNION_H
+#ifndef MECACELL_QUATERNION_H
+#define MECACELL_QUATERNION_H
 #include <cmath>
 #include "../utilities/utils.h"
 #include "vector3D.h"

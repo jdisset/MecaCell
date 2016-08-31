@@ -1,5 +1,5 @@
-#ifndef BASIS_H
-#define BASIS_H
+#ifndef MECACELL_BASIS_H
+#define MECACELL_BASIS_H
 #include <iostream>
 #include "rotation.h"
 

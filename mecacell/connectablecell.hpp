@@ -1,5 +1,5 @@
-#ifndef CONNECTABLECELL_HPP
-#define CONNECTABLECELL_HPP
+#ifndef MECACELL_CONNECTABLECELL_HPP
+#define MECACELL_CONNECTABLECELL_HPP
 #include <array>
 #include <cmath>
 #include <cstdlib>
