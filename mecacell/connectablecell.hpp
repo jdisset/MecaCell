@@ -61,6 +61,8 @@ class ConnectableCell : public Movable {
 		                     connectedCells.end());
 	}
 
+	void clearConnectedCells() { connectedCells.clear(); }
+
 	size_t id = 0;  // mostly for debugging, num of cell by order of addition in world
 	ConnectableCell(const Derived &c)
 	    : Movable(c.getPosition()),
