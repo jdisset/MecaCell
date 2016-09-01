@@ -9,6 +9,7 @@
 #include <QSize>
 #include <QSurfaceFormat>
 #include <functional>
+#include <mecacell/utilities/hooktools.hpp>
 #include "camera.hpp"
 #include "managers/blur.hpp"
 #include "managers/msaa.hpp"
@@ -23,7 +24,6 @@
 #include "signalslotbase.h"
 #include "utilities/keyboardmanager.hpp"
 #include "utilities/mousemanager.hpp"
-
 namespace MecacellViewer {
 template <typename Scenario> class Viewer : public SignalSlotRenderer {
 	friend class SignalSlotBase;
@@ -34,8 +34,18 @@ template <typename Scenario> class Viewer : public SignalSlotRenderer {
 	using Cell = typename World::cell_t;
 	using Vec = decltype(((Cell *)nullptr)->getPosition());
 	using R = Viewer<Scenario>;
-	using Rfunc = std::function<void(R *)>;
+	using hook_s = void(R *);
 	using ButtonType = Button<R>;
+
+	DECLARE_HOOK(preLoad, preLoop, preDraw, postDraw, onLoad)
+
+	/**
+	 * @brief register a single hook method. cf registerPlugins()
+	 *
+	 * @param h hook type (same name as hook method)
+	 * @param f the actual hook
+	 */
+	void registerHook(const Hooks &h, hook_t f) { hooks[h].push_back(f); }
 
 	Viewer(int c, char **v) : argc(c), argv(v) {
 #if __APPLE__
@@ -101,26 +111,18 @@ template <typename Scenario> class Viewer : public SignalSlotRenderer {
 	QQuickWindow *view;
 	QQmlApplicationEngine *engine;
 
- public:
-	std::vector<Rfunc> plugins_preLoad;
-	std::vector<Rfunc> plugins_onLoad;
-	std::vector<Rfunc> plugins_preLoop;
-	std::vector<Rfunc> plugins_preDraw;
-	std::vector<Rfunc> plugins_postDraw;
-	std::vector<Rfunc> plugins_onSync;
-
  private:
-	std::map<Qt::Key, Rfunc> keyDownMethods;
-	std::map<Qt::Key, Rfunc> keyPressMethods;
-	std::map<Qt::MouseButton, Rfunc> mouseDragMethods;
-	std::map<Qt::MouseButton, Rfunc> mouseClickMethods;
+	std::map<Qt::Key, hook_t> keyDownMethods;
+	std::map<Qt::Key, hook_t> keyPressMethods;
+	std::map<Qt::MouseButton, hook_t> mouseDragMethods;
+	std::map<Qt::MouseButton, hook_t> mouseClickMethods;
 	std::map<QString, Button<R>> buttons;
 
 	// this is just so we can store paint steps instances without making a mess
 	std::map<QString, unique_ptr<PaintStep<R>>> paintSteps;
 
 	// the actual paint steps method to be called
-	std::map<int, Rfunc> paintStepsMethods;
+	std::map<int, hook_t> paintStepsMethods;
 
 	bool paintStepsNeedsUpdate =
 	    true;  // do we need to refresh the list of checkable paint steps?
@@ -215,7 +217,7 @@ template <typename Scenario> class Viewer : public SignalSlotRenderer {
 		paintStepsMethods[5] = [&](R *r) { paintSteps["Skybox"]->call(r); };
 		paintStepsMethods[2000000] = [&](R *r) { paintSteps["Blur"]->call(r); };
 
-		for (auto &p : plugins_onLoad) p(this);
+		for (auto &f : hooks[Hooks::onLoad]) f(this);
 		displayMenu.callAll(this);
 	}
 	// updates Interface Additions (new buttons, new menu, ...)
@@ -279,7 +281,6 @@ template <typename Scenario> class Viewer : public SignalSlotRenderer {
 		keyDown = b->keyDown;
 		b->keyPress.clear();
 		processEvents(b);
-		for (auto &p : plugins_postDraw) p(this);
 	}
 
 	/***********************************
@@ -323,14 +324,15 @@ template <typename Scenario> class Viewer : public SignalSlotRenderer {
 		                                              (float)viewportSize.height());
 		// updating scenario
 		if (loopStep || worldUpdate) {
-			for (auto &p : plugins_preLoop) p(this);  // preLoop Hook
+			for (auto &f : hooks[Hooks::preLoop]) f(this);
 			for (int i = 0; i < nbLoopsPerFrame; ++i) scenario.loop();
 			if (!selectedCellStillExists()) selectedCell = nullptr;
 			loopStep = false;
 		}
 
-		for (auto &p : plugins_preDraw) p(this);           // preDraw hook
-		for (auto &s : paintStepsMethods) s.second(this);  // Renderable plugins
+		for (auto &f : hooks[Hooks::preDraw]) f(this);
+		for (auto &s : paintStepsMethods) s.second(this);
+		for (auto &f : hooks[Hooks::postDraw]) f(this);
 
 		updateStats();
 		if (window) {
@@ -533,7 +535,7 @@ template <typename Scenario> class Viewer : public SignalSlotRenderer {
 	 * @param f the function (often a lambda) that takes a pointer to the viewer instance as
 	 * argument
 	 */
-	void addPaintStepsMethods(int priority, Rfunc f) {
+	void addPaintStepsMethods(int priority, hook_t f) {
 		paintStepsMethods[priority] = std::move(f);
 	}
 
@@ -574,12 +576,18 @@ template <typename Scenario> class Viewer : public SignalSlotRenderer {
 	 * method.
 	 * - preLoop: called just before the scenario's loop method.
 	 * - preDraw: called before the first paint step.
-	 * All hooks take a pointer to the viewer instance as argument (type Rfunc :
+	 * - postDraw: called after the first paint step.
+	 * All hooks take a pointer to the viewer instance as argument (type hook_t :
 	 * void(Viewer*) )
 	 * @tparam P plugin class type (implicit deduction should work just fine)
 	 * @param p the plugin class instance.
 	 */
-	template <typename P> void registerPlugin(P &p) { loadPluginHooks(this, p); }
+	template <typename P, typename... Rest>
+	void registerPlugins(P &&p, Rest &&... otherPlugins) {
+		registerPlugin(std::forward<P>(p));
+		registerPlugins(std::forward<Rest>(otherPlugins)...);
+	}
+	void registerPlugins() {}  /// end of recursion
 
 	/**
 	 * @brief registers a method f to call when the Key k is pushed down
@@ -587,7 +595,7 @@ template <typename Scenario> class Viewer : public SignalSlotRenderer {
 	 * @param k
 	 * @param f
 	 */
-	void addKeyDownMethod(Qt::Key k, Rfunc f) { keyDownMethods[k] = f; }
+	void addKeyDownMethod(Qt::Key k, hook_t f) { keyDownMethods[k] = f; }
 
 	/**
 	 * @brief registers a method f to call when the Key k is pressed (down + up)
@@ -595,7 +603,7 @@ template <typename Scenario> class Viewer : public SignalSlotRenderer {
 	 * @param k
 	 * @param f
 	 */
-	void addKeyPressMethod(Qt::Key k, Rfunc f) { keyPressMethods[k] = f; }
+	void addKeyPressMethod(Qt::Key k, hook_t f) { keyPressMethods[k] = f; }
 
 	/**
 	 * @brief registers a method f to call when the mouse button b is dragged
@@ -603,7 +611,7 @@ template <typename Scenario> class Viewer : public SignalSlotRenderer {
 	 * @param
 	 * @param f
 	 */
-	void addMouseDragMethod(Qt::MouseButton b, Rfunc f) { mouseDragMethods[b] = f; }
+	void addMouseDragMethod(Qt::MouseButton b, hook_t f) { mouseDragMethods[b] = f; }
 
 	/**
 	 * @brief registers a method f to call when the mouse button b is clicked
@@ -611,7 +619,7 @@ template <typename Scenario> class Viewer : public SignalSlotRenderer {
 	 * @param b
 	 * @param f
 	 */
-	void addMouseClickMethod(Qt::MouseButton b, Rfunc f) { mouseClickMethods[b] = f; }
+	void addMouseClickMethod(Qt::MouseButton b, hook_t f) { mouseClickMethods[b] = f; }
 
 	/**
 	 * @brief adds a Button instance to the viewer
@@ -700,7 +708,7 @@ template <typename Scenario> class Viewer : public SignalSlotRenderer {
 		engine->rootContext()->setContextProperty("glview", ssb);
 		ssb->init(this);
 		view->show();
-		for (auto &p : plugins_preLoad) p(this);
+		for (auto &f : hooks[Hooks::preLoad]) f(this);
 		QObject::connect(view, SIGNAL(closing(QQuickCloseEvent *)), &app, SLOT(quit()));
 		return app.exec();
 	}
