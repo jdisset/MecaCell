@@ -6,16 +6,7 @@
 // I'd like to thank the ViM editor for basically writing this file for me...
 
 // HOOKS ENUM
-#define HOOKS_ENUM1(a) enum Hooks { a, LAST };
-#define HOOKS_ENUM2(a, b) enum Hooks { a, b, LAST };
-#define HOOKS_ENUM3(a, b, c) enum Hooks { a, b, c, LAST };
-#define HOOKS_ENUM4(a, b, c, d) enum Hooks { a, b, c, d, LAST };
-#define HOOKS_ENUM5(a, b, c, d, e) enum Hooks { a, b, c, d, e, LAST };
-#define HOOKS_ENUM6(a, b, c, d, e, f) enum Hooks { a, b, c, d, e, f, LAST };
-#define HOOKS_ENUM7(a, b, c, d, e, f, g) enum Hooks { a, b, c, d, e, f, g, LAST };
-#define HOOKS_ENUM8(a, b, c, d, e, f, g, h) enum Hooks { a, b, c, d, e, f, g, h, LAST };
-#define HOOKS_ENUM9(a, b, c, d, e, f, g, h, i) \
-	enum Hooks { a, b, c, d, e, f, g, h, i, LAST };
+#define HOOKS_ENUM(...) enum Hooks { __VA_ARGS__, LAST };
 // METHOD CHECKS
 #define CREATE_MC1(m1) CREATE_METHOD_CHECKS(m1);
 #define CREATE_MC2(m1, m2)  \
@@ -203,7 +194,7 @@
 	H_REG(h9);
 
 #define DECLARE_HOOK(...)                             \
-	OVERLOADED_MACRO(HOOKS_ENUM, __VA_ARGS__)           \
+	HOOKS_ENUM(__VA_ARGS__)                             \
 	OVERLOADED_MACRO(CREATE_MC, __VA_ARGS__)            \
 	HOOKCHK_BEGIN                                       \
 	OVERLOADED_MACRO(HCHK_M, __VA_ARGS__)               \
