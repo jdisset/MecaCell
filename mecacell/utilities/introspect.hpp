@@ -32,23 +32,6 @@ template <typename T> struct debug_type {
 	}
 };
 
-// checks if a plugin p of type P has a hName methods, and registers it.
-#define HOOKCHECK(hName)                                                         \
-	template <typename T = H>                                                      \
-	static void register_##hName(                                                  \
-	    const typename std::enable_if<is_##hName##_callable<P, void(H &)>::value,  \
-	                                  T &>::type r,                                \
-	    P &p) {                                                                    \
-		r.registerHook(Hooks::hName, [&](H *w) { p.hName(w); });                    \
-	}                                                                              \
-	template <typename T = H>                                                      \
-	static void register_##hName(                                                  \
-	    const typename std::enable_if<!is_##hName##_callable<P, void(H &)>::value, \
-	                                  T &>::type,                                  \
-	    P &) {                                                                     \
-		std::cerr << "No " << #hName << " plugin detected" << std::endl;             \
-	}
-
 #define CREATE_METHOD_CHECKS(method)                                                     \
 	/* checks if Class C has a method callable using the given signature */                \
 	template <typename C, typename F> struct is_##method##_callable {};                    \
@@ -68,55 +51,15 @@ template <typename T> struct debug_type {
 	template <typename C, typename Ret, typename... Args>                                  \
 	struct has_##method##_signature<C, Ret(Args...)> {                                     \
 		using SIG = Ret (C::*)(Args...);                                                     \
+		template <typename T, T> struct same;                                                \
 		template <typename T>                                                                \
-		static constexpr auto has(int) ->                                                    \
-		    typename std::is_same<SIG, decltype(static_cast<SIG>(&T::method))>::type;        \
+		static constexpr auto has(same<SIG, &T::method> *) -> typename std::true_type::type; \
 		template <typename T>                                                                \
 		static constexpr auto has(...) -> typename std::false_type::type;                    \
-                                                                                         \
-		static void debug() {                                                                \
-			std::cout << " ---------------- signature -------------" << std::endl;             \
-			DEBUG_TYPE((Ret(Args...)));                                                        \
-			DEBUG_TYPE((SIG));                                                                 \
-			DEBUG_TYPE((decltype(&C::method)));                                                \
-			std::cout << "myValue = " << value << std::endl;                                   \
-		}                                                                                    \
 		static constexpr bool value = decltype(has<C>(0))::value;                            \
-	};                                                                                     \
-	/*checks if Class C has a method with one of the given signatures*/                    \
-	template <typename C, typename... Signatures> struct has_##method##_signatures {       \
-		static constexpr bool value() { return false; }                                      \
-		static void debug() {}                                                               \
-	};                                                                                     \
-	template <typename C, typename First, typename... Rest>                                \
-	struct has_##method##_signatures<C, First, Rest...> {                                  \
-		static constexpr bool value() {                                                      \
-			return has_##method##_signature<C, First>::value ||                                \
-			       has_##method##_signatures<C, Rest...>::value();                             \
-		}                                                                                    \
-		static void debug() {                                                                \
-			std::cerr << "==========================================" << std::endl             \
-			          << "signature.value = " << has_##method##_signature<C, First>::value     \
-			          << std::endl;                                                            \
-			std::cerr << "signature.has = "                                                    \
-			          << decltype(                                                             \
-			                 has_##method##_signature<C, First>::template has<C>(0))::value    \
-			          << std::endl;                                                            \
-			std::cerr << "me.value= " << value() << std::endl;                                 \
-			has_##method##_signature<C, First>::debug();                                       \
-			has_##method##_signatures<C, Rest...>::debug();                                    \
-		}                                                                                    \
-	};                                                                                     \
-	/*checks if Class C has a method with the given name, without signature check*/        \
-	/*! doesn't work with overloaded methods or class template!!! */                       \
-	template <typename C> struct has_##method##_method {                                   \
-		template <typename> static constexpr std::false_type has(...);                       \
-		template <typename T>                                                                \
-		static constexpr std::true_type has(decltype(&T::method) *stuff = 0);                \
-		static constexpr bool value = decltype(has<C>())::value;                             \
 	}
 
-// lil' helper that explodes a tuple and forward its content to a func
+// helper that explodes a tuple and forward its content to a func
 // (+ other args at the begining) ... C++14 only :'(
 // template <typename F, typename... OtherArgs, typename... TupleTypes, std::size_t...
 // Ind>

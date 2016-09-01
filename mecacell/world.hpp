@@ -7,7 +7,7 @@
 #include <vector>
 #include "cellcellconnectionshandler.hpp"
 #include "integrators.hpp"
-#include "utilities/hooks_utilities.hpp"
+#include "utilities/hooktools.hpp"
 #include "utilities/utils.h"
 
 namespace MecaCell {
@@ -26,9 +26,8 @@ template <typename Cell, typename Integrator = Euler> class World {
  public:
 	using cell_t = Cell;
 	using integrator_t = Integrator;
-	using hook_t =
-	    std::function<void(World &)>;  /// hook signature, as they should appear in
-	                                   /// plugins classes. cf. hooks & plugins section
+	using hook_s = void(World *);  /// hook signature, as they should appear in
+	                               /// plugins classes. cf. hooks & plugins section
 
 	/// A cell type can define one embedded plugin class type which will be
 	/// instanciated in the world.
@@ -40,24 +39,24 @@ template <typename Cell, typename Integrator = Euler> class World {
 	// -------------------------------------
 	// The following code detects if any embedded plugin type is specified and defaults
 	// to the instantiation of a useles byte if not.
+	struct dumb {};
 	template <class, class = void_t<>> struct embedded_plugin_type {  // declaration
-		using type = char;  // defaults to dummy char type if no embedded plugin is defined
+		using type = dumb;  // defaults to dummy char type if no embedded plugin is defined
 	};
 	template <class T>  // specialization
 	struct embedded_plugin_type<T, void_t<typename T::embedded_plugin_t>> {
 		using type = typename T::embedded_plugin_t;  // embedded plugin detected
 	};
-	using cellPlugin_t = typename embedded_plugin_type<cell_t>::type;  // either char or the
-	                                                                   // plugin type
-	                                                                   // defined by Cell
+	using cellPlugin_t =
+	    typename embedded_plugin_type<cell_t>::type;  // either dumb struct or the
+	                                                  // plugin type
+	                                                  // defined by Cell
 
  protected:
 	size_t frame = 0;         /// +1 at each update. cf getNbUpdates()
 	size_t nbAddedCells = 0;  /// +1 on cell add. Used for cell's unique ids
 	size_t updtBhvPeriod =
 	    1;  /// period at which the world should call the cells updateBehavior method.
-
-	std::array<std::vector<hook_t>, eToUI(Hooks::LAST)> hooks;  // where hooks are stored
 
 	void deleteDeadCells() {
 		for (auto i = cells.begin(); i != cells.end();)
@@ -71,6 +70,9 @@ template <typename Cell, typename Integrator = Euler> class World {
 	double dt = 1.0 / 100.0;  /// The amount by which time is increased every update
 	cellPlugin_t cellPlugin;  // instance of the embedded cell plugin type
 	                          // (cellPlugin_t default to a dumb char if not specified)
+
+	DECLARE_HOOK(onAddCell, beginUpdate, preBehaviorUpdate, postBehaviorUpdate, endUpdate,
+	             destructor)
 
 	std::vector<Cell *> cells;  /// all the cells are in this container
 
@@ -88,7 +90,7 @@ template <typename Cell, typename Integrator = Euler> class World {
 	 * @brief register a single hook method. cf registerPlugins()
 	 *
 	 * @param h hook type (same name as hook method)
-	 * @param f the actual hook (a std::function<void(World*)>)
+	 * @param f the actual hook
 	 */
 	void registerHook(const Hooks &h, hook_t f) { hooks[eToUI(h)].push_back(f); }
 
@@ -121,9 +123,6 @@ template <typename Cell, typename Integrator = Euler> class World {
 		registerPlugins(std::forward<Rest>(otherPlugins)...);
 	}
 	void registerPlugins() {}  /// end of recursion
-	template <typename P> void registerPlugin(P &p) {
-		loadPluginHooks(*this, p);
-	}  /// for a single plugin
 
 	/**
 	 * @brief clear all registered hooks. CAUTION: it will also delete any default embedded
@@ -159,7 +158,7 @@ template <typename Cell, typename Integrator = Euler> class World {
 			cells.push_back(c);
 			c->id = nbAddedCells++;
 		}
-		for (auto &f : hooks[eToUI(Hooks::addCell)]) f(*this);
+		for (auto &f : hooks[eToUI(Hooks::onAddCell)]) f(this);
 	}
 
 	/**
@@ -210,13 +209,13 @@ template <typename Cell, typename Integrator = Euler> class World {
 	 * - endUpdate
 	 */
 	void update() {
-		for (auto &f : hooks[eToUI(Hooks::beginUpdate)]) f(*this);
-		for (auto &f : hooks[eToUI(Hooks::preBehaviorUpdate)]) f(*this);
+		for (auto &f : hooks[eToUI(Hooks::beginUpdate)]) f(this);
+		for (auto &f : hooks[eToUI(Hooks::preBehaviorUpdate)]) f(this);
 		if (frame % updtBhvPeriod == 0)
 			for (auto &c : cells) c->updateBehavior(*this);
-		for (auto &f : hooks[eToUI(Hooks::postBehaviorUpdate)]) f(*this);
+		for (auto &f : hooks[eToUI(Hooks::postBehaviorUpdate)]) f(this);
 		deleteDeadCells();
-		for (auto &f : hooks[eToUI(Hooks::endUpdate)]) f(*this);
+		for (auto &f : hooks[eToUI(Hooks::endUpdate)]) f(this);
 		++frame;
 	}
 
@@ -224,7 +223,7 @@ template <typename Cell, typename Integrator = Euler> class World {
 	 * @brief destructor. Triggers the destructor hooks and delete all cells.
 	 */
 	~World() {
-		for (auto &f : hooks[eToUI(Hooks::destructor)]) f(*this);
+		for (auto &f : hooks[eToUI(Hooks::destructor)]) f(this);
 		while (!cells.empty()) delete cells.back(), cells.pop_back();
 	}
 };

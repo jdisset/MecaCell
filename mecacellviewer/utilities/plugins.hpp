@@ -1,6 +1,7 @@
 #ifndef PLUGINS_HPP
 #define PLUGINS_HPP
-#include <mecacell/utilities/introspect.hpp>
+dq
+include <mecacell/utilities/introspect.hpp>
 using namespace std;
 
 namespace MecacellViewer {
