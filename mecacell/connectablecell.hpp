@@ -34,6 +34,8 @@ class ConnectableCell : public Movable {
  public:
 	using body_t = Body<Derived>;
 	using embedded_plugin_t = typename body_t::embedded_plugin_t;
+	friend body_t;
+	friend embedded_plugin_t;
 
  protected:
 	body_t body;  // core implementation
@@ -41,7 +43,12 @@ class ConnectableCell : public Movable {
 	array<double, 3> color = {{0.75, 0.12, 0.07}};
 	unique_vector<Derived *> connectedCells;  // list of currently connected cells
 	bool isVisible = true;                    // should a viewer display this cell?
+	// helpers & shortcuts
+	inline Derived *selfptr() { return static_cast<Derived *>(this); }
+	inline Derived &self() { return static_cast<Derived &>(*this); }
+	const Derived &selfconst() const { return static_cast<const Derived &>(*this); }
 
+ public:
 	/**
 	 * @brief disconnect a neighboring cell
 	 *
@@ -49,17 +56,11 @@ class ConnectableCell : public Movable {
 	 *
 	 * @param cell pointer to the cell to be disconnected
 	 */
-	void eraseCell(Derived *cell) {
+	void eraseConnectedCell(Derived *cell) {
 		connectedCells.erase(remove(connectedCells.begin(), connectedCells.end(), cell),
 		                     connectedCells.end());
 	}
 
-	// helpers & shortcuts
-	inline Derived *selfptr() { return static_cast<Derived *>(this); }
-	inline Derived &self() { return static_cast<Derived &>(*this); }
-	const Derived &selfconst() const { return static_cast<const Derived &>(*this); }
-
- public:
 	size_t id = 0;  // mostly for debugging, num of cell by order of addition in world
 	ConnectableCell(const Derived &c)
 	    : Movable(c.getPosition()),
