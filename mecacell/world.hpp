@@ -169,6 +169,7 @@ template <typename Cell, typename Integrator = Euler> class World {
 		if (newCells.size()) {
 			for (auto &f : hooks[eToUI(Hooks::onAddCell)]) f(this);
 			cells.insert(cells.end(), newCells.begin(), newCells.end());
+			newCells.clear();
 		}
 	}
 
