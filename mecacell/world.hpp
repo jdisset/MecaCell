@@ -71,9 +71,12 @@ template <typename Cell, typename Integrator = Euler> class World {
 	cellPlugin_t cellPlugin;  // instance of the embedded cell plugin type
 	                          // (cellPlugin_t default to a dumb char if not specified)
 
+	vector<Cell *> newCells;  /// cells that are registered to be added
+
+	/* HOOKS
+	 */
 	DECLARE_HOOK(onAddCell, beginUpdate, preBehaviorUpdate, postBehaviorUpdate, endUpdate,
 	             destructor)
-
 	std::vector<Cell *> cells;  /// all the cells are in this container
 
 	/**
@@ -148,17 +151,25 @@ template <typename Cell, typename Integrator = Euler> class World {
 	 *
 	 * Construction should be done by the user but deletion is automatically handled by
 	 * the world (ex. ' addCell(new MyCell()); ' )
-	 * Added cell is guaranteed to be at the end of the contianer.
-	 * Triggers addCell hooks
 	 *
 	 * @param c a pointer to the cell
 	 */
 	void addCell(Cell *c) {
 		if (c) {
-			cells.push_back(c);
+			newCells.push_back(c);
 			c->id = nbAddedCells++;
 		}
-		for (auto &f : hooks[eToUI(Hooks::onAddCell)]) f(this);
+	}
+
+	/**
+	 * @brief effectively adds the new cells that were registered by addCell
+	 * triggers addCell hooks if there is something to add
+	 */
+	void addNewCells() {
+		if (newCells.size()) {
+			for (auto &f : hooks[eToUI(Hooks::onAddCell)]) f(this);
+			cells.insert(cells.end(), newCells.begin(), newCells.end());
+		}
 	}
 
 	/**
@@ -213,8 +224,9 @@ template <typename Cell, typename Integrator = Euler> class World {
 		for (auto &f : hooks[eToUI(Hooks::preBehaviorUpdate)]) f(this);
 		if (frame % updtBhvPeriod == 0)
 			for (auto &c : cells) c->updateBehavior(*this);
-		for (auto &f : hooks[eToUI(Hooks::postBehaviorUpdate)]) f(this);
+		addNewCells();
 		deleteDeadCells();
+		for (auto &f : hooks[eToUI(Hooks::postBehaviorUpdate)]) f(this);
 		for (auto &f : hooks[eToUI(Hooks::endUpdate)]) f(this);
 		++frame;
 	}
