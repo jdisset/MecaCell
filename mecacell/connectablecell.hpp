@@ -56,12 +56,10 @@ class ConnectableCell : public Movable {
 	 *
 	 * @param cell pointer to the cell to be disconnected
 	 */
-	void eraseConnectedCell(Derived *cell) {
-		connectedCells.erase(remove(connectedCells.begin(), connectedCells.end(), cell),
-		                     connectedCells.end());
-	}
-
+	void eraseConnectedCell(Derived *cell) { connectedCells.erase(cell); }
+	void addConnectedCell(Derived *c) { connectedCells.insert(c); }
 	void clearConnectedCells() { connectedCells.clear(); }
+	bool isConnectedTo(Derived *c) { return connectedCells.count(c); }
 
 	size_t id = 0;  // mostly for debugging, num of cell by order of addition in world
 	ConnectableCell(const Derived &c)
@@ -151,7 +149,6 @@ class ConnectableCell : public Movable {
 		if (i < 3) return color[i];
 		return 0;
 	}
-	void addConnectedCell(Derived *c) { connectedCells.insert(c); }
 	const std::vector<Derived *> &getConnectedCells() const {
 		return connectedCells.getUnderlyingVector();
 	}

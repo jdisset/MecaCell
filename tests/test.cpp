@@ -10,9 +10,9 @@ using namespace MecaCell;
 
 bool doubleEq(double a, double b) { return abs(a - b) < 0.000000001; }
 
-class VolCell : public MecaCell::ConnectableCell<VolCell> {
+class VolCell : public MecaCell::ConnectableCell<VolCell, ContactSurfaceBody> {
  public:
-	using Base = MecaCell::ConnectableCell<VolCell>;
+	using Base = MecaCell::ConnectableCell<VolCell, ContactSurfaceBody>;
 	using Base::Base;
 	double getAdhesionWith(const VolCell*, const MecaCell::Vec&) const { return 0.0; }
 	template <typename W> void updateBehavior(W&) {}
@@ -72,12 +72,14 @@ TEST_CASE("World creation, cell additions & deletion") {
 	REQUIRE(w.cells.size() == 0);
 	REQUIRE(w.getNbUpdates() == 1);
 	w.addCell(new VolCell());
+	w.update();
 	REQUIRE(w.cells.size() == 1);
 	REQUIRE(w.cells[0]->getPosition() == MecaCell::Vector3D(0, 0, 0));
 	w.update();
 	REQUIRE(w.cells[0]->getPosition() == MecaCell::Vector3D(0, 0, 0));
 	Vector3D secondCellPos(50, 0, 0);
 	w.addCell(new VolCell(secondCellPos));
+	w.update();
 	REQUIRE(w.cells.size() == 2);
 	REQUIRE(w.cells[1]->getPosition() == secondCellPos);
 }

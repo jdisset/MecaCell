@@ -5,9 +5,9 @@
 #include <unordered_set>
 #include <utility>
 #include <vector>
-#include "cellcellconnectionshandler.hpp"
 #include "integrators.hpp"
 #include "utilities/hooktools.hpp"
+#include "utilities/threadpool.hpp"
 #include "utilities/utils.h"
 
 namespace MecaCell {
@@ -23,11 +23,17 @@ namespace MecaCell {
  * @tparam Integrator the type of integrator to use. Defaults to semi-explicit Euler
  */
 template <typename Cell, typename Integrator = Euler> class World {
+ private:
+	size_t nbThreads = 0;
+
  public:
 	using cell_t = Cell;
 	using integrator_t = Integrator;
 	using hook_s = void(World *);  /// hook signature, as they should appear in
 	                               /// plugins classes. cf. hooks & plugins section
+
+	ThreadPool threadpool;  // threadpool that can be used by plugins (and is also used to
+	                        // parallelize updateBehavior)
 
 	/// A cell type can define one embedded plugin class type which will be
 	/// instanciated in the world.
@@ -51,12 +57,12 @@ template <typename Cell, typename Integrator = Euler> class World {
 	    typename embedded_plugin_type<cell_t>::type;  // either dumb struct or the
 	                                                  // plugin type
 	                                                  // defined by Cell
-
  protected:
 	size_t frame = 0;         /// +1 at each update. cf getNbUpdates()
 	size_t nbAddedCells = 0;  /// +1 on cell add. Used for cell's unique ids
 	size_t updtBhvPeriod =
 	    1;  /// period at which the world should call the cells updateBehavior method.
+	bool parallelUpdateBehavior = false;
 
 	void deleteDeadCells() {
 		for (auto i = cells.begin(); i != cells.end();)
@@ -82,8 +88,31 @@ template <typename Cell, typename Integrator = Euler> class World {
 	/**
 	 * @brief World constructor, registers the (optional) cell type's embedded plugin
 	 * instance.
+	 *
+	 * @param nbThreads the number of threads to be used by plugins (physics, for example)
+	 * or cells (through their updateBehavior method)
+	 * that can take advantage of parallelism
 	 */
-	World() { registerPlugins(cellPlugin); }
+	World(size_t nThreads = 0) : nbThreads(nThreads), threadpool(nThreads) {
+		registerPlugins(cellPlugin);
+	}
+
+	/**
+	 * @brief enables or disables the parallelisation of the cells' updateBehavior methods
+	 * Only has effect if nbThreads > 0;
+	 *
+	 * @param p
+	 */
+	void setParallelUpdateBehavior(bool p) { parallelUpdateBehavior = p; };
+
+	/**
+	 * @brief the size of the threadpool that can be used by plugins to launch asynchronous
+	 * jobs and also directly in the world class to launch the updateBehavior methods in
+	 * parallel. See setParallelUpdateBehavior.
+	 *
+	 * @return the number of threads in the threadpool
+	 */
+	size_t getNbThreads() { return nbThreads; }
 
 	/**********************************************
 	 *               HOOKS & PLUGINS              *
@@ -182,6 +211,7 @@ template <typename Cell, typename Integrator = Euler> class World {
 	 * @param d the new dt value
 	 */
 	void setDt(double d) { dt = d; }
+	double getDt() { return dt; }
 
 	/**
 	 * @brief sets the period at which the world must call the updateBehavior method of each
@@ -208,6 +238,17 @@ template <typename Cell, typename Integrator = Euler> class World {
 		return vecRes;
 	}
 
+	void callUpdateBehavior() {
+		const size_t MIN_CHUNK_SIZE = 2;
+		const double AVG_TASKS_PER_THREAD = 3.0;
+		if (parallelUpdateBehavior && nbThreads > 0) {
+			threadpool.autoChunks(cells, MIN_CHUNK_SIZE, AVG_TASKS_PER_THREAD,
+			                      [this](auto *c) { c->updateBehavior(*this); });
+			threadpool.waitUntilLast();
+		} else
+			for (auto &c : cells) c->updateBehavior(*this);
+	}
+
 	/**
 	 * @brief main update method
 	 *
@@ -223,8 +264,7 @@ template <typename Cell, typename Integrator = Euler> class World {
 	void update() {
 		for (auto &f : hooks[eToUI(Hooks::beginUpdate)]) f(this);
 		for (auto &f : hooks[eToUI(Hooks::preBehaviorUpdate)]) f(this);
-		if (frame % updtBhvPeriod == 0)
-			for (auto &c : cells) c->updateBehavior(*this);
+		if (frame % updtBhvPeriod == 0) callUpdateBehavior();
 		addNewCells();
 		deleteDeadCells();
 		for (auto &f : hooks[eToUI(Hooks::postBehaviorUpdate)]) f(this);

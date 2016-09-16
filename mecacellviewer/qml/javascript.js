@@ -154,7 +154,6 @@
 			btnArray[id] = createNewComponent("MVButton.qml", getContainer(menu), {
 				"name": id,
 				"text": label,
-				"menu": menu,
 				"notpressedColor": col
 			});
 		}

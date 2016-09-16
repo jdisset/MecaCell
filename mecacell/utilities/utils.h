@@ -61,6 +61,10 @@ template <typename T> inline constexpr T constpow(const T base, unsigned const e
 template <typename T> constexpr unsigned int eToUI(const T &t) {
 	return static_cast<size_t>(t);
 }
+
+inline double dampingFromRatio(const double r, const double m, const double k) {
+	return r * 2.0 * sqrt(m * k);  // for angular springs m is the moment of inertia
+}
 }
 
 namespace std {

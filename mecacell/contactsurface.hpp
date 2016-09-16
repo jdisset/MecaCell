@@ -2,6 +2,7 @@
 #define CONTACTSURFACE_HPP
 #include <cmath>
 #include <utility>
+#include "utilities/ordered_pair.hpp"
 #include "utilities/utils.h"
 
 #undef DBG
@@ -31,12 +32,12 @@ template <typename Cell> struct ContactSurface {
 	static constexpr double DIST_EPSILON = 1e-20;
 	Vec normal;  // normal of the actual contact surface (from cell 0 to cell 1)
 	std::pair<double, double> midpoint;  // distance to center (viewed from each cell)
-	double sqradius = 0;                  // squared radius of the contact disk
-	double area = 0, adhArea = 0;         // area of the contact disk
+	double sqradius = 0;                 // squared radius of the contact disk
+	double area = 0, adhArea = 0;        // area of the contact disk
 	double centersDist = 0, prevCentersDist = 0;  // distance of the two cells centers
 	double prevLinAdhElongation = 0, linAdhElongation = 0;  // the elongation of the
-	                                                         // connections caused by the
-	                                                         // cells separation or flexion
+	                                                        // connections caused by the
+	                                                        // cells separation or flexion
 	//////////////// friction ////////////////
 	// TODO: implement friction...
 	bool atRest = false;  // are the cells at rest, relatively to each other ?
@@ -64,13 +65,13 @@ template <typename Cell> struct ContactSurface {
 		if (adhesionEnabled) {
 			// we need to init the targets
 			Vec ortho = normal.ortho();
-			targets.first.b =
-			    Basis<Vec>(normal.rotated(cells.first->getOrientationRotation().inverted()),
-			               ortho.rotated(cells.first->getOrientationRotation().inverted()));
+			targets.first.b = Basis<Vec>(
+			    normal.rotated(cells.first->getBody().getOrientationRotation().inverted()),
+			    ortho.rotated(cells.first->getBody().getOrientationRotation().inverted()));
 			targets.first.d = midpoint.first;
-			targets.second.b =
-			    Basis<Vec>((-normal).rotated(cells.second->getOrientationRotation().inverted()),
-			               ortho.rotated(cells.second->getOrientationRotation().inverted()));
+			targets.second.b = Basis<Vec>(
+			    (-normal).rotated(cells.second->getBody().getOrientationRotation().inverted()),
+			    ortho.rotated(cells.second->getBody().getOrientationRotation().inverted()));
 			targets.second.d = midpoint.second;
 		}
 	}
@@ -95,31 +96,32 @@ template <typename Cell> struct ContactSurface {
 		centersDist = normal.length();
 		if (centersDist > DIST_EPSILON) normal /= centersDist;
 		midpoint = computeMidpoints(centersDist);
-		sqradius = max(0.0, std::pow(cells.first->getMembrane().getDynamicRadius(), 2) -
+		sqradius = max(0.0, std::pow(cells.first->getBody().getDynamicRadius(), 2) -
 		                        midpoint.first * midpoint.first);
 		area = M_PI * sqradius;
-		adhCoef =
-		    min(cells.first->getAdhesionWith(
-		            cells.second,
-		            normal.rotated(cells.first->getOrientationRotation().inverted())),
-		        cells.second->getAdhesionWith(
-		            cells.first,
-		            (-normal).rotated(cells.second->getOrientationRotation().inverted())));
+		adhCoef = min(
+		    cells.first->getAdhesionWith(
+		        cells.second,
+		        normal.rotated(cells.first->getBody().getOrientationRotation().inverted())),
+		    cells.second->getAdhesionWith(
+		        cells.first,
+		        (-normal).rotated(
+		            cells.second->getBody().getOrientationRotation().inverted())));
 	}
 
 	std::pair<double, double> computeMidpoints(double distanceBtwnCenters) {
 		// return the current contact disk's center distance to each cells centers
 		if (distanceBtwnCenters <= DIST_EPSILON) return {0, 0};
 
-		auto biggestCell = cells.first->getMembrane().getDynamicRadius() >=
-		                           cells.second->getMembrane().getDynamicRadius() ?
+		auto biggestCell = cells.first->getBody().getDynamicRadius() >=
+		                           cells.second->getBody().getDynamicRadius() ?
 		                       cells.first :
 		                       cells.second;
 		auto smallestCell = biggestCell == cells.first ? cells.second : cells.first;
 		double biggestCellMidpoint =
 		    0.5 * (distanceBtwnCenters +
-		           (std::pow(biggestCell->getMembrane().getDynamicRadius(), 2) -
-		            std::pow(smallestCell->getMembrane().getDynamicRadius(), 2)) /
+		           (std::pow(biggestCell->getBody().getDynamicRadius(), 2) -
+		            std::pow(smallestCell->getBody().getDynamicRadius(), 2)) /
 		               distanceBtwnCenters);
 		double smallestCellMidpoint = distanceBtwnCenters - biggestCellMidpoint;
 		if (biggestCell == cells.first)
@@ -139,8 +141,8 @@ template <typename Cell> struct ContactSurface {
 		// force from pressure is normal to the actual contact surface
 		// and proportional to its surface
 		double adhSpeed = (centersDist - prevCentersDist) / dt;
-		auto F = 0.5 * (area * (max(0.0, cells.first->getPressure()) +
-		                        max(0.0, cells.second->getPressure()))) *
+		auto F = 0.5 * (area * (max(0.0, cells.first->getBody().getPressure()) +
+		                        max(0.0, cells.second->getBody().getPressure()))) *
 		         normal;
 		cells.first->receiveForce(-F);
 		cells.second->receiveForce(F);
@@ -149,8 +151,8 @@ template <typename Cell> struct ContactSurface {
 	void applyAdhesiveForces(double dt) {
 		// first we express our targets basis into world basis
 		std::pair<Basis<Vec>, Basis<Vec>> targetsBw = {
-		    targets.first.b.rotated(cells.first->getOrientationRotation()),
-		    targets.second.b.rotated(cells.second->getOrientationRotation())};
+		    targets.first.b.rotated(cells.first->getBody().getOrientationRotation()),
+		    targets.second.b.rotated(cells.second->getBody().getOrientationRotation())};
 
 		// projections of the target normals onto the current actual collision surface
 		Vec midpointPos = cells.first->getPosition() +
@@ -178,7 +180,7 @@ template <typename Cell> struct ContactSurface {
 		// we apply them at the centers of the two targets
 
 		// compute the connected area. Only needed when the sum of the targets.d changes
-		adhArea = max(0.0, std::pow(cells.first->getMembrane().getDynamicRadius(), 2) -
+		adhArea = max(0.0, std::pow(cells.first->getBody().getDynamicRadius(), 2) -
 		                       std::pow(std::get<0>(computeMidpoints(targets.first.d +
 		                                                             targets.second.d)),
 		                                2)) *
@@ -202,7 +204,7 @@ template <typename Cell> struct ContactSurface {
 				else
 					newX = Vec(1, 0, 0);
 				targets.first.b.X =
-				    newX.rotated(cells.first->getOrientationRotation().inverted());
+				    newX.rotated(cells.first->getBody().getOrientationRotation().inverted());
 				targets.first.d = newD;
 				newX = (o.second - cells.second->getPosition());
 				newD = newX.length();
@@ -211,7 +213,7 @@ template <typename Cell> struct ContactSurface {
 				else
 					newX = Vec(1, 0, 0);
 				targets.second.b.X =
-				    newX.rotated(cells.second->getOrientationRotation().inverted());
+				    newX.rotated(cells.second->getBody().getOrientationRotation().inverted());
 				targets.second.d = newD;
 				linAdhElongation = bondMaxL;
 			}
@@ -223,10 +225,12 @@ template <typename Cell> struct ContactSurface {
 			Vec F = 0.5 * (k * linAdhElongation + currentDamping * springSpeed) * o0o1;
 			// cells.first receive F at o0 and in the direction o0o1
 			cells.first->receiveForce(F);
-			cells.first->receiveTorque((targetsBw.first.X * targets.first.d).cross(F));
+			cells.first->getBody().receiveTorque(
+			    (targetsBw.first.X * targets.first.d).cross(F));
 			// cells.second receive F at o1 and in the direction -o0o1
 			cells.second->receiveForce(-F);
-			cells.second->receiveTorque((targetsBw.second.X * targets.second.d).cross(-F));
+			cells.second->getBody().receiveTorque(
+			    (targetsBw.second.X * targets.second.d).cross(-F));
 		}
 	}
 };

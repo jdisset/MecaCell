@@ -7,8 +7,9 @@
 #include <set>
 #include <unordered_map>
 #include <vector>
-#include "geometry/geometry.h"
-#include "utilities/utils.h"
+#include "../geometry/geometry.h"
+#include "unique_vector.hpp"
+#include "utils.h"
 
 namespace MecaCell {
 
@@ -19,23 +20,24 @@ namespace MecaCell {
  */
 template <typename O> class Grid {
  private:
-	double cellSize;  // actually it's 1/cellSize, just so we can multiply
-	unordered_map<Vec, size_t> um;
-	vector<std::pair<Vec, vector<O>>> orderedVec;
+	double cellSize;  // actually it's 1/cellSize, just so we can multiply instead of divide
+	std::unordered_map<Vec, size_t> um;                      // position -> orderedVec index
+	std::vector<std::pair<Vec, std::vector<O>>> orderedVec;  // for determinism
 
  public:
 	Grid(double cs) : cellSize(1.0 / cs) {}
 	size_t size() { return um.size(); };
 
 	double getCellSize() const { return 1.0 / cellSize; }
-	const vector<std::pair<Vec, vector<O>>> &getContent() const { return orderedVec; }
+
+	const std::vector<std::pair<Vec, std::vector<O>>> &getContent() const {
+		return orderedVec;
+	}
 
 	array<vector<vector<O>>, 8> getThreadSafeGrid() const {
-		array<vector<vector<O>>, 8> res;
-		for (const auto &c : orderedVec) {
-			size_t color = vecToColor(c.first);
-			res[color].push_back(c.second);
-		}
+		// same color batches can be safely treated in parallel (if max O size < cellSize)
+		std::array<std::vector<std::vector<O>>, 8> res;
+		for (const auto &c : orderedVec) res[vecToColor(c.first)].push_back(c.second);
 		return res;
 	}
 
@@ -46,7 +48,7 @@ template <typename O> class Grid {
 	template <typename V> void insert(V &&k, const O &o) {
 		if (!um.count(std::forward<V>(k))) {
 			um[std::forward<V>(k)] = orderedVec.size();
-			orderedVec.push_back({std::forward<V>(k), vector<O>()});
+			orderedVec.push_back({std::forward<V>(k), std::vector<O>()});
 		}
 		orderedVec[um[std::forward<V>(k)]].second.push_back(o);
 	}

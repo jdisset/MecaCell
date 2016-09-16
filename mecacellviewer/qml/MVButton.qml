@@ -4,7 +4,6 @@ import QtQuick.Controls.Styles 1.3
 
 Button {
 	property color notpressedColor: "#00000000"
-	property string menu: ""
 	property string name : ""
 
 	text: "A button"
