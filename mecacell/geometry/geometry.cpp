@@ -43,8 +43,7 @@ std::vector<Vec> getSpherePointsPacking(unsigned int n) {
 	return p;
 }
 
-std::pair<double, double> updateElectrostaticPointsOnSphere(vector<Vec> &p,
-                                                              double dt) {
+std::pair<double, double> updateElectrostaticPointsOnSphere(vector<Vec> &p, double dt) {
 	double maxD = sqrt((4.0 * M_PI / static_cast<double>(p.size())) / M_PI) * 0.3;
 	double maxF = 0;
 	vector<Vec> f(p.size());
@@ -89,7 +88,7 @@ std::pair<double, double> updateElectrostaticPointsOnSphere(vector<Vec> &p,
 }
 
 double closestDistToTriangleEdge(const Vec &v0, const Vec &v1, const Vec &v2,
-                                  const Vec &p) {
+                                 const Vec &p) {
 	Vec a = v1 - v0;
 	Vec b = v2 - v0;
 	Vec c = v2 - v1;

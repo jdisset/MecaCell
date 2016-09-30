@@ -37,7 +37,7 @@ template <typename Cell> struct ContactSurfaceBodyPlugin {
 	 * HOOKS
 	 * *******/
 	template <typename W> void preBehaviorUpdate(W *w) {
-		std::cerr << "preBhook" << std::endl;
+		// logger<INF>("pre 0");
 		updateCellCellConnections(*w);
 		w->threadpool.autoChunks(w->cells, MIN_CHUNK_SIZE, AVG_TASKS_PER_THREAD,
 		                         [dt = w->getDt()](auto &c) {
@@ -45,9 +45,10 @@ template <typename Cell> struct ContactSurfaceBodyPlugin {
 			                         c->body.updateDynamicRadius(dt);
 			                       });
 		w->threadpool.waitUntilLast();
+		// logger<INF>("pre 1");
 	}
 	template <typename W> void postBehaviorUpdate(W *w) {
-		std::cerr << "postBhook" << std::endl;
+		// logger<INF>("post 0");
 		checkForCellCellConnections(*w);
 		w->threadpool.autoChunks(
 		    w->cells, MIN_CHUNK_SIZE, AVG_TASKS_PER_THREAD,
@@ -57,6 +58,7 @@ template <typename Cell> struct ContactSurfaceBodyPlugin {
 			c->resetForce();
 			c->body.resetTorque();
 		}
+		// logger<INF>("post 1");
 	}
 
 	////////////////////////////////////////////////////////////////////////////
@@ -80,18 +82,11 @@ template <typename Cell> struct ContactSurfaceBodyPlugin {
 	 * @param conn the connection ptr
 	 */
 	void disconnect(const ordered_pair<Cell *> &cells, ContactSurface<Cell> *conn) {
-		logger<INF>("disco 0");
-		logger<INF>("disco 0.5");
 		eraseFromVector(conn, cells.first->body.cellConnections);
-		logger<INF>("disco 1");
 		eraseFromVector(conn, cells.second->body.cellConnections);
-		logger<INF>("disco 2");
 		cells.first->eraseConnectedCell(cells.second);
-		logger<INF>("disco 3");
 		cells.second->eraseConnectedCell(cells.first);
-		logger<INF>("disco 4");
 		connections.erase(cells);
-		logger<INF>("disco 5");
 	}
 	/**
 	 * @brief we check for any cell cell collision or adhesion
@@ -102,6 +97,7 @@ template <typename Cell> struct ContactSurfaceBodyPlugin {
 	template <typename W> void checkForCellCellConnections(W &world) {
 		// TODO: try with mutexes instead of colored grid (every batch is a task but there is
 		// a shared_mutex for newConnections)
+		// logger<INF>("ccc 0");
 		const double NEW_CONNECTION_THRESHOLD = 1.0 - 1e-10;
 		Grid<Cell *> grid(std::max(currentAvgCellSize * gridCellRatio, currentMaxCellSize));
 		for (const auto &c : world.cells) grid.insert(c);
@@ -135,6 +131,7 @@ template <typename Cell> struct ContactSurfaceBodyPlugin {
 			for (auto &ncf : newConnectionsFutures)  // and wait for their accomplishment
 				for (const auto &nc : ncf.get()) createConnection(nc);
 		}
+		// logger<INF>("ccc 2");
 	}
 
 	/**
@@ -145,19 +142,21 @@ template <typename Cell> struct ContactSurfaceBodyPlugin {
 	 * @param W world type
 	 */
 	template <typename W> void updateCellCellConnections(W &w) {
-		logger<INF>("UCCC 0");
+		// logger<INF>("updt ccc 0");
 		std::vector<std::pair<ordered_pair<Cell *>, ContactSurface<Cell> *>> toDisconnect;
-		w.threadpool.autoChunks(
-		    connections, MIN_CHUNK_SIZE, AVG_TASKS_PER_THREAD,
-		    [dt = w.getDt()](auto &conPair) { conPair.second->update(dt); });
-		w.threadpool.waitUntilLast();
-		logger<INF>("UCCC 1");
+		// w.threadpool.autoChunks(
+		// connections, MIN_CHUNK_SIZE, AVG_TASKS_PER_THREAD,
+		//[dt = w.getDt()](auto &conPair) { conPair.second->update(dt); });
+
+		for (auto &c : connections) {
+			c.second->update(w.getDt());
+		}
+		// w.threadpool.waitUntilLast();
 		for (auto &con : connections)
-			if (con.second->area <= 0)
+			if (!con.second->fixedAdhesion && con.second->area <= 0)
 				toDisconnect.push_back(std::make_pair(con.first, con.second.get()));
-		logger<INF>("UCCC 2");
 		for (auto &c : toDisconnect) disconnect(c.first, c.second);
-		logger<INF>("UCCC 3");
+		// logger<INF>("updt ccc 1");
 	}
 };
 
@@ -186,9 +185,7 @@ template <typename Cell> class ContactSurfaceBody : public Orientable {
  public:
 	using embedded_plugin_t = ContactSurfaceBodyPlugin<Cell>;
 
-	ContactSurfaceBody(Cell *c) : cell(c) {
-		std::cerr << "cell body construct" << std::endl;
-	};
+	ContactSurfaceBody(Cell *c) : cell(c){};
 
 	double getDynamicRadius() const { return dynamicRadius; }
 	double getBoundingBoxRadius() const { return dynamicRadius; };
@@ -242,11 +239,11 @@ template <typename Cell> class ContactSurfaceBody : public Orientable {
 		pressure = Fv / currentArea;
 		double dynSpeed = (dynamicRadius - prevDynamicRadius) / dt;
 		double c = 5.0;
-		dynamicRadius += dt * dt * (Fv - Fa - dynSpeed * c);
-		if (dynamicRadius > restRadius * MAX_DYN_RADIUS_RATIO)
-			dynamicRadius = restRadius * MAX_DYN_RADIUS_RATIO;
-		else if (dynamicRadius < restRadius)
-			dynamicRadius = restRadius;
+		//dynamicRadius += dt * dt * (Fv - Fa - dynSpeed * c);
+		//if (dynamicRadius > restRadius * MAX_DYN_RADIUS_RATIO)
+			//dynamicRadius = restRadius * MAX_DYN_RADIUS_RATIO;
+		//else if (dynamicRadius < restRadius)
+			//dynamicRadius = restRadius;
 	}
 
 	/**
@@ -260,13 +257,19 @@ template <typename Cell> class ContactSurfaceBody : public Orientable {
 		Integrator::updateOrientation(*this, dt);
 	}
 
+	void solidifyAdhesion() {
+		for (auto &c : cellConnections) c->fixedAdhesion = true;
+	}
+	void releaseAdhesions() {
+		for (auto &c : cellConnections) c->fixedAdhesion = false;
+	}
+
 	inline Cell *getConnectedCell(const Vec &d) const {
 		return get<0>(getConnectedCellAndMembraneDistance(d));
 	}
 	inline double getPreciseMembraneDistance(const Vec &d) const {
 		return get<1>(getConnectedCellAndMembraneDistance(d));
 	}
-
 	inline double getRestArea() const { return 4.0 * M_PI * restRadius * restRadius; }
 	inline void computeRestVolume() {
 		restVolume = (4.0 * M_PI / 3.0) * restRadius * restRadius * restRadius;

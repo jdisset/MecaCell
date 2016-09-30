@@ -12,7 +12,7 @@ template <typename R> class CellGroup : public PaintStep<R> {
 
  public:
 	cellMode drawMode = plain;
-	CellGroup() : PaintStep<R>("Cells"), sphere(4) {
+	CellGroup() : PaintStep<R>("Cells"), sphere(2) {
 		shader.addShaderFromSourceCode(QOpenGLShader::Vertex,
 		                               shaderWithHeader(":/shaders/cell.vert"));
 		shader.addShaderFromSourceCode(QOpenGLShader::Fragment,

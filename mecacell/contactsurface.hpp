@@ -14,14 +14,14 @@ template <typename Cell> struct ContactSurface {
 	/***********************************************************
 	 *                SETTABLE PARAMETERS
 	 **********************************************************/
-	double staticFrictionCoef = 7.0, dynamicFrictionCoef = 5.0;
 	bool pressureEnabled = true;
 	bool adhesionEnabled = true;
 	bool frictionEnabled = false;
+	bool fixedAdhesion = false;  // is this adhesion unbreakable ?
 
 	/////////////// adhesion ///////////////
 	double adhCoef = 0.5;    // adhesion Coef [0;1]
-	double dampCoef = 0.01;  // damping [0;1]
+	double dampCoef = 0.1;   // damping [0;1]
 	double bondMaxL = 5.0;   // max length a surface bond can reach before breaking
 	double bondReach = 1.0;  // when are new connection created [0;bondMaxL[
 	double currentDamping = 0.0;
@@ -45,7 +45,7 @@ template <typename Cell> struct ContactSurface {
 	    1e-10;  // minimal speed to consider the connected Cells not to be at rest
 
 	////////////// adhesion //////////////////
-	static constexpr double baseBondStrength = 0.005;
+	static constexpr double baseBondStrength = 0.05;
 	static constexpr double MIN_ADH_DIST = 8.0;
 	struct TargetSurface {
 		Basis<Vec> b;  // X is the normal of the surface, Y is the up vector
@@ -161,11 +161,12 @@ template <typename Cell> struct ContactSurface {
 		    Vec::rayCast(midpointPos, normal, cells.first->getPosition(), targetsBw.first.X),
 		    Vec::rayCast(midpointPos, normal, cells.second->getPosition(),
 		                 targetsBw.second.X)};
-		if (projDist.first > MIN_ADH_DIST && projDist.first - bondReach < targets.first.d) {
+		if (!fixedAdhesion && projDist.first > MIN_ADH_DIST &&
+		    projDist.first - bondReach < targets.first.d) {
 			// we got closer! we need to update our target midpoints
 			targets.first.d = projDist.first - bondReach;
 		}
-		if (projDist.second > MIN_ADH_DIST &&
+		if (!fixedAdhesion && projDist.second > MIN_ADH_DIST &&
 		    projDist.second - bondReach < targets.second.d) {
 			targets.second.d = projDist.second - bondReach;
 		}
@@ -192,7 +193,7 @@ template <typename Cell> struct ContactSurface {
 		linAdhElongation = o0o1.length();
 		if (linAdhElongation > DIST_EPSILON) {
 			o0o1 /= linAdhElongation;
-			if (linAdhElongation > bondMaxL) {
+			if (linAdhElongation > bondMaxL && !fixedAdhesion) {
 				// some bonds are going to break
 				double halfD = 0.5 * (linAdhElongation - bondMaxL);
 				o.first += halfD * o0o1;
