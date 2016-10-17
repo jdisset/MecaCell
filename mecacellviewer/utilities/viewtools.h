@@ -6,6 +6,7 @@
 #include <QOpenGLFunctions>
 #include <QVector3D>
 #include <QVector4D>
+#include <QMatrix4x4>
 #include <iostream>
 #include <memory>
 #include <tuple>
@@ -22,6 +23,11 @@ extern QOpenGLFunctions* GL;
 extern double scaleFactor;
 template <typename V> QVector3D toQV3D(const V& v) {
 	return QVector3D(v.x(), v.y(), v.z());
+}
+template <typename M> QMatrix4x4 toQM4x4(const M& m) {
+	return QMatrix4x4(m[0][0], m[0][1], m[0][2], m[0][3], m[1][0], m[1][1], m[1][2],
+	                  m[1][3], m[2][0], m[2][1], m[2][2], m[2][3], m[3][0], m[3][1],
+	                  m[3][2], m[3][3]);
 }
 QString shaderWithHeader(QString filename);
 

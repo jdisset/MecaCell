@@ -1,5 +1,5 @@
-#include "matrix4x4.h"
 #include <iomanip>
+#include "matrix4x4.h"
 
 namespace MecaCell {
 void Matrix4x4::scale(const Vec &s) {
@@ -33,6 +33,11 @@ void Matrix4x4::rotate(const Rotation<Vec> &r) {
 	      {{0, 0, 0, 1}}}});
 	*this = rm * (*this);
 }
+
+const std::array<double, 4> &Matrix4x4::operator[](const size_t index) const {
+	return m[index];
+}
+std::array<double, 4> &Matrix4x4::operator[](const size_t index) { return m[index]; }
 
 Matrix4x4 Matrix4x4::operator*(const Matrix4x4 &N) {
 	return Matrix4x4({{{{m[0][0] * N.m[0][0] + m[0][1] * N.m[1][0] + m[0][2] * N.m[2][0] +

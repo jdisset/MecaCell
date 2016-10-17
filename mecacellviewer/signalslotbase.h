@@ -2,10 +2,10 @@
 #define SIGNALSLOTBASE_H
 #include <QQuickItem>
 #include <QQuickWindow>
-#include <memory>
-#include <unordered_set>
-#include <set>
 #include <iostream>
+#include <memory>
+#include <set>
+#include <unordered_set>
 namespace MecacellViewer {
 class SignalSlotBase;
 class SignalSlotRenderer : public QObject {
@@ -79,7 +79,7 @@ class SignalSlotBase : public QQuickItem {
 	}
 
 	std::vector<std::pair<QList<QVariant>, bool>> displayMenuToggled;
-signals:
+ signals:
 	void statsChanged();
 	void guiCtrlChanged();
 

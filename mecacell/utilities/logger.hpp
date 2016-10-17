@@ -123,6 +123,9 @@ struct ERR {
 struct INF {
 	static constexpr auto tag = " ⟢ ";
 };
+struct DBG {
+	static constexpr auto tag = " | ";
+};
 struct SUC {
 	static constexpr auto tag = concat(BOLDGREEN, " ✓ [SUCCESS]", RESET);
 };

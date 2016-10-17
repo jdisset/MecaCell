@@ -47,7 +47,7 @@ template <typename Scenario> class Viewer : public SignalSlotRenderer {
 	 */
 	void registerHook(const Hooks &h, hook_t f) { hooks[h].push_back(f); }
 
-	Viewer(int c, char **v) : argc(c), argv(v) {
+	Viewer(Scenario &sc) : scenario(sc) {
 #if __APPLE__
 #include "TargetConditionals.h"
 #if TARGET_OS_MAC
@@ -68,9 +68,7 @@ template <typename Scenario> class Viewer : public SignalSlotRenderer {
 	KeyboardManager km;
 	MouseManager mm;
 
-	int argc;
-	char **argv;
-	Scenario scenario;
+	Scenario &scenario;
 
 	int frame = 0;
 	int nbLoopsPerFrame = 1;
@@ -150,7 +148,6 @@ template <typename Scenario> class Viewer : public SignalSlotRenderer {
 
 		this->window = wdw;
 		viewportSize = QSize(static_cast<int>(wdw->width()), static_cast<int>(wdw->height()));
-		scenario.init(argc, argv);
 		GL = QOpenGLContext::currentContext()->functions();
 		GL->initializeOpenGLFunctions();
 		////////////////////////////////
@@ -690,7 +687,7 @@ template <typename Scenario> class Viewer : public SignalSlotRenderer {
 	 *
 	 * @return app's error code
 	 */
-	int exec() {
+	int exec(int argc = 0, char **argv = nullptr) {
 		QGuiApplication app(argc, argv);
 		app.setQuitOnLastWindowClosed(true);
 

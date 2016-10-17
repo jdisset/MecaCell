@@ -1,12 +1,13 @@
 #ifndef MECACELLVIEWER_MODEL_HPP
 #define MECACELLVIEWER_MODEL_HPP
+#include <QThread>
 #include <vector>
-#include "viewtools.h"
+#include "../utilities/viewtools.h"
 
 using std::vector;
 
 namespace MecacellViewer {
-template <typename M> struct Model {
+struct Mesh {
 	QOpenGLShaderProgram shader;
 	QOpenGLVertexArrayObject vao;
 	vector<float> vertices;
@@ -14,7 +15,8 @@ template <typename M> struct Model {
 	vector<float> uv;
 	vector<unsigned int> indices;
 	QOpenGLBuffer vbuf, nbuf, tbuf, bitanbuf, ibuf;
-	Model() {
+
+	Mesh() {
 		shader.addShaderFromSourceCode(QOpenGLShader::Vertex,
 		                               shaderWithHeader(":/shaders/mvp.vert"));
 		shader.addShaderFromSourceCode(QOpenGLShader::Fragment,
@@ -22,31 +24,40 @@ template <typename M> struct Model {
 		shader.link();
 	}
 
-	void load(const M &m) {
+	template <typename V>
+	void load(const std::vector<V> &vert,
+	          const std::vector<std::array<double, 2>> &uvCoords, const std::vector<V> &nor,
+	          const std::vector<std::array<std::array<size_t, 3>, 3>> &faces) {
 		// extracting vertices, normals and uv (if available)
-		for (auto &v : m.vertices) {
+		vertices.clear();
+		uv.clear();
+		normals.clear();
+		indices.clear();
+		vertices.reserve(vert.size() * 3);
+		for (const auto &v : vert) {
 			vertices.push_back(v.x());
 			vertices.push_back(v.y());
 			vertices.push_back(v.z());
 		}
+		uv.resize(vert.size() * 2);
 		normals.resize(vertices.size());
-		for (auto &f : m.obj.faces) {
-			assert(f.count("v") && f.count("n"));
-			for (auto &vid : f.at("v").indices) {
-				assert(vid < m.obj.vertices.size());
+		int fid = 0;
+		for (const auto &f : faces) {
+			for (size_t i = 0; i < 3; ++i) {
+				size_t vid = f[0][i];
 				indices.push_back(vid);
-			}
-
-			for (int id = 0; id < 3; ++id) {
-				size_t vid = f.at("v").indices[id];
-				size_t nid = f.at("n").indices[id];
-				normals[vid * 3 + 0] = m.normals[nid].x();
-				normals[vid * 3 + 1] = m.normals[nid].y();
-				normals[vid * 3 + 2] = m.normals[nid].z();
+				if (uvCoords.size() > 0) {
+					uv[vid * 2] = uvCoords[f[1][i]][0];
+					uv[vid * 2 + 1] = uvCoords[f[1][i]][1];
+				}
+				normals.push_back(i);
+				normals.push_back(i);
+				normals.push_back(i);
+				normals[vid * 3] = i;
+				normals[vid * 3 + 1] = i * 2;
+				normals[vid * 3 + 2] = i;
 			}
 		}
-
-		// TODO : directly use model's transformed vertices and normals
 
 		shader.bind();
 		vao.create();
@@ -76,19 +87,19 @@ template <typename M> struct Model {
 		ibuf.allocate(&indices[0], indices.size() * sizeof(unsigned int));
 
 		vao.release();
-		shader.release();
+		/*shader.release();*/
 	}
 
-	void draw(const QMatrix4x4 &view, const QMatrix4x4 &projection, const M &m) {
+	void draw(const QMatrix4x4 &viewMatrix, const QMatrix4x4 &projectionMatrix,
+	          const QMatrix4x4 &modelMatrix) {
 		shader.bind();
 		vao.bind();
-		QMatrix4x4 model;
-		shader.setUniformValue(shader.uniformLocation("projection"), projection);
-		shader.setUniformValue(shader.uniformLocation("view"), view);
-		shader.setUniformValue(shader.uniformLocation("model"), model);
+		shader.setUniformValue(shader.uniformLocation("projection"), projectionMatrix);
+		shader.setUniformValue(shader.uniformLocation("view"), viewMatrix);
+		shader.setUniformValue(shader.uniformLocation("model"), modelMatrix);
 		QVector4D color(1.0, 1.0, 1.0, 1.0);
 		shader.setUniformValue(shader.uniformLocation("color"), color);
-		QMatrix4x4 nmatrix = model.inverted().transposed();
+		QMatrix4x4 nmatrix = modelMatrix.inverted().transposed();
 		shader.setUniformValue(shader.uniformLocation("normalMatrix"), nmatrix);
 		GL->glDisable(GL_CULL_FACE);
 		GL->glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0);

@@ -11,7 +11,6 @@ template <typename M, typename R> struct ModelViewer : public PaintStep<R> {
 	void call(R *r) {
 		for (auto &m : r->getScenario().getWorld().models) {
 			if (!models.count(m.first)) {
-				models[m.first];
 				models[m.first].load(m.second);
 			}
 			models[m.first].draw(r->getViewMatrix(), r->getProjectionMatrix(), m.second);

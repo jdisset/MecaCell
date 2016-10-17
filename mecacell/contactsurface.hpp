@@ -5,8 +5,6 @@
 #include "utilities/ordered_pair.hpp"
 #include "utilities/utils.h"
 
-#undef DBG
-#define DBG DEBUG(contact)
 namespace MecaCell {
 template <typename Cell> struct ContactSurface {
 	ordered_pair<Cell *> cells;
