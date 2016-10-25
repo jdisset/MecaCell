@@ -54,6 +54,7 @@ struct Scene3D {
 			    {0, std::numeric_limits<double>::max()},
 			    {0, std::numeric_limits<double>::max()}};
 			auto &obj = o.second;
+
 			// nb of hits with the closest squared distance in one direction and its opposite.
 			// If both are uneven, the point v is inside the object. The object with the closest
 			// pair of hits is the closest containing one.
@@ -68,28 +69,27 @@ struct Scene3D {
 					auto sqdist = (v - raycast.second).sqlength();
 					if (sqdist < hits.first.second) {
 						hits.first.second = sqdist;
-
-					} else {
-						// opposite direction
-						raycast = rayInTriangle(obj.vertices[f[Obj3D::TriangleData::V][0]],
-						                        obj.vertices[f[Obj3D::TriangleData::V][1]],
-						                        obj.vertices[f[Obj3D::TriangleData::V][2]], v,
-						                        Vector3D(0, 0, -1));
-						if (raycast.first) {
-							++hits.second.first;
-							auto sqdist = (v - raycast.second).sqlength();
-							if (sqdist < hits.second.second) hits.second.second = sqdist;
-						}
+					}
+				} else {
+					// opposite direction
+					raycast = rayInTriangle(obj.vertices[f[Obj3D::TriangleData::V][0]],
+					                        obj.vertices[f[Obj3D::TriangleData::V][1]],
+					                        obj.vertices[f[Obj3D::TriangleData::V][2]], v,
+					                        Vector3D(0, 0, -1));
+					if (raycast.first) {
+						++hits.second.first;
+						auto sqdist = (v - raycast.second).sqlength();
+						if (sqdist < hits.second.second) hits.second.second = sqdist;
 					}
 				}
-				if (hits.first.first % 2 == 1 && hits.second.first % 2 == 1) {  // we're inside
-					containers.push_back(std::pair<std::string, double>(
-					    o.first, hits.first.second + hits.second.second));
-				}
+			}
+			if (hits.first.first % 2 == 1 && hits.second.first % 2 == 1) {  // we're inside
+				containers.push_back(std::pair<std::string, double>(
+				    o.first, hits.first.second + hits.second.second));
 			}
 		}
-		// std::sort(containers.begin(), containers.end(),
-		//[](const auto &a, const auto &b) { return a.second < b.second; });
+		std::sort(containers.begin(), containers.end(),
+		          [](const auto &a, const auto &b) { return a.second < b.second; });
 		std::vector<std::string> result;
 		for (auto &c : containers) result.push_back(c.first);
 		return result;

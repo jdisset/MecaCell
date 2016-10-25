@@ -87,7 +87,7 @@ template <typename Scenario> class Viewer : public SignalSlotRenderer {
 	QPointF mousePosition, mousePrevPosition;
 	QFlags<Qt::MouseButtons> mouseClickedButtons, mouseDblClickedButtons,
 	    mousePressedButtons;
-	std::set<Qt::Key> keyDown, keyPress;
+	std::set<Qt::Key> keyDown, keyUp, keyPress;
 
 	// Stats
 	std::chrono::time_point<std::chrono::high_resolution_clock> t0, tfps;
@@ -111,6 +111,7 @@ template <typename Scenario> class Viewer : public SignalSlotRenderer {
 
  private:
 	std::map<Qt::Key, hook_t> keyDownMethods;
+	std::map<Qt::Key, hook_t> keyUpMethods;
 	std::map<Qt::Key, hook_t> keyPressMethods;
 	std::map<Qt::MouseButton, hook_t> mouseDragMethods;
 	std::map<Qt::MouseButton, hook_t> mouseClickMethods;
@@ -275,9 +276,13 @@ template <typename Scenario> class Viewer : public SignalSlotRenderer {
 
 		// keyboard
 		keyPress = b->keyPress;
+		for (auto &k : keyDown) {
+			if (!b->keyDown.count(k)) keyUp.insert(k);
+		}
 		keyDown = b->keyDown;
-		b->keyPress.clear();
 		processEvents(b);
+		b->keyPress.clear();
+		keyUp.clear();
 	}
 
 	/***********************************
@@ -301,6 +306,10 @@ template <typename Scenario> class Viewer : public SignalSlotRenderer {
 		// keyboard down (key is down)
 		for (const auto &k : keyDown)
 			if (keyDownMethods.count(k)) keyDownMethods.at(k)(this);
+		// keyboard up (key is released)
+		for (const auto &k : keyUp)
+			if (keyUpMethods.count(k)) keyUpMethods.at(k)(this);
+
 		// buttons
 		for (const auto &bName : b->clickedButtons)
 			if (buttons.count(bName)) buttons[bName].clicked(this);
@@ -593,6 +602,14 @@ template <typename Scenario> class Viewer : public SignalSlotRenderer {
 	 * @param f
 	 */
 	void addKeyDownMethod(Qt::Key k, hook_t f) { keyDownMethods[k] = f; }
+
+	/**
+	 * @brief registers a method f to call when the Key k is released
+	 *
+	 * @param k
+	 * @param f
+	 */
+	void addKeyUpMethod(Qt::Key k, hook_t f) { keyUpMethods[k] = f; }
 
 	/**
 	 * @brief registers a method f to call when the Key k is pressed (down + up)

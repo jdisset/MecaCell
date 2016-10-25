@@ -27,6 +27,8 @@ template <typename O> class Grid {
  public:
 	Grid(double cs) : cellSize(1.0 / cs) {}
 	size_t size() { return um.size(); };
+	std::vector<std::pair<Vec, std::vector<O>>> &getOrderedVec() { return orderedVec; }
+	std::unordered_map<Vec, size_t> &getUnorderedMap() { return um; }
 
 	double getCellSize() const { return 1.0 / cellSize; }
 
@@ -34,7 +36,7 @@ template <typename O> class Grid {
 		return orderedVec;
 	}
 
-	array<vector<vector<O>>, 8> getThreadSafeGrid() const {
+	std::array<vector<vector<O>>, 8> getThreadSafeGrid() const {
 		// same color batches can be safely treated in parallel (if max O size < cellSize)
 		std::array<std::vector<std::vector<O>>, 8> res;
 		for (const auto &c : orderedVec) res[vecToColor(c.first)].push_back(c.second);

@@ -187,6 +187,8 @@ template <typename Cell> class ContactSurfaceBody : public Orientable {
 
 	ContactSurfaceBody(Cell *c) : cell(c){};
 
+	void setRestVolume(double v) { restVolume = v; }
+	void setRestRadius(double r) { restRadius = r; }
 	double getDynamicRadius() const { return dynamicRadius; }
 	double getBoundingBoxRadius() const { return dynamicRadius; };
 	std::tuple<Cell *, double> getConnectedCellAndMembraneDistance(const Vec &d) const {
@@ -239,11 +241,11 @@ template <typename Cell> class ContactSurfaceBody : public Orientable {
 		pressure = Fv / currentArea;
 		double dynSpeed = (dynamicRadius - prevDynamicRadius) / dt;
 		double c = 5.0;
-		//dynamicRadius += dt * dt * (Fv - Fa - dynSpeed * c);
-		//if (dynamicRadius > restRadius * MAX_DYN_RADIUS_RATIO)
-			//dynamicRadius = restRadius * MAX_DYN_RADIUS_RATIO;
-		//else if (dynamicRadius < restRadius)
-			//dynamicRadius = restRadius;
+		// dynamicRadius += dt * dt * (Fv - Fa - dynSpeed * c);
+		// if (dynamicRadius > restRadius * MAX_DYN_RADIUS_RATIO)
+		// dynamicRadius = restRadius * MAX_DYN_RADIUS_RATIO;
+		// else if (dynamicRadius < restRadius)
+		// dynamicRadius = restRadius;
 	}
 
 	/**
