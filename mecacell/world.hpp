@@ -65,11 +65,14 @@ template <typename Cell, typename Integrator = Euler> class World {
 	bool parallelUpdateBehavior = false;
 
 	void deleteDeadCells() {
-		for (auto i = cells.begin(); i != cells.end();)
-			if ((*i)->isDead())
-				i = cells.erase(i), delete *i;
-			else
+		for (auto i = cells.begin(); i != cells.end();) {
+			if ((*i)->isDead()) {
+				auto tmp = i;
+				i = cells.erase(i);
+				delete *tmp;
+			} else
 				++i;
+		}
 	}
 
  public:
@@ -278,6 +281,7 @@ template <typename Cell, typename Integrator = Euler> class World {
 	~World() {
 		for (auto &f : hooks[eToUI(Hooks::destructor)]) f(this);
 		while (!cells.empty()) delete cells.back(), cells.pop_back();
+		while (!newCells.empty()) delete newCells.back(), newCells.pop_back();
 	}
 };
 }

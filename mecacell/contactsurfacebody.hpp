@@ -280,7 +280,7 @@ template <typename Cell> class ContactSurfaceBody : public Orientable {
 		return (4.0 * M_PI / 3.0) * baseRadius * baseRadius * baseRadius;
 	}
 	inline double getRestMomentOfInertia() const {
-		return 0.4 * cell->mass * restRadius * restRadius;
+		return 0.4 * cell->getMass() * restRadius * restRadius;
 	}
 	inline double getMomentOfInertia() const { return getRestMomentOfInertia(); }
 	inline double getVolumeVariation() const { return restVolume - currentVolume; }
