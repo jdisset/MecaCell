@@ -290,7 +290,7 @@ template <typename Cell> class ContactSurfaceBody : public Orientable {
 	void setIncompressibility(double i) { incompressibility = i; }
 	void setStiffness(double k) { membraneStiffness = k; }
 	double getPressure() const { return pressure; }
-	double getRestVolume (void) const { return restVolume; }
+	double getRestRadius (void) const { return restRadius; }
 };
 }
 #endif
