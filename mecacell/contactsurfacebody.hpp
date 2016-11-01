@@ -241,11 +241,11 @@ template <typename Cell> class ContactSurfaceBody : public Orientable {
 		pressure = Fv / currentArea;
 		double dynSpeed = (dynamicRadius - prevDynamicRadius) / dt;
 		double c = 5.0;
-		// dynamicRadius += dt * dt * (Fv - Fa - dynSpeed * c);
-		// if (dynamicRadius > restRadius * MAX_DYN_RADIUS_RATIO)
-		// dynamicRadius = restRadius * MAX_DYN_RADIUS_RATIO;
-		// else if (dynamicRadius < restRadius)
-		// dynamicRadius = restRadius;
+// 		dynamicRadius += dt * dt * (Fv - Fa - dynSpeed * c);
+// 		if (dynamicRadius > restRadius * MAX_DYN_RADIUS_RATIO)
+// 		dynamicRadius = restRadius * MAX_DYN_RADIUS_RATIO;
+// 		else if (dynamicRadius < restRadius)
+// 		dynamicRadius = restRadius;
 	}
 
 	/**
@@ -289,6 +289,7 @@ template <typename Cell> class ContactSurfaceBody : public Orientable {
 	// SET
 	void setIncompressibility(double i) { incompressibility = i; }
 	void setStiffness(double k) { membraneStiffness = k; }
+	void setDynamicRadius (double r) { dynamicRadius = r; }
 	double getPressure() const { return pressure; }
 	double getRestRadius (void) const { return restRadius; }
 };
