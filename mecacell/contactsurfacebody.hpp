@@ -159,14 +159,15 @@ template <typename Cell> struct ContactSurfaceBodyPlugin {
 		// logger<INF>("updt ccc 1");
 	}
 
-	template <typename W> void preDeleteDeadCellsUpdate(W &w) {
-		for (auto &c : w.cells) {
+	template <typename W> void preDeleteDeadCellsUpdate(W *w) {
+		for (auto &c : w->cells) {
 			if (c->isDead()) {
-				for (auto &connection : c->body.cellConnections) {
+                auto cctmp (c->body.cellConnections);
+				for (auto &connection : cctmp) {
 					auto *c0 = connection->cells.first;
 					auto *c1 = connection->cells.second;
-					eraseFromVector(connection, c0->membrane.cccm.cellConnections);
-					eraseFromVector(connection, c1->membrane.cccm.cellConnections);
+					eraseFromVector(connection, c0->body.cellConnections);
+					eraseFromVector(connection, c1->body.cellConnections);
 					c0->connectedCells.erase(c1);
 					c1->connectedCells.erase(c0);
 					assert(c0->id != c1->id);
