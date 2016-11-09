@@ -84,8 +84,8 @@ template <typename Cell, typename Integrator = Euler> class World {
 
 	/* HOOKS
 	 */
-	DECLARE_HOOK(onAddCell, beginUpdate, preBehaviorUpdate, postBehaviorUpdate, endUpdate,
-	             destructor)
+	DECLARE_HOOK(onAddCell, beginUpdate, preBehaviorUpdate, preDeleteDeadCellsUpdate,
+	             postBehaviorUpdate, endUpdate, destructor)
 	std::vector<Cell *> cells;  /// all the cells are in this container
 
 	/**
@@ -269,6 +269,7 @@ template <typename Cell, typename Integrator = Euler> class World {
 		for (auto &f : hooks[eToUI(Hooks::preBehaviorUpdate)]) f(this);
 		if (frame % updtBhvPeriod == 0) callUpdateBehavior();
 		addNewCells();
+		for (auto &f : hooks[eToUI(Hooks::preDeleteDeadCellsUpdate)]) f(this);
 		deleteDeadCells();
 		for (auto &f : hooks[eToUI(Hooks::postBehaviorUpdate)]) f(this);
 		for (auto &f : hooks[eToUI(Hooks::endUpdate)]) f(this);

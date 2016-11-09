@@ -158,6 +158,23 @@ template <typename Cell> struct ContactSurfaceBodyPlugin {
 		for (auto &c : toDisconnect) disconnect(c.first, c.second);
 		// logger<INF>("updt ccc 1");
 	}
+
+	template <typename W> void preDeleteDeadCellsUpdate(W &w) {
+		for (auto &c : w.cells) {
+			if (c->isDead()) {
+				for (auto &connection : c->body.cellConnections) {
+					auto *c0 = connection->cells.first;
+					auto *c1 = connection->cells.second;
+					eraseFromVector(connection, c0->membrane.cccm.cellConnections);
+					eraseFromVector(connection, c1->membrane.cccm.cellConnections);
+					c0->connectedCells.erase(c1);
+					c1->connectedCells.erase(c0);
+					assert(c0->id != c1->id);
+					connections.erase(connection->cells);
+				}
+			}
+		}
+	}
 };
 
 template <typename Cell> class ContactSurfaceBody : public Orientable {
@@ -181,12 +198,14 @@ template <typename Cell> class ContactSurfaceBody : public Orientable {
 	double restVolume = (4.0 * M_PI / 3.0) * restRadius * restRadius;
 	double currentVolume = restVolume;
 	double pressure = 0;
+	bool volumeConservationEnabled = true;
 
  public:
 	using embedded_plugin_t = ContactSurfaceBodyPlugin<Cell>;
 
 	ContactSurfaceBody(Cell *c) : cell(c){};
 
+	void setVolumeConservationEnabled(bool v) { volumeConservationEnabled = true; }
 	void setRestVolume(double v) { restVolume = v; }
 	void setRestRadius(double r) { restRadius = r; }
 	double getDynamicRadius() const { return dynamicRadius; }
@@ -234,18 +253,22 @@ template <typename Cell> class ContactSurfaceBody : public Orientable {
 	}
 
 	void updateDynamicRadius(double dt) {
-		double dA = currentArea - getRestArea();
-		double dV = restVolume - currentVolume;
-		auto Fv = incompressibility * dV;
-		auto Fa = membraneStiffness * dA;
-		pressure = Fv / currentArea;
-		double dynSpeed = (dynamicRadius - prevDynamicRadius) / dt;
-		double c = 5.0;
-// 		dynamicRadius += dt * dt * (Fv - Fa - dynSpeed * c);
-// 		if (dynamicRadius > restRadius * MAX_DYN_RADIUS_RATIO)
-// 		dynamicRadius = restRadius * MAX_DYN_RADIUS_RATIO;
-// 		else if (dynamicRadius < restRadius)
-// 		dynamicRadius = restRadius;
+		if (volumeConservationEnabled) {
+			double dA = currentArea - getRestArea();
+			double dV = restVolume - currentVolume;
+			auto Fv = incompressibility * dV;
+			auto Fa = membraneStiffness * dA;
+			pressure = Fv / currentArea;
+			double dynSpeed = (dynamicRadius - prevDynamicRadius) / dt;
+			double c = 5.0;
+			dynamicRadius += dt * dt * (Fv - Fa - dynSpeed * c);
+			if (dynamicRadius > restRadius * MAX_DYN_RADIUS_RATIO)
+				dynamicRadius = restRadius * MAX_DYN_RADIUS_RATIO;
+			else if (dynamicRadius < restRadius)
+				dynamicRadius = restRadius;
+		} else {
+			dynamicRadius = restRadius;
+		}
 	}
 
 	/**
@@ -282,6 +305,7 @@ template <typename Cell> class ContactSurfaceBody : public Orientable {
 	inline double getRestMomentOfInertia() const {
 		return 0.4 * cell->getMass() * restRadius * restRadius;
 	}
+
 	inline double getMomentOfInertia() const { return getRestMomentOfInertia(); }
 	inline double getVolumeVariation() const { return restVolume - currentVolume; }
 
