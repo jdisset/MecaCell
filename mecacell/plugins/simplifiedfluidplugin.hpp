@@ -72,8 +72,6 @@ template <typename C> struct SimplifiedFluidPlugin {
 							          normalSpeed) /
 							         nbCells;
 							c->receiveForce(F);
-							std::cout << c->id << ".receiveForce((-0.5 * " << dir << " * " << fluidDensity << " * " << dragCoef << " * " << area << " * (" << normalSpeed << ")^2 ) / " << nbCells << ")" << std::endl;
-							assert(F.length() < 10e15);
 						}
 					}
 				}

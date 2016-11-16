@@ -206,7 +206,7 @@ template <typename Cell> class ContactSurfaceBody : public Orientable {
 
 	ContactSurfaceBody(Cell *c) : cell(c){};
 
-	void setVolumeConservationEnabled(bool v) { volumeConservationEnabled = true; }
+	void setVolumeConservationEnabled(bool v) { volumeConservationEnabled = v; }
 	void setRestVolume(double v) { restVolume = v; }
 	void setRestRadius(double r) { restRadius = r; }
 	double getDynamicRadius() const { return dynamicRadius; }
