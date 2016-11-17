@@ -109,6 +109,9 @@ template <typename Scenario> class Viewer : public SignalSlotRenderer {
 	QQuickWindow *view;
 	QQmlApplicationEngine *engine;
 
+	QSize viewSize;
+	QPoint viewPos;
+	
  private:
 	std::map<Qt::Key, hook_t> keyDownMethods;
 	std::map<Qt::Key, hook_t> keyUpMethods;
@@ -405,6 +408,24 @@ template <typename Scenario> class Viewer : public SignalSlotRenderer {
 	 */
 	void setSelectedCell(Cell *c) { selectedCell = c; }
 
+	/**
+	 * @brief sets the main window size
+	 * 
+	 * @param s requested size
+	 */
+	void setWindowSize (QSize s) {
+		viewSize = s;
+	}
+	
+	/**
+	 * @brief sets the main window position
+	 * 
+	 * @param p requested position
+	 */
+	void setWindowPosition (QPoint p) {
+		viewPos = p;
+	}
+	
 	/**
 	 * @brief pauses calls to the scenario loop
 	 */
@@ -721,6 +742,8 @@ template <typename Scenario> class Viewer : public SignalSlotRenderer {
 
 		engine->rootContext()->setContextProperty("glview", ssb);
 		ssb->init(this);
+		view->setPosition(viewPos);
+		if (!viewSize.isNull()) view->resize(viewSize);
 		view->show();
 		for (auto &f : hooks[Hooks::preLoad]) f(this);
 		QObject::connect(view, SIGNAL(closing(QQuickCloseEvent *)), &app, SLOT(quit()));
