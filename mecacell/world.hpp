@@ -46,7 +46,7 @@ template <typename Cell, typename Integrator = Euler> class World {
 	// The following code detects if any embedded plugin type is specified and defaults
 	// to the instantiation of a useles byte if not.
 	struct dumb {};
-	template <class, class = void_t<>> struct embedded_plugin_type {  // declaration
+	template <class, class = MecaCell::void_t<>> struct embedded_plugin_type {  // declaration
 		using type = dumb;  // defaults to dummy char type if no embedded plugin is defined
 	};
 	template <class T>  // specialization
@@ -67,12 +67,11 @@ template <typename Cell, typename Integrator = Euler> class World {
 	void deleteDeadCells() {
 		for (auto i = cells.begin(); i != cells.end();) {
 			if ((*i)->isDead()) {
-				auto *tmp = i;
+				auto tmp = *i;
 				i = cells.erase(i);
-				delete *tmp;
-			} else {
+				delete tmp;
+			} else
 				++i;
-			}
 		}
 	}
 
@@ -283,6 +282,7 @@ template <typename Cell, typename Integrator = Euler> class World {
 	~World() {
 		for (auto &f : hooks[eToUI(Hooks::destructor)]) f(this);
 		while (!cells.empty()) delete cells.back(), cells.pop_back();
+		while (!newCells.empty()) delete newCells.back(), newCells.pop_back();
 	}
 };
 }

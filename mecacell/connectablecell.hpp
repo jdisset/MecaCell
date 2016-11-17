@@ -64,7 +64,7 @@ class ConnectableCell : public Movable {
 	size_t id = 0;  // mostly for debugging, num of cell by order of addition in world
 	ConnectableCell(const Derived &c)
 	    : Movable(c.getPosition()),
-	      body(static_cast<Derived *>(this), c.body),
+	      body(static_cast<Derived *>(this)),
 	      dead(false),
 	      color(c.color) {}
 
@@ -98,7 +98,7 @@ class ConnectableCell : public Movable {
 	 */
 	ConnectableCell(const Derived &c, const Vec &translation)
 	    : Movable(c.getPosition() + translation, c.mass),
-	      body(static_cast<Derived *>(this), c.body),
+	      body(static_cast<Derived *>(this)),
 	      dead(false),
 	      color(c.color) {}
 
