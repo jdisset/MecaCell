@@ -173,13 +173,13 @@ template <typename Scenario> class Viewer : public SignalSlotRenderer {
 					paintStepsMethods[10] = [&](R *r) {
 						CellGroup<R> *cells =
 						    dynamic_cast<CellGroup<R> *>(paintSteps["SphereCells"].get());
-						cells->call(r, false, r->currentColorMode);
+						cells->call(r, false);
 					};
 				} else if (me->at("Mesh type").at("Centers only").isChecked()) {
 					paintStepsMethods[10] = [&](R *r) {
 						CellGroup<R> *cells =
 						    dynamic_cast<CellGroup<R> *>(paintSteps["SphereCells"].get());
-						cells->call(r, true, r->currentColorMode);
+						cells->call(r, true);
 					};
 				} else
 					paintStepsMethods.erase(10);
@@ -450,6 +450,15 @@ template <typename Scenario> class Viewer : public SignalSlotRenderer {
 	/**************************
 	 *           GET
 	 **************************/
+    
+    /** @return the paint step at indexed by 'key' **/
+    PaintStep<R>* getPaintStep (QString key) {
+        auto p = paintSteps.find(key);
+        if (p != paintSteps.end())
+                return p->second.get();
+        else    return nullptr;
+    }
+    
 	/**
 	 * @brief
 	 *

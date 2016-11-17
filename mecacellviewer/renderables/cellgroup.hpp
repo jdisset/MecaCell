@@ -10,6 +10,13 @@ template <typename R> class CellGroup : public PaintStep<R> {
 	unique_ptr<QOpenGLTexture> normalMap = nullptr;
 	IcoSphere sphere;
 
+	using cellcolor_f = std::function<array<double, 3>(R*, C*, bool)>;
+	cellcolor_f cellColor = [] (R* /*renderer*/, C* cell, bool selected) {
+		return selected?
+            std::array<double,3>{1,1,1}
+            : std::array<double, 3>{ cell->getColor(0), cell->getColor(1), cell->getColor(2) };
+	};
+    
  public:
 	cellMode drawMode = plain;
 	CellGroup() : PaintStep<R>("Cells"), sphere(2) {
@@ -25,7 +32,11 @@ template <typename R> class CellGroup : public PaintStep<R> {
 		sphere.load(shader);
 	}
 
-	void call(R *r, bool centersOnly = false, const ColorMode &colormode = color_normal) {
+	void setCellColorLambda (const cellcolor_f &f) {
+		cellColor = f;
+	}
+
+	void call(R *r, bool centersOnly = false) {
 		const auto &cells = r->getScenario().getWorld().cells;
 		if (cells.size() > 0) {
 			const QMatrix4x4 view = r->getViewMatrix();
@@ -51,17 +62,17 @@ template <typename R> class CellGroup : public PaintStep<R> {
 					double radius = c->getBoundingBoxRadius();
 					QVector3D center = toQV3D(c->getPosition());
 					model.translate(center);
-					const double r = c->getBoundingBoxRadius();
+					const double bbr = c->getBoundingBoxRadius();
 					if (centersOnly)
 						model.scale(1, 1, 1);
 					else
-						model.scale(r, r, r);
+						model.scale(bbr, bbr, bbr);
 					// model.rotate(radToDeg(c->getOrientationRotation().teta),
 					// toQV3D(c->getOrientationRotation().n));
 					QMatrix4x4 nmatrix = (model).inverted().transposed();
 					shader.setUniformValue(shader.uniformLocation("model"), model);
 					shader.setUniformValue(shader.uniformLocation("normalMatrix"), nmatrix);
-					auto color = cellColorToQVector(c, selected == c, colormode);
+					auto color = cellColorToQVector(cellColor(r, c, selected == c));
 					shader.setUniformValue(shader.uniformLocation("color"), color);
 					GL->glDrawElements(GL_TRIANGLES, sphere.indices.size(), GL_UNSIGNED_INT, 0);
 				}
