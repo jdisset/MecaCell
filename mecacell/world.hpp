@@ -67,9 +67,9 @@ template <typename Cell, typename Integrator = Euler> class World {
 	void deleteDeadCells() {
 		for (auto i = cells.begin(); i != cells.end();) {
 			if ((*i)->isDead()) {
-				auto *tmp = i;
+				auto tmp = *i;
 				i = cells.erase(i);
-				delete *tmp;
+				delete tmp;
 			} else {
 				++i;
 			}

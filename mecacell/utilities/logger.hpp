@@ -1,10 +1,14 @@
 #ifndef LOGGER_HPP
 #define LOGGER_HPP
 #include <algorithm>
+#include <array>
 #include <chrono>
+#include <cstdio>
+#include <ctime>
 #include <iomanip>
 #include <iostream>
 #include <sstream>
+#include <utility>
 
 using std::ostream;
 using std::string;
@@ -52,55 +56,6 @@ const constexpr static char BOLDCYAN[] = "";
 const constexpr static char BOLDWHITE[] = "";
 #endif
 
-// code for concatenating constexpr strings
-template <unsigned...> struct seq { using type = seq; };
-template <unsigned N, unsigned... Is>
-struct gen_seq_x : gen_seq_x<N - 1, N - 1, Is...> {};
-template <unsigned... Is> struct gen_seq_x<0, Is...> : seq<Is...> {};
-template <unsigned N> using gen_seq = typename gen_seq_x<N>::type;
-template <size_t S> using size = std::integral_constant<size_t, S>;
-
-template <class T, size_t N> constexpr size<N> length(T const (&)[N]) { return {}; }
-template <class T, size_t N> constexpr size<N> length(std::array<T, N> const&) {
-	return {};
-}
-
-template <class T> using length_t = decltype(length(std::declval<T>()));
-
-constexpr size_t string_size() { return 0; }
-template <class... Ts> constexpr size_t string_size(size_t i, Ts... ts) {
-	return (i ? i - 1 : 0) + string_size(ts...);
-}
-template <class... Ts> using string_length = size<string_size(length_t<Ts>{}...)>;
-
-template <class... Ts>
-using combined_string = std::array<char, string_length<Ts...>{} + 1>;
-
-template <class Lhs, class Rhs, unsigned... I1, unsigned... I2>
-constexpr const combined_string<Lhs, Rhs> concat_impl(Lhs const& lhs, Rhs const& rhs,
-                                                      seq<I1...>, seq<I2...>) {
-	// the '\0' adds to symmetry:
-	return {{lhs[I1]..., rhs[I2]..., '\0'}};
-}
-
-template <class Lhs, class Rhs>
-constexpr const combined_string<Lhs, Rhs> concat(Lhs const& lhs, Rhs const& rhs) {
-	return concat_impl(lhs, rhs, gen_seq<string_length<Lhs>{}>{},
-	                   gen_seq<string_length<Rhs>{}>{});
-}
-
-template <class T0, class T1, class... Ts>
-constexpr const combined_string<T0, T1, Ts...> concat(T0 const& t0, T1 const& t1,
-                                                      Ts const&... ts) {
-	return concat(t0, concat(t1, ts...));
-}
-
-template <class T> constexpr const combined_string<T> concat(T const& t) {
-	return concat(t, "");
-}
-constexpr const combined_string<> concat() { return concat(""); }
-
-// LOGGER
 template <typename T> std::string sublogger(T&& t) {
 	std::ostringstream os;
 	os << t;
@@ -114,30 +69,65 @@ template <typename T, typename... Args> std::string sublogger(T&& t, Args&&... a
 }
 
 struct WARN {
-	static constexpr auto tag = concat(YELLOW, " ⚠  [WARNING]", RESET);
+#ifndef MECACELL_LOGGER_WARN_DISABLE
+	static constexpr const bool enabled = true;
+#else
+	static constexpr const bool enabled = false;
+#endif
+	static constexpr const auto color = YELLOW;
+	static constexpr const auto tag = "⚠ ";
 };
-
 struct ERR {
-	static constexpr auto tag = concat(RED, " ✖ [ERROR]", RESET);
+#ifndef MECACELL_LOGGER_ERR_DISABLE
+	static constexpr const bool enabled = true;
+#else
+	static constexpr const bool enabled = false;
+#endif
+	static constexpr const auto color = RED;
+	static constexpr const auto tag = " ✖ ";
 };
 struct INF {
-	static constexpr auto tag = " ⟢ ";
+#ifndef MECACELL_LOGGER_INF_DISABLE
+	static constexpr const bool enabled = true;
+#else
+	static constexpr const bool enabled = false;
+#endif
+	static constexpr const auto color = BLUE;
+	static constexpr const auto tag = "⟢ ";
 };
 struct DBG {
-	static constexpr auto tag = " | ";
+#ifndef MECACELL_LOGGER_DBG_DISABLE
+	static constexpr const bool enabled = true;
+#else
+	static constexpr const bool enabled = false;
+#endif
+	static constexpr const auto color = MAGENTA;
+	static constexpr const auto tag = "☵ ";
 };
 struct SUC {
-	static constexpr auto tag = concat(BOLDGREEN, " ✓ [SUCCESS]", RESET);
+#ifndef MECACELL_LOGGER_SUC_DISABLE
+	static constexpr const bool enabled = true;
+#else
+	static constexpr const bool enabled = false;
+#endif
+	static constexpr const auto color = BOLDGREEN;
+	static constexpr const auto tag = " ✓ ";
 };
 
 template <typename Type, typename... Args> void logger(Args&&... args) {
-	std::time_t t = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
-	std::string tstr(ctime(&t));
-	tstr = tstr.substr(0, tstr.size() - 1);
-	std::ostringstream os;
-	os << BOLDBLACK << tstr << RESET << "| " << Type::tag << "𝌅 ";
-	os << sublogger(std::forward<Args>(args)...) << std::endl;
-	std::cerr << os.str();
+	if (Type::enabled) {
+		time_t rawtime;
+		time(&rawtime);
+		struct tm* timeinfo = localtime(&rawtime);
+		char buffer[80];
+		strftime(buffer, 80, "\%F %H:%M:\%S", timeinfo);
+
+		std::ostringstream os;
+		os << BOLDBLACK << "[" << buffer << "]" << RESET << Type::color << " " << Type::tag
+		   << BOLDBLACK << " : " << RESET;
+		os << sublogger(std::forward<Args>(args)...) << std::endl;
+		std::cerr << os.str();
+	}
 }
 }
 #endif
