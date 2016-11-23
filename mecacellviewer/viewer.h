@@ -109,6 +109,9 @@ template <typename Scenario> class Viewer : public SignalSlotRenderer {
 	QQuickWindow *view;
 	QQmlApplicationEngine *engine;
 
+	QSize viewSize;
+	QPoint viewPos;
+	
  private:
 	std::map<Qt::Key, hook_t> keyDownMethods;
 	std::map<Qt::Key, hook_t> keyUpMethods;
@@ -170,13 +173,13 @@ template <typename Scenario> class Viewer : public SignalSlotRenderer {
 					paintStepsMethods[10] = [&](R *r) {
 						CellGroup<R> *cells =
 						    dynamic_cast<CellGroup<R> *>(paintSteps["SphereCells"].get());
-						cells->call(r, false, r->currentColorMode);
+						cells->call(r, false);
 					};
 				} else if (me->at("Mesh type").at("Centers only").isChecked()) {
 					paintStepsMethods[10] = [&](R *r) {
 						CellGroup<R> *cells =
 						    dynamic_cast<CellGroup<R> *>(paintSteps["SphereCells"].get());
-						cells->call(r, true, r->currentColorMode);
+						cells->call(r, true);
 					};
 				} else
 					paintStepsMethods.erase(10);
@@ -406,6 +409,24 @@ template <typename Scenario> class Viewer : public SignalSlotRenderer {
 	void setSelectedCell(Cell *c) { selectedCell = c; }
 
 	/**
+	 * @brief sets the main window size
+	 * 
+	 * @param s requested size
+	 */
+	void setWindowSize (QSize s) {
+		viewSize = s;
+	}
+	
+	/**
+	 * @brief sets the main window position
+	 * 
+	 * @param p requested position
+	 */
+	void setWindowPosition (QPoint p) {
+		viewPos = p;
+	}
+	
+	/**
 	 * @brief pauses calls to the scenario loop
 	 */
 	void pause() {
@@ -429,6 +450,15 @@ template <typename Scenario> class Viewer : public SignalSlotRenderer {
 	/**************************
 	 *           GET
 	 **************************/
+    
+    /** @return the paint step at indexed by 'key' **/
+    PaintStep<R>* getPaintStep (QString key) {
+        auto p = paintSteps.find(key);
+        if (p != paintSteps.end())
+                return p->second.get();
+        else    return nullptr;
+    }
+    
 	/**
 	 * @brief
 	 *
@@ -721,6 +751,8 @@ template <typename Scenario> class Viewer : public SignalSlotRenderer {
 
 		engine->rootContext()->setContextProperty("glview", ssb);
 		ssb->init(this);
+		view->setPosition(viewPos);
+		if (!viewSize.isNull()) view->resize(viewSize);
 		view->show();
 		for (auto &f : hooks[Hooks::preLoad]) f(this);
 		QObject::connect(view, SIGNAL(closing(QQuickCloseEvent *)), &app, SLOT(quit()));

@@ -75,7 +75,8 @@ class SignalSlotBase : public QQuickItem {
 		}
 	}
 	virtual void keyReleaseEvent(QKeyEvent *event) {
-		keyDown.erase(static_cast<Qt::Key>(event->key()));
+		if (!event->isAutoRepeat())
+			keyDown.erase(static_cast<Qt::Key>(event->key()));
 	}
 
 	std::vector<std::pair<QList<QVariant>, bool>> displayMenuToggled;

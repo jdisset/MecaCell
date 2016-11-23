@@ -41,7 +41,7 @@ template <typename C> struct SimplifiedFluidPlugin {
 			for (auto &c : w->cells) grid.insert(c);
 
 			// then we find voxels that have at least one exposed face
-			for (auto &u : grid.getUnorderedMap()) {
+            for (auto &u : grid.getUnorderedMap()) {
 				if (!grid.getUnorderedMap().count(u.first + MecaCell::Vector3D(1, 0, 0)))
 					exposedVoxels[u.second].push_back(MecaCell::Vector3D(1, 0, 0));
 				if (!grid.getUnorderedMap().count(u.first + MecaCell::Vector3D(-1, 0, 0)))
@@ -61,6 +61,8 @@ template <typename C> struct SimplifiedFluidPlugin {
 				double area = std::pow(grid.getCellSize(), 2);
 				// we need the nb of cells to divide forces when a voxel contains multiple cells
 				// (to address overlaps) :
+                // Cells at cell grid i
+//                 grid.getOrderedVec()[e.first].second
 				double nbCells = grid.getOrderedVec()[e.first].second.size();
 				for (auto &c : grid.getOrderedVec()[e.first].second) {  // c = exposed cell
 					for (const auto &dir : e.second) {

@@ -142,6 +142,7 @@ template <typename Cell> struct ContactSurface {
 		auto F = 0.5 * (area * (max(0.0, cells.first->getBody().getPressure()) +
 		                        max(0.0, cells.second->getBody().getPressure()))) *
 		         normal;
+			 
 		cells.first->receiveForce(-F);
 		cells.second->receiveForce(F);
 	}

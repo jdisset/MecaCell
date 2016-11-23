@@ -11,7 +11,7 @@
 class Camera : public QObject {
 	Q_OBJECT
 
- public:
+public:
 	enum ProjectionType { Perspective, Orthographic };
 	enum RotateOrder {
 		TiltPanRoll,
@@ -24,6 +24,7 @@ class Camera : public QObject {
 	enum Mode { fps, centered };
 	// in centered mode x is left/right, y is up/down, z is forward/backward
 
+private:
 	ProjectionType projectionType = Perspective;
 	Mode mode = fps;
 	float fieldOfView = 35;
@@ -47,6 +48,7 @@ class Camera : public QObject {
 	QVector3D torque;
 	QVector3D angularVelocity;
 
+public:
 	Camera() {}
 
 	void update(Camera &c) {
@@ -90,6 +92,14 @@ class Camera : public QObject {
 			viewSize = sz;
 		}
 	}
+	
+	const QVector3D& getSpeed (void) const {
+        return speed;
+    }
+    
+    const QVector3D& getForce (void) const {
+        return force;
+    }
 
 	QVector3D translation(const QVector3D &v) const {
 		// translation is expressed in camera space...
@@ -177,6 +187,7 @@ class Camera : public QObject {
 		if (mode == fps) {
 			QVector3D v = QVector3D::crossProduct(viewVector, upVector).normalized();
 			force += v * forceIntensity;
+
 		} else if (mode == centered) {
 			force += QVector3D(forceIntensity, 0, 0);
 		}
