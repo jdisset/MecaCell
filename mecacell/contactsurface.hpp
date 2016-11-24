@@ -66,11 +66,11 @@ template <typename Cell> struct ContactSurface {
 			targets.first.b = Basis<Vec>(
 			    normal.rotated(cells.first->getBody().getOrientationRotation().inverted()),
 			    ortho.rotated(cells.first->getBody().getOrientationRotation().inverted()));
-			targets.first.d = midpoint.first;
+			targets.first.d = midpoint.first / cells.first->getBody().getDynamicRadius();
 			targets.second.b = Basis<Vec>(
 			    (-normal).rotated(cells.second->getBody().getOrientationRotation().inverted()),
 			    ortho.rotated(cells.second->getBody().getOrientationRotation().inverted()));
-			targets.second.d = midpoint.second;
+			targets.second.d = midpoint.second / cells.second->getBody().getDynamicRadius();
 		}
 	}
 
@@ -142,12 +142,15 @@ template <typename Cell> struct ContactSurface {
 		auto F = 0.5 * (area * (max(0.0, cells.first->getBody().getPressure()) +
 		                        max(0.0, cells.second->getBody().getPressure()))) *
 		         normal;
-			 
+
 		cells.first->receiveForce(-F);
 		cells.second->receiveForce(F);
 	}
 
 	void applyAdhesiveForces(double dt) {
+		std::pair<double, double> computedTargetsDistances = {
+		    targets.first.d * cells.first->getBody().getDynamicRadius(),
+		    targets.second.d * cells.second->getBody().getDynamicRadius()};
 		// first we express our targets basis into world basis
 		std::pair<Basis<Vec>, Basis<Vec>> targetsBw = {
 		    targets.first.b.rotated(cells.first->getBody().getOrientationRotation()),
@@ -161,30 +164,45 @@ template <typename Cell> struct ContactSurface {
 		    Vec::rayCast(midpointPos, normal, cells.second->getPosition(),
 		                 targetsBw.second.X)};
 		if (!fixedAdhesion && projDist.first > MIN_ADH_DIST &&
-		    projDist.first - bondReach < targets.first.d) {
+		    projDist.first - bondReach < computedTargetsDistances.first) {
 			// we got closer! we need to update our target midpoints
-			targets.first.d = projDist.first - bondReach;
+			computedTargetsDistances.first = projDist.first - bondReach;
+			targets.first.d =
+			    computedTargetsDistances.first / cells.first->getBody().getDynamicRadius();
 		}
 		if (!fixedAdhesion && projDist.second > MIN_ADH_DIST &&
-		    projDist.second - bondReach < targets.second.d) {
-			targets.second.d = projDist.second - bondReach;
+		    projDist.second - bondReach < computedTargetsDistances.second) {
+			computedTargetsDistances.second = projDist.second - bondReach;
+			targets.second.d =
+			    computedTargetsDistances.second / cells.second->getBody().getDynamicRadius();
 		}
-		if (targets.first.d < MIN_ADH_DIST) targets.first.d = MIN_ADH_DIST;
-		if (targets.second.d < MIN_ADH_DIST) targets.second.d = MIN_ADH_DIST;
+		if (computedTargetsDistances.first < MIN_ADH_DIST) {
+			computedTargetsDistances.first = MIN_ADH_DIST;
+			targets.first.d =
+			    computedTargetsDistances.first / cells.first->getBody().getDynamicRadius();
+		}
+		if (computedTargetsDistances.second < MIN_ADH_DIST) {
+			computedTargetsDistances.second = MIN_ADH_DIST;
+			targets.second.d =
+			    computedTargetsDistances.second / cells.second->getBody().getDynamicRadius();
+		}
 		// we can now compute the target centers;
 		std::pair<Vec, Vec> o = {
-		    cells.first->getPosition() + targets.first.d * targetsBw.first.X,
-		    cells.second->getPosition() + targets.second.d * targetsBw.second.X};
+		    cells.first->getPosition() + computedTargetsDistances.first * targetsBw.first.X,
+		    cells.second->getPosition() +
+		        computedTargetsDistances.second * targetsBw.second.X};
 
 		// now we apply the forces exerted by all the connections.
 		// we apply them at the centers of the two targets
 
 		// compute the connected area. Only needed when the sum of the targets.d changes
-		adhArea = max(0.0, std::pow(cells.first->getBody().getDynamicRadius(), 2) -
-		                       std::pow(std::get<0>(computeMidpoints(targets.first.d +
-		                                                             targets.second.d)),
-		                                2)) *
-		          M_PI;
+		adhArea =
+		    max(0.0,
+		        std::pow(cells.first->getBody().getDynamicRadius(), 2) -
+		            std::pow(std::get<0>(computeMidpoints(computedTargetsDistances.first +
+		                                                  computedTargetsDistances.second)),
+		                     2)) *
+		    M_PI;
 		// dampingFromRatio(dampCoef, cells.first->getMass() + cells.second->getMass(), k);
 		// we can now compute the forces applied at o.first & o.second
 		Vec o0o1 = o.second - o.first;
@@ -205,7 +223,7 @@ template <typename Cell> struct ContactSurface {
 					newX = Vec(1, 0, 0);
 				targets.first.b.X =
 				    newX.rotated(cells.first->getBody().getOrientationRotation().inverted());
-				targets.first.d = newD;
+				targets.first.d = newD / cells.first->getBody().getDynamicRadius();
 				newX = (o.second - cells.second->getPosition());
 				newD = newX.length();
 				if (newD > 0)
@@ -214,23 +232,24 @@ template <typename Cell> struct ContactSurface {
 					newX = Vec(1, 0, 0);
 				targets.second.b.X =
 				    newX.rotated(cells.second->getBody().getOrientationRotation().inverted());
-				targets.second.d = newD;
+				targets.second.d = newD / cells.second->getBody().getDynamicRadius();
 				linAdhElongation = bondMaxL;
 			}
 			double springSpeed = (linAdhElongation - prevLinAdhElongation) / dt;
 			double k = adhArea * adhCoef * baseBondStrength;
-			currentDamping =
-			    dampingFromRatio(dampCoef, cells.first->getMass() + cells.second->getMass(), k);
+			// currentDamping =
+			// dampingFromRatio(dampCoef, cells.first->getMass() + cells.second->getMass(), k);
+			currentDamping = 10.0;
 
 			Vec F = 0.5 * (k * linAdhElongation + currentDamping * springSpeed) * o0o1;
 			// cells.first receive F at o0 and in the direction o0o1
 			cells.first->receiveForce(F);
 			cells.first->getBody().receiveTorque(
-			    (targetsBw.first.X * targets.first.d).cross(F));
+			    (targetsBw.first.X * computedTargetsDistances.first).cross(F));
 			// cells.second receive F at o1 and in the direction -o0o1
 			cells.second->receiveForce(-F);
 			cells.second->getBody().receiveTorque(
-			    (targetsBw.second.X * targets.second.d).cross(-F));
+			    (targetsBw.second.X * computedTargetsDistances.second).cross(-F));
 		}
 	}
 };

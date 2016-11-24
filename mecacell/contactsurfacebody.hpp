@@ -283,7 +283,7 @@ template <typename Cell> class ContactSurfaceBody : public Orientable {
 		Integrator::updateOrientation(*this, dt);
 	}
 
-	void solidifyAdhesion() {
+	void solidifyAdhesions() {
 		for (auto &c : cellConnections) c->fixedAdhesion = true;
 	}
 	void releaseAdhesions() {

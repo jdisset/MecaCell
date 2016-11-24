@@ -109,9 +109,9 @@ template <typename Scenario> class Viewer : public SignalSlotRenderer {
 	QQuickWindow *view;
 	QQmlApplicationEngine *engine;
 
-	QSize viewSize;
-	QPoint viewPos;
-	
+	QSize viewSize{800, 600};
+	QPoint viewPos{0, 0};
+
  private:
 	std::map<Qt::Key, hook_t> keyDownMethods;
 	std::map<Qt::Key, hook_t> keyUpMethods;
@@ -410,22 +410,18 @@ template <typename Scenario> class Viewer : public SignalSlotRenderer {
 
 	/**
 	 * @brief sets the main window size
-	 * 
+	 *
 	 * @param s requested size
 	 */
-	void setWindowSize (QSize s) {
-		viewSize = s;
-	}
-	
+	void setWindowSize(QSize s) { viewSize = s; }
+
 	/**
 	 * @brief sets the main window position
-	 * 
+	 *
 	 * @param p requested position
 	 */
-	void setWindowPosition (QPoint p) {
-		viewPos = p;
-	}
-	
+	void setWindowPosition(QPoint p) { viewPos = p; }
+
 	/**
 	 * @brief pauses calls to the scenario loop
 	 */
@@ -450,15 +446,16 @@ template <typename Scenario> class Viewer : public SignalSlotRenderer {
 	/**************************
 	 *           GET
 	 **************************/
-    
-    /** @return the paint step at indexed by 'key' **/
-    PaintStep<R>* getPaintStep (QString key) {
-        auto p = paintSteps.find(key);
-        if (p != paintSteps.end())
-                return p->second.get();
-        else    return nullptr;
-    }
-    
+
+	/** @return the paint step at indexed by 'key' **/
+	PaintStep<R> *getPaintStep(QString key) {
+		auto p = paintSteps.find(key);
+		if (p != paintSteps.end())
+			return p->second.get();
+		else
+			return nullptr;
+	}
+
 	/**
 	 * @brief
 	 *
