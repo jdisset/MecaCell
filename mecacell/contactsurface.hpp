@@ -22,20 +22,24 @@ template <typename Cell> struct ContactSurface {
 	double dampCoef = 0.1;   // damping [0;1]
 	double bondMaxL = 5.0;   // max length a surface bond can reach before breaking
 	double bondReach = 1.0;  // when are new connection created [0;bondMaxL[
-	double currentDamping = 0.0;
+	double fixedDamping = 0.0;
+	double baseBondStrength = 0.05;
+	double MIN_ADH_DIST = 8.0;
 
 	/*********************************************************
 	 * 				     	INTERNALS
 	 ********************************************************/
-	static constexpr double DIST_EPSILON = 1e-20;
 	Vec normal;  // normal of the actual contact surface (from cell 0 to cell 1)
 	std::pair<double, double> midpoint;  // distance to center (viewed from each cell)
 	double sqradius = 0;                 // squared radius of the contact disk
 	double area = 0, adhArea = 0;        // area of the contact disk
 	double centersDist = 0, prevCentersDist = 0;  // distance of the two cells centers
-	double prevLinAdhElongation = 0, linAdhElongation = 0;  // the elongation of the
-	                                                        // connections caused by the
-	                                                        // cells separation or flexion
+	double prevLinAdhElongation = 0, linAdhElongation = 0;    // the elongation of the
+	                                                          // connections caused by the
+	                                                          // cells separation
+	double prevFlexAdhElongation = 0, flexAdhElongation = 0;  // the elongation of the
+	                                                          // connections caused by the
+	                                                          // cells relative flexure
 	//////////////// friction ////////////////
 	// TODO: implement friction...
 	bool atRest = false;  // are the cells at rest, relatively to each other ?
@@ -43,8 +47,6 @@ template <typename Cell> struct ContactSurface {
 	    1e-10;  // minimal speed to consider the connected Cells not to be at rest
 
 	////////////// adhesion //////////////////
-	static constexpr double baseBondStrength = 0.05;
-	static constexpr double MIN_ADH_DIST = 8.0;
 	struct TargetSurface {
 		Basis<Vec> b;  // X is the normal of the surface, Y is the up vector
 		// b is expressed in the cell's basis, thus if we want to compute b in world basis :
@@ -83,7 +85,7 @@ template <typename Cell> struct ContactSurface {
 		// then we apply all the forces
 		if (pressureEnabled) applyPressureForces(dt);
 		if (adhesionEnabled) applyAdhesiveForces(dt);
-	};
+	}
 
 	/*********************************************************
 	 * 				        INTERNALS UPDATES
@@ -92,7 +94,7 @@ template <typename Cell> struct ContactSurface {
 		normal = cells.second->getPosition() - cells.first->getPosition();
 		prevCentersDist = centersDist;
 		centersDist = normal.length();
-		if (centersDist > DIST_EPSILON) normal /= centersDist;
+		if (centersDist > Config::DOUBLE_EPSILON) normal /= centersDist;
 		midpoint = computeMidpoints(centersDist);
 		sqradius = max(0.0, std::pow(cells.first->getBody().getDynamicRadius(), 2) -
 		                        midpoint.first * midpoint.first);
@@ -109,13 +111,14 @@ template <typename Cell> struct ContactSurface {
 
 	std::pair<double, double> computeMidpoints(double distanceBtwnCenters) {
 		// return the current contact disk's center distance to each cells centers
-		if (distanceBtwnCenters <= DIST_EPSILON) return {0, 0};
+		if (distanceBtwnCenters <= Config::DOUBLE_EPSILON) return {0, 0};
 
 		auto biggestCell = cells.first->getBody().getDynamicRadius() >=
 		                           cells.second->getBody().getDynamicRadius() ?
 		                       cells.first :
 		                       cells.second;
 		auto smallestCell = biggestCell == cells.first ? cells.second : cells.first;
+
 		double biggestCellMidpoint =
 		    0.5 * (distanceBtwnCenters +
 		           (std::pow(biggestCell->getBody().getDynamicRadius(), 2) -
@@ -142,12 +145,14 @@ template <typename Cell> struct ContactSurface {
 		auto F = 0.5 * (area * (max(0.0, cells.first->getBody().getPressure()) +
 		                        max(0.0, cells.second->getBody().getPressure()))) *
 		         normal;
-
 		cells.first->receiveForce(-F);
 		cells.second->receiveForce(F);
 	}
 
 	void applyAdhesiveForces(double dt) {
+		// two main spring like forces :
+		// torsion + linear = targets points trying to meet.
+		// flexure = midpoint trying to align with the targets points.
 		std::pair<double, double> computedTargetsDistances = {
 		    targets.first.d * cells.first->getBody().getDynamicRadius(),
 		    targets.second.d * cells.second->getBody().getDynamicRadius()};
@@ -159,23 +164,25 @@ template <typename Cell> struct ContactSurface {
 		// projections of the target normals onto the current actual collision surface
 		Vec midpointPos = cells.first->getPosition() +
 		                  normal * midpoint.first;  // we need the actual midpoint position;
-		std::pair<double, double> projDist = {
-		    Vec::rayCast(midpointPos, normal, cells.first->getPosition(), targetsBw.first.X),
-		    Vec::rayCast(midpointPos, normal, cells.second->getPosition(),
-		                 targetsBw.second.X)};
-		if (!fixedAdhesion && projDist.first > MIN_ADH_DIST &&
-		    projDist.first - bondReach < computedTargetsDistances.first) {
-			// we got closer! we need to update our target midpoints
-			computedTargetsDistances.first = projDist.first - bondReach;
-			targets.first.d =
-			    computedTargetsDistances.first / cells.first->getBody().getDynamicRadius();
-		}
-		if (!fixedAdhesion && projDist.second > MIN_ADH_DIST &&
-		    projDist.second - bondReach < computedTargetsDistances.second) {
-			computedTargetsDistances.second = projDist.second - bondReach;
-			targets.second.d =
-			    computedTargetsDistances.second / cells.second->getBody().getDynamicRadius();
-		}
+
+		// std::pair<double, double> projDist = {
+		// Vec::rayCast(midpointPos, normal, cells.first->getPosition(),
+		// targetsBw.first.X),
+		// Vec::rayCast(midpointPos, normal, cells.second->getPosition(),
+		// targetsBw.second.X)};
+		// if (!fixedAdhesion && projDist.first > MIN_ADH_DIST &&
+		// projDist.first - bondReach < computedTargetsDistances.first) {
+		//// we got closer! we need to update our target midpoints
+		// computedTargetsDistances.first = projDist.first - bondReach;
+		// targets.first.d =
+		// computedTargetsDistances.first / cells.first->getBody().getDynamicRadius();
+		//}
+		// if (!fixedAdhesion && projDist.second > MIN_ADH_DIST &&
+		// projDist.second - bondReach < computedTargetsDistances.second) {
+		// computedTargetsDistances.second = projDist.second - bondReach;
+		// targets.second.d =
+		// computedTargetsDistances.second / cells.second->getBody().getDynamicRadius();
+		//}
 		if (computedTargetsDistances.first < MIN_ADH_DIST) {
 			computedTargetsDistances.first = MIN_ADH_DIST;
 			targets.first.d =
@@ -203,12 +210,18 @@ template <typename Cell> struct ContactSurface {
 		                                                  computedTargetsDistances.second)),
 		                     2)) *
 		    M_PI;
-		// dampingFromRatio(dampCoef, cells.first->getMass() + cells.second->getMass(), k);
 		// we can now compute the forces applied at o.first & o.second
 		Vec o0o1 = o.second - o.first;
 		prevLinAdhElongation = linAdhElongation;
 		linAdhElongation = o0o1.length();
-		if (linAdhElongation > DIST_EPSILON) {
+		// targets midpoint, where the actual midpoint is going to try to align
+		Vec targetMidpoint = o.first + o0o1 / 2;
+		Vec m0m1 = targetMidpoint - midpointPos;
+		prevFlexAdhElongation = flexAdhElongation;
+		flexAdhElongation = m0m1.length();
+
+		// on axis forces
+		if (linAdhElongation > Config::DOUBLE_EPSILON) {
 			o0o1 /= linAdhElongation;
 			if (linAdhElongation > bondMaxL && !fixedAdhesion) {
 				// some bonds are going to break
@@ -237,11 +250,11 @@ template <typename Cell> struct ContactSurface {
 			}
 			double springSpeed = (linAdhElongation - prevLinAdhElongation) / dt;
 			double k = adhArea * adhCoef * baseBondStrength;
-			// currentDamping =
-			// dampingFromRatio(dampCoef, cells.first->getMass() + cells.second->getMass(), k);
-			currentDamping = 10.0;
+			double ratioDamping =
+			    dampingFromRatio(dampCoef, cells.first->getMass() + cells.second->getMass(), k);
 
-			Vec F = 0.5 * (k * linAdhElongation + currentDamping * springSpeed) * o0o1;
+			Vec F = 0.5 * (k * linAdhElongation + (fixedDamping + ratioDamping) * springSpeed) *
+			        o0o1;
 			// cells.first receive F at o0 and in the direction o0o1
 			cells.first->receiveForce(F);
 			cells.first->getBody().receiveTorque(
@@ -251,6 +264,23 @@ template <typename Cell> struct ContactSurface {
 			cells.second->getBody().receiveTorque(
 			    (targetsBw.second.X * computedTargetsDistances.second).cross(-F));
 		}
+		// midpoints alignment forces
+		// if (flexAdhElongation > DIST_EPSILON) {
+		// double springSpeed = (flexAdhElongation - prevFlexAdhElongation) / dt;
+		// double k = adhArea * adhCoef * baseBondStrength;
+		// double ratioDamping =
+		// dampingFromRatio(dampCoef, cells.first->getMass() + cells.second->getMass(), k);
+		// Vec F = 0.5 *
+		//(k * flexAdhElongation + (fixedDamping + ratioDamping) * springSpeed) *
+		// m0m1;
+		//// cells.first->receiveForce(F);
+		// cells.first->getBody().receiveTorque(
+		//(targetsBw.first.X * computedTargetsDistances.first).cross(F));
+		//// cells.second receive F at o1 and in the direction -o0o1
+		//// cells.second->receiveForce(F);
+		// cells.second->getBody().receiveTorque(
+		//(targetsBw.second.X * computedTargetsDistances.second).cross(F));
+		//}
 	}
 };
 }

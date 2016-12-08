@@ -8,7 +8,7 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
-#include "../viewtools.h"
+#include "../utilities/viewtools.h"
 
 using namespace std;
 

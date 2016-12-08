@@ -1,11 +1,11 @@
 #ifndef DEFDISK
 #define DEFDISK
-#include "../viewtools.h"
-#include <vector>
-#include <map>
-#include <iostream>
-#include <cmath>
 #include <QVector3D>
+#include <cmath>
+#include <iostream>
+#include <map>
+#include <vector>
+#include "../utilities/viewtools.h"
 
 using namespace std;
 
