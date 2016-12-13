@@ -37,7 +37,7 @@ template <typename Cell> struct SpringConnection {
 	static const constexpr double ADH_DAMPING_RATIO = 1.0;
 	static const constexpr double ADH_CONSTANT =
 	    0.03 * Config::DEFAULT_CELL_STIFFNESS;  // factor by which all adhesion forces is
-	                                              // multiplied
+	                                            // multiplied
 	static const constexpr double MAX_TS_INCL =
 	    0.1;  // max angle before we need to reproject our torsion joint rotation
 
@@ -51,8 +51,8 @@ template <typename Cell> struct SpringConnection {
 	Vector3D direction;            // normalized direction from cell 0 to cell 1
 	double dist;                   // distance btwn the two cells
 	std::pair<Joint, Joint> flex, tors;
-	bool adhesionEnabled = true, frictionEnabled = true, torsEnabled = false,
-	     fixedAdhesion = false;
+	bool adhesionEnabled = true, frictionEnabled = true, flexEnabled = false,
+	     torsEnabled = false, fixedAdhesion = false;
 
 	SpringConnection(){};
 	SpringConnection(ordered_pair<Cell *> c) : cells(c) { init(); };
@@ -239,10 +239,12 @@ template <typename Cell> struct SpringConnection {
 			adhesion.updateLength(dist);
 			updateAdhesionParams();
 			adhesion.applyForce(*(cells.first), *(cells.second), direction, dt);
-			updateFlexParams();
+			if (flexEnabled) updateFlexParams();
 			if (torsEnabled) updateTorsParams();
-			updateJointsForces<0>(dt);
-			updateJointsForces<1>(dt);
+			if (flexEnabled || torsEnabled) {
+				updateJointsForces<0>(dt);
+				updateJointsForces<1>(dt);
+			}
 		}
 	}
 };
