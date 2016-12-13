@@ -34,9 +34,9 @@ namespace MecaCell {
  */
 template <typename Cell> struct SpringConnection {
 	static const constexpr double COLLISION_DAMPING_RATIO = 0.5;
-	static const constexpr double ADH_DAMPING_RATIO = 0.5;
+	static const constexpr double ADH_DAMPING_RATIO = 1.0;
 	static const constexpr double ADH_CONSTANT =
-	    0.0003 * Config::DEFAULT_CELL_STIFFNESS;  // factor by which all adhesion forces is
+	    0.03 * Config::DEFAULT_CELL_STIFFNESS;  // factor by which all adhesion forces is
 	                                              // multiplied
 	static const constexpr double MAX_TS_INCL =
 	    0.1;  // max angle before we need to reproject our torsion joint rotation
@@ -110,10 +110,10 @@ template <typename Cell> struct SpringConnection {
 		        cells.first,
 		        (-direction)
 		            .rotated(cells.second->getBody().getOrientationRotation().inverted())));
-		adhesion.k = pow(max(cells.first->getBoundingBoxRadius(),
-		                     cells.second->getBoundingBoxRadius()),
-		                 2) *
-		             M_PI * ADH_CONSTANT * adhCoef;
+		adhesion.k =
+		    max(cells.first->getBoundingBoxRadius(), cells.second->getBoundingBoxRadius())
+
+		    * ADH_CONSTANT * adhCoef;
 		adhesion.c = dampingFromRatio(
 		    ADH_DAMPING_RATIO, cells.first->getMass() + cells.second->getMass(), adhesion.k);
 	}
@@ -138,8 +138,8 @@ template <typename Cell> struct SpringConnection {
 		                           cells.first->getBody().getOrientationRotation());
 		tors.second.updateDirection(cells.second->getBody().getOrientation().Y,
 		                            cells.second->getBody().getOrientationRotation());
-		tors.first.k = adhesion.k;
-		tors.second.k = adhesion.k;
+		tors.first.k = adhesion.k * area;
+		tors.second.k = adhesion.k * area;
 		tors.first.c = dampingFromRatio(ADH_DAMPING_RATIO,
 		                                cells.first->getBody().getMomentOfInertia() +
 		                                    cells.second->getBody().getMomentOfInertia(),
@@ -152,8 +152,8 @@ template <typename Cell> struct SpringConnection {
 		                           cells.first->getBody().getOrientationRotation());
 		flex.second.updateDirection(cells.second->getBody().getOrientation().X,
 		                            cells.second->getBody().getOrientationRotation());
-		flex.first.k = adhesion.k;
-		flex.second.k = adhesion.k;
+		flex.first.k = adhesion.k * area;
+		flex.second.k = adhesion.k * area;
 		flex.first.c = dampingFromRatio(ADH_DAMPING_RATIO,
 		                                cells.first->getBody().getMomentOfInertia() +
 		                                    cells.second->getBody().getMomentOfInertia(),
@@ -196,7 +196,8 @@ template <typename Cell> struct SpringConnection {
 		double torque =
 		    flexNode.k * flexNode.delta.teta +
 		    flexNode.c * ((flexNode.delta.teta - flexNode.prevDelta.teta) / dt);  // -kx - cv
-		Vec vFlex = flexNode.delta.n * torque;                                    // torque
+		logger<DBG>("torque = ", torque);
+		Vec vFlex = flexNode.delta.n * torque;                       // torque
 		Vec ortho = direction.ortho(flexNode.delta.n).normalized();  // force direction
 		Vec force = sign * ortho * torque / dist;
 
@@ -227,6 +228,7 @@ template <typename Cell> struct SpringConnection {
 			cell->getBody().receiveTorque(vTorsion);
 		}
 	}
+
 	void update(double dt) {
 		updateDirection();
 		// updating collision and adhesion springs

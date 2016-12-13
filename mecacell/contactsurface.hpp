@@ -29,7 +29,7 @@ template <typename Cell> struct ContactSurface {
 	/*********************************************************
 	 * 				     	INTERNALS
 	 ********************************************************/
-	Vec normal;  // normal of the actual contact surface (from cell 0 to cell 1)
+	Vec direction;  // direction of the actual contact surface (from cell 0 to cell 1)
 	std::pair<double, double> midpoint;  // distance to center (viewed from each cell)
 	double sqradius = 0;                 // squared radius of the contact disk
 	double area = 0, adhArea = 0;        // area of the contact disk
@@ -48,7 +48,7 @@ template <typename Cell> struct ContactSurface {
 
 	////////////// adhesion //////////////////
 	struct TargetSurface {
-		Basis<Vec> b;  // X is the normal of the surface, Y is the up vector
+		Basis<Vec> b;  // X is the direction of the surface, Y is the up vector
 		// b is expressed in the cell's basis, thus if we want to compute b in world basis :
 		// Bw = b.rotated(cell->getOrientationRotation());
 		double d;  // distance to center of cell
@@ -64,13 +64,13 @@ template <typename Cell> struct ContactSurface {
 		updateInternals();
 		if (adhesionEnabled) {
 			// we need to init the targets
-			Vec ortho = normal.ortho();
+			Vec ortho = direction.ortho();
 			targets.first.b = Basis<Vec>(
-			    normal.rotated(cells.first->getBody().getOrientationRotation().inverted()),
+			    direction.rotated(cells.first->getBody().getOrientationRotation().inverted()),
 			    ortho.rotated(cells.first->getBody().getOrientationRotation().inverted()));
 			targets.first.d = midpoint.first / cells.first->getBody().getDynamicRadius();
 			targets.second.b = Basis<Vec>(
-			    (-normal).rotated(cells.second->getBody().getOrientationRotation().inverted()),
+			    (-direction).rotated(cells.second->getBody().getOrientationRotation().inverted()),
 			    ortho.rotated(cells.second->getBody().getOrientationRotation().inverted()));
 			targets.second.d = midpoint.second / cells.second->getBody().getDynamicRadius();
 		}
@@ -91,10 +91,10 @@ template <typename Cell> struct ContactSurface {
 	 * 				        INTERNALS UPDATES
 	 ********************************************************/
 	void updateInternals() {
-		normal = cells.second->getPosition() - cells.first->getPosition();
+		direction = cells.second->getPosition() - cells.first->getPosition();
 		prevCentersDist = centersDist;
-		centersDist = normal.length();
-		if (centersDist > Config::DOUBLE_EPSILON) normal /= centersDist;
+		centersDist = direction.length();
+		if (centersDist > Config::DOUBLE_EPSILON) direction /= centersDist;
 		midpoint = computeMidpoints(centersDist);
 		sqradius = max(0.0, std::pow(cells.first->getBody().getDynamicRadius(), 2) -
 		                        midpoint.first * midpoint.first);
@@ -102,10 +102,10 @@ template <typename Cell> struct ContactSurface {
 		adhCoef = min(
 		    cells.first->getAdhesionWith(
 		        cells.second,
-		        normal.rotated(cells.first->getBody().getOrientationRotation().inverted())),
+		        direction.rotated(cells.first->getBody().getOrientationRotation().inverted())),
 		    cells.second->getAdhesionWith(
 		        cells.first,
-		        (-normal).rotated(
+		        (-direction).rotated(
 		            cells.second->getBody().getOrientationRotation().inverted())));
 	}
 
@@ -139,12 +139,12 @@ template <typename Cell> struct ContactSurface {
 
 	// from internal pressure
 	void applyPressureForces(double dt) {
-		// force from pressure is normal to the actual contact surface
+		// force from pressure is direction to the actual contact surface
 		// and proportional to its surface
 		double adhSpeed = (centersDist - prevCentersDist) / dt;
 		auto F = 0.5 * (area * (max(0.0, cells.first->getBody().getPressure()) +
 		                        max(0.0, cells.second->getBody().getPressure()))) *
-		         normal;
+		         direction;
 		cells.first->receiveForce(-F);
 		cells.second->receiveForce(F);
 	}
@@ -161,14 +161,14 @@ template <typename Cell> struct ContactSurface {
 		    targets.first.b.rotated(cells.first->getBody().getOrientationRotation()),
 		    targets.second.b.rotated(cells.second->getBody().getOrientationRotation())};
 
-		// projections of the target normals onto the current actual collision surface
+		// projections of the target directions onto the current actual collision surface
 		Vec midpointPos = cells.first->getPosition() +
-		                  normal * midpoint.first;  // we need the actual midpoint position;
+		                  direction * midpoint.first;  // we need the actual midpoint position;
 
 		// std::pair<double, double> projDist = {
-		// Vec::rayCast(midpointPos, normal, cells.first->getPosition(),
+		// Vec::rayCast(midpointPos, direction, cells.first->getPosition(),
 		// targetsBw.first.X),
-		// Vec::rayCast(midpointPos, normal, cells.second->getPosition(),
+		// Vec::rayCast(midpointPos, direction, cells.second->getPosition(),
 		// targetsBw.second.X)};
 		// if (!fixedAdhesion && projDist.first > MIN_ADH_DIST &&
 		// projDist.first - bondReach < computedTargetsDistances.first) {

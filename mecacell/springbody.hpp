@@ -31,6 +31,7 @@ template <typename Cell> class SpringBody : public Orientable {
 	template <typename Integrator = Euler> void updatePositionsAndOrientations(double dt) {
 		Integrator::updatePosition(*cell, dt);
 		Integrator::updateOrientation(*this, dt);
+		logger<DBG>("Angular Velocity = ", this->angularVelocity);
 	}
 
 	std::tuple<Cell *, double> getConnectedCellAndMembraneDistance(const Vec &d) const {

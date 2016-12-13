@@ -79,6 +79,10 @@ struct GenericConnectionBodyPlugin {
 		cells.second->eraseConnectedCell(cells.first);
 		connections.erase(cells);
 	}
+	void deleteImpossibleConnections() {
+		for (auto &c : connections) {
+		}
+	}
 	/**
 	 * @brief we check for any cell cell collision or adhesion
 	 *
@@ -135,9 +139,15 @@ struct GenericConnectionBodyPlugin {
 		for (auto &c : connections) {
 			c.second->update(w.getDt());
 		}
-		for (auto &con : connections)
+		for (auto &con : connections) {
 			if (!con.second->fixedAdhesion && con.second->area <= 0)
 				toDisconnect.push_back(std::make_pair(con.first, con.second.get()));
+			else if (con.first.first->getBody().getConnectedCell(con.second->direction) !=
+			             con.first.second ||
+			         con.first.second->getBody().getConnectedCell(-con.second->direction) !=
+			             con.first.first)
+				toDisconnect.push_back(std::make_pair(con.first, con.second.get()));
+		}
 		for (auto &c : toDisconnect) disconnect(c.first, c.second);
 	}
 

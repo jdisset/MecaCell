@@ -49,8 +49,8 @@ template <typename Cell> class ContactSurfaceBody : public Orientable {
 		Cell *closestCell = nullptr;
 		double closestDist = dynamicRadius;
 		for (auto &con : cellConnections) {
-			auto normal = cell == con->cells.first ? -con->normal : con->normal;
-			double dot = normal.dot(d);
+			auto direction = cell == con->cells.first ? -con->direction : con->direction;
+			double dot = direction.dot(d);
 			if (dot < 0) {
 				const auto &midpoint =
 				    cell == con->cells.first ? con->midpoint.first : con->midpoint.second;
