@@ -1,18 +1,21 @@
 #ifndef CELLMANIPULATIONS_HPP
 #define CELLMANIPULATIONS_HPP
-#include "viewtools.h"
-#include <Qt>
 #include <QPointF>
 #include <QVector2D>
 #include <QVector3D>
 #include <QVector4D>
+#include <Qt>
+#include <algorithm>
+#include "viewtools.h"
 
 namespace MecacellViewer {
 template <typename R> void dragCell(R* r) {
+	// drags a cell using a spring
 	if (r->getSelectedCell()) {
 		auto viewportSize = r->getViewportSize();
 		auto& camera = r->getCamera();
 		auto selectedCell = r->getSelectedCell();
+		const double stiffness = selectedCell->getBody().getMass() * 100.0;
 		QVector2D mouseNDC(
 		    2.0 * r->getMousePosition().x() / (float)viewportSize.width() - 1.0,
 		    -((2.0 * r->getMousePosition().y()) / (float)viewportSize.height() - 1.0));
@@ -32,21 +35,23 @@ template <typename R> void dragCell(R* r) {
 			QVector3D projectedPos = l0 + d * l;
 			decltype(selectedCell->getPosition()) newPos(projectedPos.x(), projectedPos.y(),
 			                                             projectedPos.z());
-			selectedCell->setPosition(newPos / scaleFactor);
-			selectedCell->resetVelocity();
+			newPos = newPos / scaleFactor;
+			selectedCell->getBody().moveTo(newPos);
 		}
 	}
 }
+
 template <typename R> void pickCell(R* r, QPointF screenCoords) {
 	auto viewportSize = r->getViewportSize();
 	auto& camera = r->getCamera();
 	QVector2D mouseNDC(
 	    2.0 * screenCoords.x() / (float)viewportSize.width() - 1.0,
 	    -((2.0 * (float)screenCoords.y()) / (float)viewportSize.height() - 1.0));
-	QVector4D rayEye = camera.getProjectionMatrix((float)viewportSize.width() /
-	                                              (float)viewportSize.height())
-	                       .inverted() *
-	                   QVector4D(mouseNDC, -1.0, 1.0);
+	QVector4D rayEye =
+	    camera
+	        .getProjectionMatrix((float)viewportSize.width() / (float)viewportSize.height())
+	        .inverted() *
+	    QVector4D(mouseNDC, -1.0, 1.0);
 	rayEye = QVector4D(rayEye.x(), rayEye.y(), -1.0, 0.0);
 	QVector4D ray = camera.getViewMatrix().inverted() * rayEye;
 	QVector3D vray(ray.x(), ray.y(), ray.z());

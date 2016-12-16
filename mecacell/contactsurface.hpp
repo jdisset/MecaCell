@@ -70,7 +70,8 @@ template <typename Cell> struct ContactSurface {
 			    ortho.rotated(cells.first->getBody().getOrientationRotation().inverted()));
 			targets.first.d = midpoint.first / cells.first->getBody().getDynamicRadius();
 			targets.second.b = Basis<Vec>(
-			    (-direction).rotated(cells.second->getBody().getOrientationRotation().inverted()),
+			    (-direction)
+			        .rotated(cells.second->getBody().getOrientationRotation().inverted()),
 			    ortho.rotated(cells.second->getBody().getOrientationRotation().inverted()));
 			targets.second.d = midpoint.second / cells.second->getBody().getDynamicRadius();
 		}
@@ -102,11 +103,12 @@ template <typename Cell> struct ContactSurface {
 		adhCoef = min(
 		    cells.first->getAdhesionWith(
 		        cells.second,
-		        direction.rotated(cells.first->getBody().getOrientationRotation().inverted())),
+		        direction.rotated(
+		            cells.first->getBody().getOrientationRotation().inverted())),
 		    cells.second->getAdhesionWith(
 		        cells.first,
-		        (-direction).rotated(
-		            cells.second->getBody().getOrientationRotation().inverted())));
+		        (-direction)
+		            .rotated(cells.second->getBody().getOrientationRotation().inverted())));
 	}
 
 	std::pair<double, double> computeMidpoints(double distanceBtwnCenters) {
@@ -145,8 +147,8 @@ template <typename Cell> struct ContactSurface {
 		auto F = 0.5 * (area * (max(0.0, cells.first->getBody().getPressure()) +
 		                        max(0.0, cells.second->getBody().getPressure()))) *
 		         direction;
-		cells.first->receiveForce(-F);
-		cells.second->receiveForce(F);
+		cells.first->getBody().receiveForce(-F);
+		cells.second->getBody().receiveForce(F);
 	}
 
 	void applyAdhesiveForces(double dt) {
@@ -162,8 +164,9 @@ template <typename Cell> struct ContactSurface {
 		    targets.second.b.rotated(cells.second->getBody().getOrientationRotation())};
 
 		// projections of the target directions onto the current actual collision surface
-		Vec midpointPos = cells.first->getPosition() +
-		                  direction * midpoint.first;  // we need the actual midpoint position;
+		Vec midpointPos =
+		    cells.first->getPosition() +
+		    direction * midpoint.first;  // we need the actual midpoint position;
 
 		// std::pair<double, double> projDist = {
 		// Vec::rayCast(midpointPos, direction, cells.first->getPosition(),
@@ -251,16 +254,16 @@ template <typename Cell> struct ContactSurface {
 			double springSpeed = (linAdhElongation - prevLinAdhElongation) / dt;
 			double k = adhArea * adhCoef * baseBondStrength;
 			double ratioDamping =
-			    dampingFromRatio(dampCoef, cells.first->getMass() + cells.second->getMass(), k);
+			    dampingFromRatio(dampCoef, cells.first->getBody().getMass() + cells.second->getBody().getMass(), k);
 
 			Vec F = 0.5 * (k * linAdhElongation + (fixedDamping + ratioDamping) * springSpeed) *
 			        o0o1;
 			// cells.first receive F at o0 and in the direction o0o1
-			cells.first->receiveForce(F);
+			cells.first->getBody().receiveForce(F);
 			cells.first->getBody().receiveTorque(
 			    (targetsBw.first.X * computedTargetsDistances.first).cross(F));
 			// cells.second receive F at o1 and in the direction -o0o1
-			cells.second->receiveForce(-F);
+			cells.second->getBody().receiveForce(-F);
 			cells.second->getBody().receiveTorque(
 			    (targetsBw.second.X * computedTargetsDistances.second).cross(-F));
 		}

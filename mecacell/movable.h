@@ -9,7 +9,6 @@ class Movable {
 	Vec prevposition = Vec::zero();
 	Vec velocity = Vec::zero();
 	Vec force = Vec::zero();
-	Vec extForce = Vec::zero();  // not reset
 	bool movementEnabled = true;
 	double mass = Config::DEFAULT_CELL_MASS;
 	double totalForce = 0;
@@ -28,7 +27,6 @@ class Movable {
 	Vec getPrevposition() const { return prevposition; }
 	Vec getVelocity() const { return velocity; }
 	Vec getForce() const { return force; }
-	Vec getExternalForces() const { return extForce; }
 	double getMass() const { return mass; }
 	void setPosition(const Vec &p) { position = p; }
 	void setPrevposition(const Vec &p) { prevposition = p; }
@@ -44,9 +42,6 @@ class Movable {
 		totalForce += compressive ? intensity : -intensity;
 	}
 	void receiveForce(const Vec &f) { force += f; }
-	void receiveExternalForce(const Vec &f) { extForce += f; }
-	void applyExternalForces() { force += extForce; }
-	void resetExternalForces() { extForce = Vec::zero(); }
 	void resetVelocity() { velocity = Vec::zero(); }
 	void resetForce() {
 		totalForce = 0;
