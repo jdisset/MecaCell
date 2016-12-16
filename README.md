@@ -14,6 +14,10 @@ You will need cmake 2.8+, a relatively recent C++ compiler (C++11 support is req
 - cd in it and create a build directory
 - cmake .. && make && make install
 
+To install the viewer, you need to have Qt5 installed.
+You can use the latest Qt installer on the Qt website. Don't forget to tell cmake the location of your Qt5 installation. To do so, on Unix based systems, you can add to your .profile or .bashrc (or any script that can modify your environment variables) the following line:
+export CMAKE_PREFIX_PATH=$CMAKE_PREFIX_PATH:/your/path/to/Qt5
+
 ##Basic usage & ultra simple example
 You need at least one **cell type**.
    
