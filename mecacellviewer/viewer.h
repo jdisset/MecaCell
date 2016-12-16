@@ -157,69 +157,66 @@ template <typename Scenario> class Viewer : public SignalSlotRenderer {
 		////////////////////////////////
 		// list of default paint steps
 		/////////////////////////////////
-		// paintSteps.emplace("MSAA", psptr(new MSAA<R>(this)));
-		// paintSteps.emplace("Skybox", psptr(new Skybox<R>()));
-		// paintSteps.emplace("SphereCells", psptr(new CellGroup<R>()));
-		// paintSteps.emplace("Connections", psptr(new ConnectionsGroup<R>()));
-		// paintSteps.emplace("SSAO", psptr(new SSAO<R>(this)));
-		// paintSteps.emplace("Blur", psptr(new MenuBlur<R>(this)));
-		// screenManagers.push_back(dynamic_cast<ScreenManager<R>
-		// *>(paintSteps["MSAA"].get()));
-		// screenManagers.push_back(dynamic_cast<ScreenManager<R>
-		// *>(paintSteps["SSAO"].get()));
-		// screenManagers.push_back(dynamic_cast<ScreenManager<R>
-		// *>(paintSteps["Blur"].get()));
+		paintSteps.emplace("MSAA", psptr(new MSAA<R>(this)));
+		paintSteps.emplace("Skybox", psptr(new Skybox<R>()));
+		paintSteps.emplace("SphereCells", psptr(new CellGroup<R>()));
+		paintSteps.emplace("Connections", psptr(new ConnectionsGroup<R>()));
+		paintSteps.emplace("SSAO", psptr(new SSAO<R>(this)));
+		paintSteps.emplace("Blur", psptr(new MenuBlur<R>(this)));
+		screenManagers.push_back(dynamic_cast<ScreenManager<R> *>(paintSteps["MSAA"].get()));
+		screenManagers.push_back(dynamic_cast<ScreenManager<R> *>(paintSteps["SSAO"].get()));
+		screenManagers.push_back(dynamic_cast<ScreenManager<R> *>(paintSteps["Blur"].get()));
 
-		// cellsMenu.onToggled = [&](R *r, MenuElement<R> *me) {
-		// if (me->isChecked()) {
-		// if (me->at("Mesh type").at("Sphere").isChecked()) {
-		// paintStepsMethods[10] = [&](R *r) {
-		// CellGroup<R> *cells =
-		// dynamic_cast<CellGroup<R> *>(paintSteps["SphereCells"].get());
-		// cells->call(r, false);
-		//};
-		//} else if (me->at("Mesh type").at("Centers only").isChecked()) {
-		// paintStepsMethods[10] = [&](R *r) {
-		// CellGroup<R> *cells =
-		// dynamic_cast<CellGroup<R> *>(paintSteps["SphereCells"].get());
-		// cells->call(r, true);
-		//};
-		//} else
-		// paintStepsMethods.erase(10);
-		//} else
-		// paintStepsMethods.erase(10);
-		//};
+		cellsMenu.onToggled = [&](R *r, MenuElement<R> *me) {
+			if (me->isChecked()) {
+				if (me->at("Mesh type").at("Sphere").isChecked()) {
+					paintStepsMethods[10] = [&](R *r) {
+						CellGroup<R> *cells =
+						    dynamic_cast<CellGroup<R> *>(paintSteps["SphereCells"].get());
+						cells->call(r, false);
+					};
+				} else if (me->at("Mesh type").at("Centers only").isChecked()) {
+					paintStepsMethods[10] = [&](R *r) {
+						CellGroup<R> *cells =
+						    dynamic_cast<CellGroup<R> *>(paintSteps["SphereCells"].get());
+						cells->call(r, true);
+					};
+				} else
+					paintStepsMethods.erase(10);
+			} else
+				paintStepsMethods.erase(10);
+		};
 
-		// cellsMenu.at("Display connections").onToggled = [&](R *r, MenuElement<R> *me) {
-		// if (me->isChecked()) {
-		// paintStepsMethods[17] = [&](R *r) {
-		// ConnectionsGroup<R> *connections =
-		// dynamic_cast<ConnectionsGroup<R> *>(paintSteps["Connections"].get());
-		// connections->template draw<Cell>(
-		// r->getScenario().getWorld().getConnectedCellsList(), r->getViewMatrix(),
-		// r->getProjectionMatrix());
-		//};
-		//} else
-		// paintStepsMethods.erase(17);
-		//};
-		// MenuElement<R> ssaoPostproc = {"SSAO"};
-		// ssaoPostproc.onToggled = [&](R *r, MenuElement<R> *me) {
-		// if (me->isChecked()) {
-		// paintStepsMethods[1000000] = [&](R *r) { paintSteps["SSAO"]->call(r); };
-		//} else {
-		// paintStepsMethods[1000000] = [&](R *r) {
-		// dynamic_cast<SSAO<R> *>(paintSteps["SSAO"].get())->callDumb(r);
-		//};
-		//}
-		//};
+		cellsMenu.at("Display connections").onToggled = [&](R *r, MenuElement<R> *me) {
+			if (me->isChecked()) {
+				paintStepsMethods[17] = [&](R *r) {
+					ConnectionsGroup<R> *connections =
+					    dynamic_cast<ConnectionsGroup<R> *>(paintSteps["Connections"].get());
+					connections->template draw<Cell>(
+					    r->getScenario().getWorld().getConnectedCellsList(), r->getViewMatrix(),
+					    r->getProjectionMatrix());
+				};
+			} else
+				paintStepsMethods.erase(17);
+		};
+		MenuElement<R> ssaoPostproc = {"SSAO"};
+		ssaoPostproc.onToggled = [&](R *r, MenuElement<R> *me) {
+			if (me->isChecked()) {
+				paintStepsMethods[1000000] = [&](R *r) { paintSteps["SSAO"]->call(r); };
+			} else {
+				paintStepsMethods[1000000] = [&](R *r) {
+					dynamic_cast<SSAO<R> *>(paintSteps["SSAO"].get())->callDumb(r);
+				};
+			}
+		};
 
-		// MenuElement<R> postProcMenu = {"Post processing", {ssaoPostproc}};
-		// displayMenu = {"Enabled elements", {cellsMenu, postProcMenu}};
+		MenuElement<R> postProcMenu = {"Post processing", {ssaoPostproc}};
+		displayMenu = {"Enabled elements", {cellsMenu, postProcMenu}};
 
-		//// non disablable elements
-		// paintStepsMethods[0] = [&](R *r) { paintSteps["MSAA"]->call(r); };
-		// paintStepsMethods[5] = [&](R *r) { paintSteps["Skybox"]->call(r); };
-		// paintStepsMethods[2000000] = [&](R *r) { paintSteps["Blur"]->call(r); };
+		// non disablable elements
+		paintStepsMethods[0] = [&](R *r) { paintSteps["MSAA"]->call(r); };
+		paintStepsMethods[5] = [&](R *r) { paintSteps["Skybox"]->call(r); };
+		paintStepsMethods[2000000] = [&](R *r) { paintSteps["Blur"]->call(r); };
 
 		for (auto &f : hooks[Hooks::onLoad]) f(this);
 		displayMenu.callAll(this);

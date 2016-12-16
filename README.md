@@ -14,6 +14,7 @@ You will need cmake 2.8+, a relatively recent C++ compiler (C++11 support is req
 - cd in it and create a build directory
 - cmake .. && make && make install
 
+
 ##Basic usage & ultra simple example
 You need at least one **cell type**.
    
