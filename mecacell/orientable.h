@@ -6,7 +6,6 @@ class Orientable {
  protected:
 	Vec angularVelocity = Vec::zero();
 	Vec torque = Vec::zero();
-	Vec extTorque = Vec::zero();
 	Basis<Vec> orientation;
 	Rotation<Vec> orientationRotation;
 
@@ -31,9 +30,6 @@ class Orientable {
 	 *                  UPDATES
 	 **********************************************/
 	void receiveTorque(const Vec& t) { torque += t; }
-	void receiveExternalTorque(const Vec& t) { extTorque += t; }
-	void applyExternalTorque() { torque += extTorque; }
-	void resetExternalTorque() { extTorque = Vec::zero(); }
 	void updateCurrentOrientation() { orientation.updateWithRotation(orientationRotation); }
 	void resetTorque() { torque = Vec::zero(); }
 	void resetAngularVelocity() { angularVelocity = Vec::zero(); }

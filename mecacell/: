@@ -1,5 +1,5 @@
-#ifndef MECACELL_SPRINGCONNECTION_HPP
-#define MECACELL_SPRINGCONNECTION_HPP
+#ifndef MECACELL_ELASTICCONNECTION_HPP
+#define MECACELL_ELASTICCONNECTION_HPP
 #include <cmath>
 #include <utility>
 #include "spring.hpp"
@@ -8,17 +8,10 @@
 
 namespace MecaCell {
 /**
- * @brief A Spring Connection is a connection between two cells that aims to models both
- * attractive (for adhesion) and repulsive (for collision) forces. It can be seen as
- * composed of 4 dynamically updated mass-spring-damper systems (which can also be seen as
- * a simplified Euler-Bernouilli beam system):
- *  - 2 straight spring (collision + adhesion), called sc, directly attached to the cells
- * centers and whose
- * stiffness is dynamically updated and depends on the level of interpenetration (the
- * deformation of the cells) as well as their mutual attractions (their adhesions).
- *  - 2 rotational springs (AKA joints), flex & tors, ensuring orientation lock when the
- * cells
- * are in contact. These 2 springs can also be used to simulated friction.
+ * @brief An Elastic Connection is a connection between two cells that aims to models both
+ * attractive (for adhesion) and repulsive (for collision) forces. It is composed of
+ *  - a collision response using Hertz contact force
+ *  - an adhesion response modeled using 3 springs (1 straight, 2 rotational) whose params
  *
  * @tparam Cell a connectable cell class.
  * Required methods for Cell:
@@ -32,32 +25,41 @@ namespace MecaCell {
  * - void receiveTorque(Vec acc)
  * An implementaiton of these methods is available in the Orientable and Movable classes.
  */
-template <typename Cell> struct SpringConnection {
+
+template <typename Cell> struct ElasticConnection {
 	static const constexpr double COLLISION_DAMPING_RATIO = 0.5;
+	static const constexpr double ANGULAR_ADH_RATIO = 10.0;
 	static const constexpr double ADH_DAMPING_RATIO = 1.0;
 	static const constexpr double ADH_CONSTANT =
-	    0.03 * Config::DEFAULT_CELL_STIFFNESS;  // factor by which all adhesion forces is
-	                                            // multiplied
+	    0.005 * Config::DEFAULT_CELL_STIFFNESS;  // factor by which all adhesion forces is
+	                                             // multiplied
 	static const constexpr double MAX_TS_INCL =
 	    0.1;  // max angle before we need to reproject our torsion joint rotation
 
 	ordered_pair<Cell *> cells;
-	Spring collision;
 	Spring adhesion;
+	double area = 0;  // area of the contact disk
+	double invertRadii = 0;
+	double invertYoung = 0;
 	std::pair<double, double>
-	    midpoint;         // contact disk's distance to center (viewed from each cell)
-	double sqradius = 0;  // squared radius of the contact disk
-	double area = 0, adhArea = 0;  // area of the contact disk
-	Vector3D direction;            // normalized direction from cell 0 to cell 1
-	double dist;                   // distance btwn the two cells
+	    midpoint;        // contact disk's distance to center (viewed from each cell)
+	Vector3D direction;  // normalized direction from cell 0 to cell 1
+	double dist;         // distance btwn the two cells
 	std::pair<Joint, Joint> flex, tors;
-	bool adhesionEnabled = true, frictionEnabled = true, flexEnabled = false,
-	     torsEnabled = false, fixedAdhesion = false;
+	bool adhesionEnabled = true, frictionEnabled = true, torsEnabled = false,
+	     fixedAdhesion = false;
 
-	SpringConnection(){};
-	SpringConnection(ordered_pair<Cell *> c) : cells(c) { init(); };
+	ElasticConnection(){};
+	ElasticConnection(ordered_pair<Cell *> c) : cells(c) { init(); };
 
-	std::pair<double, double> computeMidpoints(double distanceBtwnCenters) {
+	void updateDirection() {
+		direction = cells.second->getPosition() - cells.first->getPosition();
+		dist = direction.length();
+		if (dist > 0) direction /= dist;
+		midpoint = computeMidpoints();
+	}
+
+	std::pair<double, double> computeMidpoints() {
 		// return the current contact disk's center distance to each cells centers
 		if (dist <= Config::DOUBLE_EPSILON) return {0, 0};
 
@@ -68,41 +70,36 @@ template <typename Cell> struct SpringConnection {
 		auto smallestCell = biggestCell == cells.first ? cells.second : cells.first;
 
 		double biggestCellMidpoint =
-		    0.5 * (distanceBtwnCenters +
+		    0.5 * (dist +
 		           (std::pow(biggestCell->getBody().getBoundingBoxRadius(), 2) -
 		            std::pow(smallestCell->getBody().getBoundingBoxRadius(), 2)) /
-		               distanceBtwnCenters);
-		double smallestCellMidpoint = distanceBtwnCenters - biggestCellMidpoint;
+		               dist);
+		double smallestCellMidpoint = dist - biggestCellMidpoint;
 		if (biggestCell == cells.first)
 			return {biggestCellMidpoint, smallestCellMidpoint};
 		else
 			return {smallestCellMidpoint, biggestCellMidpoint};
 	}
-	void updateDirection() {
-		direction =
-		    cells.second->getBody().getPosition() - cells.first->getBody().getPosition();
-		dist = direction.length();
-		if (dist > 0) direction /= dist;
+
+	void updateCollisionForces() {
+		double overlap = max(0.0, (cells.first->getBoundingBoxRadius() +
+		                           cells.second->getBoundingBoxRadius()) -
+		                              dist);
+		const auto &c0 = cells.first->getBody();
+		const auto &c1 = cells.first->getBody();
+		invertRadii = 1.0 / (1.0 / cells.first->getBoundingBoxRadius() +
+		                     1.0 / cells.second->getBoundingBoxRadius());
+		invertYoung = 1.0 / (((1.0 - pow(c0.getPoissonCoef(), 2)) / c0.getYoungModulus()) +
+		                     ((1.0 - pow(c1.getPoissonCoef(), 2)) / c1.getYoungModulus()));
+		double tempterm = sqrt(invertRadii) * pow(overlap, 3.0 / 2.0);
+		area = pow(cbrt(invertRadii * tempterm), 2) * M_PI;
+		auto F = direction * ((2.0 / 3.0) * invertYoung * tempterm);
+		cells.first->receiveForce(-F);
+		cells.second->receiveForce(F);
 	}
 
-	void updateCollisionParams() {
-		collision.restLength =
-		    cells.first->getBoundingBoxRadius() + cells.second->getBoundingBoxRadius();
-		collision.k =
-		    (cells.first->getBoundingBoxRadius() * cells.first->getBody().getStiffness() +
-		     cells.second->getBoundingBoxRadius() * cells.second->getBody().getStiffness()) /
-		    collision.restLength;
-		collision.c = dampingFromRatio(
-		    COLLISION_DAMPING_RATIO,
-		    cells.first->getBody().getMass() + cells.second->getBody().getMass(),
-		    collision.k);
-		midpoint = computeMidpoints(dist);
-		sqradius = max(0.0, std::pow(cells.first->getBody().getBoundingBoxRadius(), 2) -
-		                        midpoint.first * midpoint.first);
-		area = M_PI * sqradius;
-	}
-
-	void updateAdhesionParams() {
+	void updateAdhesionForces(double dt) {
+		adhesion.updateLength(dist);
 		double adhCoef = min(
 		    cells.first->getAdhesionWith(
 		        cells.second,
@@ -112,13 +109,10 @@ template <typename Cell> struct SpringConnection {
 		        cells.first,
 		        (-direction)
 		            .rotated(cells.second->getBody().getOrientationRotation().inverted())));
-		adhesion.k =
-		    max(cells.first->getBoundingBoxRadius(), cells.second->getBoundingBoxRadius())
-
-		    * ADH_CONSTANT * adhCoef;
+		adhesion.k = area * ADH_CONSTANT * adhCoef;
 		adhesion.c = dampingFromRatio(
-		    ADH_DAMPING_RATIO,
-		    cells.first->getBody().getMass() + cells.second->getBody().getMass(), adhesion.k);
+		    ADH_DAMPING_RATIO, cells.first->getMass() + cells.second->getMass(), adhesion.k);
+		adhesion.applyForce(*(cells.first), *(cells.second), direction, dt);
 	}
 
 	void initJoints() {
@@ -141,8 +135,8 @@ template <typename Cell> struct SpringConnection {
 		                           cells.first->getBody().getOrientationRotation());
 		tors.second.updateDirection(cells.second->getBody().getOrientation().Y,
 		                            cells.second->getBody().getOrientationRotation());
-		tors.first.k = adhesion.k * area;
-		tors.second.k = adhesion.k * area;
+		tors.first.k = adhesion.k * ANGULAR_ADH_RATIO;
+		tors.second.k = adhesion.k * ANGULAR_ADH_RATIO;
 		tors.first.c = dampingFromRatio(ADH_DAMPING_RATIO,
 		                                cells.first->getBody().getMomentOfInertia() +
 		                                    cells.second->getBody().getMomentOfInertia(),
@@ -155,8 +149,8 @@ template <typename Cell> struct SpringConnection {
 		                           cells.first->getBody().getOrientationRotation());
 		flex.second.updateDirection(cells.second->getBody().getOrientation().X,
 		                            cells.second->getBody().getOrientationRotation());
-		flex.first.k = adhesion.k * area;
-		flex.second.k = adhesion.k * area;
+		flex.first.k = adhesion.k * ANGULAR_ADH_RATIO;
+		flex.second.k = adhesion.k * ANGULAR_ADH_RATIO;
 		flex.first.c = dampingFromRatio(ADH_DAMPING_RATIO,
 		                                cells.first->getBody().getMomentOfInertia() +
 		                                    cells.second->getBody().getMomentOfInertia(),
@@ -166,9 +160,6 @@ template <typename Cell> struct SpringConnection {
 
 	void init() {
 		updateDirection();
-		collision.prevLength = dist;
-		collision.length = dist;
-		updateCollisionParams();
 		if (adhesionEnabled) {
 			adhesion.length = dist;
 			adhesion.prevLength = dist;
@@ -199,12 +190,13 @@ template <typename Cell> struct SpringConnection {
 		double torque =
 		    flexNode.k * flexNode.delta.teta +
 		    flexNode.c * ((flexNode.delta.teta - flexNode.prevDelta.teta) / dt);  // -kx - cv
-		Vec vFlex = flexNode.delta.n * torque;                                    // torque
+		logger<DBG>("torque = ", torque);
+		Vec vFlex = flexNode.delta.n * torque;                       // torque
 		Vec ortho = direction.ortho(flexNode.delta.n).normalized();  // force direction
 		Vec force = sign * ortho * torque / dist;
 
-		cell->getBody().receiveForce(-force);
-		other->getBody().receiveForce(force);
+		cell->receiveForce(-force);
+		other->receiveForce(force);
 
 		cell->getBody().receiveTorque(vFlex);
 		flexNode.prevDelta = flexNode.delta;
@@ -230,25 +222,37 @@ template <typename Cell> struct SpringConnection {
 			cell->getBody().receiveTorque(vTorsion);
 		}
 	}
-
 	void update(double dt) {
 		updateDirection();
-		// updating collision and adhesion springs
-		collision.updateLength(dist);
-		updateCollisionParams();
-		collision.applyForce(cells.first->getBody(), cells.second->getBody(), direction, dt);
+		updateCollisionForces();
 		if (adhesionEnabled) {
-			adhesion.updateLength(dist);
-			updateAdhesionParams();
-			adhesion.applyForce(cells.first->getBody(), cells.second->getBody(), direction, dt);
-			if (flexEnabled) updateFlexParams();
+			updateAdhesionForces(dt);
+			updateFlexParams();
 			if (torsEnabled) updateTorsParams();
-			if (flexEnabled || torsEnabled) {
-				updateJointsForces<0>(dt);
-				updateJointsForces<1>(dt);
-			}
+			updateJointsForces<0>(dt);
+			updateJointsForces<1>(dt);
 		}
 	}
+	// ALGO POUR CONNECTIONS
+	// raisonner en surface : il y a une surface d'adhésion en un instant T, et une
+	// histérésie pour la création / suppression de liens.
+	// on a une distance de création de nouveau liens bondReachDist, une distance de casse
+	// bondBreakDist. La force de rappel c'est en permanence
+	// le delta surface d'adhésion * la distance qu'il faudrait pour atteindre la surface
+	// cible. Ça c'est pour l'adhésion dans l'axe.
+	// Ensuite pour garder les contraintes en rotation, on utilise les joints, mais juste
+	// pour le calcul de l'angle, c'est pas des ressorts classiques. On se sert de l'angle
+	// pour calculer le barycentre de tous les liens qui sont allongés à cause de la
+	// rotation. Quand on l'a, on applique aux membranes une force de rappel qui sera donc
+	// colinéaire à la force de rejet mais excentrée.
+	//
+	// \=====/  <-- force de rappel au barycentre  de l'élongation (donc torque + f)
+	//  \===/
+	//   \-/
+	//    |
+	//    | --> force de rejet au centre de la surface de contact (donc direct aux centres)
+	//    |
+	//
 };
 }
 #endif

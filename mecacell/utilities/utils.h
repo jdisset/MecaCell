@@ -58,7 +58,7 @@ template <typename T> inline constexpr T constpow(const T base, unsigned const e
 	return (exponent == 0) ? 1 : (base * constpow(base, exponent - 1));
 }
 // converts a class enum to its corresponding size_t
-template <typename T> constexpr unsigned int eToUI(const T &t) {
+template <typename T> constexpr size_t eToUI(const T &t) {
 	return static_cast<size_t>(t);
 }
 

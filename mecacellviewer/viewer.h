@@ -340,7 +340,14 @@ template <typename Scenario> class Viewer : public SignalSlotRenderer {
 		}
 
 		for (auto &f : hooks[Hooks::preDraw]) f(this);
-		for (auto &s : paintStepsMethods) s.second(this);
+		 for (auto &s : paintStepsMethods) s.second(this);
+		//auto s = this->getViewportSize() * this->getWindow()->devicePixelRatio() *
+				 //this->getScreenScaleCoef();
+		//GL->glViewport(0, 0, s.width(), s.height());
+		//GL->glDepthMask(true);
+		//GL->glClearColor(0.1, .4, 0.7, 1.0);
+		//GL->glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		//GL->glEnable(GL_DEPTH_TEST);
 		for (auto &f : hooks[Hooks::postDraw]) f(this);
 
 		updateStats();

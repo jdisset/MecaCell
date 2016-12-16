@@ -48,6 +48,11 @@ template <typename V> struct Rotation {
 		R.compress();
 		return R;
 	}
+	Rotation operator-(const Rotation& R2) const {
+		Rotation R = V::addRotations(-R2, *this);
+		R.compress();
+		return R;
+	}
 };
 }
 

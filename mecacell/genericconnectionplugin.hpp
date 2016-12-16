@@ -46,7 +46,7 @@ struct GenericConnectionBodyPlugin {
 		    [dt = w->getDt()](auto &c) { c->body.updatePositionsAndOrientations(dt); });
 		w->threadpool.waitUntilLast();
 		for (auto &c : w->cells) {
-			c->resetForce();
+			c->body.resetForce();
 			c->body.resetTorque();
 		}
 		// logger<INF>("post 1");
@@ -105,7 +105,7 @@ struct GenericConnectionBodyPlugin {
 					for (size_t i = 0; i < batch.size(); ++i) {
 						for (size_t j = i + 1; j < batch.size(); ++j) {
 							auto op = make_ordered_cell_pair(batch[i], batch[j]);
-							Vec AB = op.second->position - op.first->position;
+							Vec AB = op.second->getPosition() - op.first->getPosition();
 							double sqDistance = AB.sqlength();
 							if (sqDistance < std::pow(op.first->body.getBoundingBoxRadius() +
 							                              op.second->body.getBoundingBoxRadius(),

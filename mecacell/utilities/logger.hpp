@@ -120,7 +120,7 @@ template <typename Type, typename... Args> void logger(Args&&... args) {
 		time(&rawtime);
 		struct tm* timeinfo = localtime(&rawtime);
 		char buffer[80];
-		strftime(buffer, 80, "\%F %H:%M:\%S", timeinfo);
+		strftime(buffer, 80, "%F %H:%M:%S", timeinfo);
 
 		std::ostringstream os;
 		os << BOLDBLACK << "[" << buffer << "]" << RESET << Type::color << " " << Type::tag

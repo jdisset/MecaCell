@@ -30,7 +30,7 @@ namespace MecaCell {
  * @tparam Body the body implemebtation (which contains most of the core logic)
  */
 template <class Derived, template <class> class Body = ContactSurfaceBody>
-class ConnectableCell : public Movable {
+class ConnectableCell {
  public:
 	using body_t = Body<Derived>;
 	using embedded_plugin_t = typename body_t::embedded_plugin_t;
@@ -83,7 +83,7 @@ class ConnectableCell : public Movable {
 	 *
 	 * @param pos initial position of the cell's kernel
 	 */
-	ConnectableCell(Vec pos) : Movable(pos), body(static_cast<Derived *>(this)) {}
+	ConnectableCell(Vec pos) : body(static_cast<Derived *>(this), pos) {}
 
 	ConnectableCell() : ConnectableCell(Vec(0, 0, 0)) {}
 
@@ -109,6 +109,7 @@ class ConnectableCell : public Movable {
 	 */
 	void die() { dead = true; }
 	bool isDead() { return dead; }
+	Vector3D getPosition() { return body.getPosition(); }
 
 	void setColorRGB(size_t r, size_t g, size_t b) {
 		color = {{static_cast<double>(r) / 255.0, static_cast<double>(g) / 255.0,
@@ -118,6 +119,7 @@ class ConnectableCell : public Movable {
 	void setColorRGB(std::array<double, 3> rgb) { color = rgb; }
 	void setColorHSV(double H, double S, double V) { color = hsvToRgb(H, S, V); }
 	void setColorHSV(std::array<double, 3> hsv) { setColorHSV(hsv[0], hsv[1], hsv[2]); }
+	
 
 	/**
 	 * @brief should a viewer displpay this cell ?
@@ -134,9 +136,7 @@ class ConnectableCell : public Movable {
 	string toString() {
 		stringstream s;
 		s << "Cell " << id << " :" << std::endl;
-		s << " position = " << position << std::endl;
-		s << " velocity = " << velocity << std::endl;
-		s << " force = " << force << std::endl;
+		s << " position = " << getPosition() << std::endl;
 		s << " nbConnections = " << connectedCells.size();
 		return s.str();
 	}

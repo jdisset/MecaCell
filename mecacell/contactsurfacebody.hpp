@@ -4,6 +4,7 @@
 #include <memory>
 #include "contactsurface.hpp"
 #include "genericconnectionplugin.hpp"
+#include "geometry/particle.hpp"
 #include "integrators.hpp"
 #include "orientable.h"
 #include "utilities/grid.hpp"
@@ -12,8 +13,8 @@
 
 namespace MecaCell {
 
-template <typename Cell> class ContactSurfaceBody : public Orientable {
-	friend class GenericConnectionBodyPlugin<Cell, ContactSurface>;
+template <typename Cell> class ContactSurfaceBody : public OrientedParticle {
+	friend struct GenericConnectionBodyPlugin<Cell, ContactSurface>;
 
 	Cell *cell = nullptr;
 	std::vector<ContactSurface<Cell> *> cellConnections;
@@ -36,9 +37,13 @@ template <typename Cell> class ContactSurfaceBody : public Orientable {
  public:
 	using embedded_plugin_t = GenericConnectionBodyPlugin<Cell, ContactSurface>;
 
-	ContactSurfaceBody(Cell *c) : cell(c){};
+	ContactSurfaceBody(Cell *c, Vector3D pos = Vector3D::zero())
+	    : OrientedParticle(pos), cell(c){};
 
-	void updateInternals(double dt){computeCurrentAreaAndVolume(); updateDynamicRadius(dt);}
+	void updateInternals(double dt) {
+		computeCurrentAreaAndVolume();
+		updateDynamicRadius(dt);
+	}
 	void setVolumeConservationEnabled(bool v) { volumeConservationEnabled = v; }
 	void setRestVolume(double v) { restVolume = v; }
 	void setRestRadius(double r) { restRadius = r; }
@@ -111,8 +116,8 @@ template <typename Cell> class ContactSurfaceBody : public Orientable {
 	 * @param dt
 	 */
 	template <typename Integrator = Euler> void updatePositionsAndOrientations(double dt) {
-		Integrator::updatePosition(*cell, dt);
-		Integrator::updateOrientation(*this, dt);
+		Integrator::updatePosition(*this, dt);
+		Integrator::updateOrientation(*this, getMomentOfInertia(), dt);
 	}
 
 	void solidifyAdhesions() {
@@ -133,7 +138,7 @@ template <typename Cell> class ContactSurfaceBody : public Orientable {
 		restVolume = (4.0 * M_PI / 3.0) * restRadius * restRadius * restRadius;
 	}
 	inline double getRestMomentOfInertia() const {
-		return 0.4 * cell->getMass() * restRadius * restRadius;
+		return 0.4 * this->getMass() * restRadius * restRadius;
 	}
 
 	inline double getMomentOfInertia() const { return getRestMomentOfInertia(); }
@@ -146,6 +151,7 @@ template <typename Cell> class ContactSurfaceBody : public Orientable {
 	void setDynamicRadius(double r) { dynamicRadius = r; }
 	double getPressure() const { return pressure; }
 	double getRestRadius(void) const { return restRadius; }
+	void moveTo(Vector3D newpos) { this->setPosition(newpos); }
 };
 }
 #endif
