@@ -78,6 +78,38 @@ template <typename Cell> struct ElasticConnection {
 		cells.second->getBody().receiveForce(F);
 	}
 
+	void updateAdhesionForces(double) {
+		/*
+		           dir
+		          x---->
+
+		       *  *       *  *
+		    *  pf1t2 * *  pf2t1 *
+		   *  <--x    *    x-->  *
+		   *          *          *
+		    *        * *        *
+		       *  *       *  *
+		       c1          c2
+
+		 */
+
+		const double adhCoef = 0.1;
+		double resistiveForce = area * adhCoef;
+
+		// first we compute the force's component parrallel to the collision axis
+		// and only the forces trying to separate the cells
+		double parallelForce1to2 =
+		    std::max(-cells.first->getBody().getForce().dot(direction), 0.0);
+		double parallelForce2to1 =
+		    std::max(cells.second->getBody().getForce().dot(direction), 0.0);
+		double sum = parallelForce2to1 + parallelForce1to2;
+		logger<DBG>("pf2t1 = ", parallelForce2to1);
+		logger<DBG>("pf1t2 = ", parallelForce1to2);
+		cells.first->getBody().receiveForce(parallelForce2to1 * direction);
+		cells.second->getBody().receiveForce(-parallelForce1to2 * direction);
+		logger<DBG>("sum = ", sum);
+	}
+
 	void init() {
 		updateDirection();
 		prevDist = dist;
@@ -86,12 +118,8 @@ template <typename Cell> struct ElasticConnection {
 		updateDirection();
 		updateCollisionForces();
 		if (adhesionEnabled) {
-			// updateAdhesionForces(dt);
+			updateAdhesionForces(dt);
 		}
-	}
-
-	void updateAdhesionForces(double dt) {
-		// just stronger static frition forces
 	}
 };
 }

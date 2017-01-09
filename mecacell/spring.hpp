@@ -40,7 +40,7 @@ struct Spring {
 struct Joint {
 	double k = 1.0;                // angular stiffness
 	double c = 1.0;                // damp
-	double maxTeta = M_PI / 30.0;  // maximum angle
+	double maxTeta = M_PI / 10.0;  // maximum angle
 	Rotation<Vec> r;               // rotation from node to joint
 	Rotation<Vec> delta;           // current rotation
 	Rotation<Vec> prevDelta;

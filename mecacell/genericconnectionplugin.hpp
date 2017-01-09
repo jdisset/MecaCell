@@ -31,15 +31,12 @@ struct GenericConnectionBodyPlugin {
 	 * HOOKS
 	 * *******/
 	template <typename W> void preBehaviorUpdate(W *w) {
-		// logger<INF>("pre 0");
-		updateCellCellConnections(*w);
 		w->threadpool.autoChunks(w->cells, MIN_CHUNK_SIZE, AVG_TASKS_PER_THREAD,
 		                         [dt = w->getDt()](auto &c) { c->body.updateInternals(dt); });
 		w->threadpool.waitUntilLast();
-		// logger<INF>("pre 1");
+		updateCellCellConnections(*w);
 	}
 	template <typename W> void postBehaviorUpdate(W *w) {
-		// logger<INF>("post 0");
 		checkForCellCellConnections(*w);
 		w->threadpool.autoChunks(
 		    w->cells, MIN_CHUNK_SIZE, AVG_TASKS_PER_THREAD,
@@ -49,7 +46,6 @@ struct GenericConnectionBodyPlugin {
 			c->body.resetForce();
 			c->body.resetTorque();
 		}
-		// logger<INF>("post 1");
 	}
 
 	////////////////////////////////////////////////////////////////////////////

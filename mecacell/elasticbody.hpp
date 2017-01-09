@@ -25,15 +25,17 @@ template <typename H> struct GhostCenter : public OrientedParticle {
 	}
 	template <typename Integrator = Euler> void update(double dt, double momentOfInertia) {
 		this->mass = host.getMass();
+		logger<DBG>("GhostCenter force = ", this->force);
 		Integrator::updatePosition(*this, dt);
 		Integrator::updateOrientation(*this, momentOfInertia, dt);
 		auto dir = this->position - host.getPosition();
 		double l = dir.length();
 		if (l > 0) {
 			dir = dir / l;
-			double f = std::min(1.0 / dt, l * l * fK);
+			double f = std::min(1.0 / dt, l * fK);
 			host.receiveForce(dir * f);
-			host.receiveForce(-host.getVelocity());
+			host.receiveForce(-host.getVelocity() * 0.05);
+			logger<DBG>("Host total force = ", host.getForce(), " (sent = ", dir * f, ")");
 		}
 		prevDist = l;
 		// auto rot = Vector3D::getRotation(this->getOrientation(), host.getOrientation());
@@ -78,8 +80,6 @@ template <typename Cell> class ElasticBody {
 	void receiveForce(const Vec &f) { ghostCenter.receiveForce(f); }
 
 	template <typename Integrator = Euler> void updatePositionsAndOrientations(double dt) {
-		auto moi = getMomentOfInertia();
-		ghostCenter.update(dt, moi);
 		Integrator::updatePosition(realCenter, dt);
 		// Integrator::updateOrientation(realCenter, moi, dt);
 	}
@@ -119,7 +119,11 @@ template <typename Cell> class ElasticBody {
 		ghostCenter.setPosition(newpos);
 		ghostCenter.setVelocity(Vec::zero());
 	}
-	void updateInternals(double) {}
+
+	void updateInternals(double dt) {
+		auto moi = getMomentOfInertia();
+		ghostCenter.update(dt, moi);
+	}
 };
 }
 #endif
