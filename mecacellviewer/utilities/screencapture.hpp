@@ -1,7 +1,6 @@
 #ifndef SCREENCAPTURE_HPP
 #define SCREENCAPTURE_HPP
 #include "viewtools.h"
-#include "blurquad.hpp"
 #include "screenmanager.hpp"
 #include <memory>
 #include <QOpenGLFramebufferObject>
@@ -29,6 +28,7 @@ template <typename R> class MenuScreenCapture : public ScreenManager<R> {
 	// r->getCurrentFBO()->toImage().save(path + QString("capture_") +
 	// QString::number(cap++) + ".png");
 	//}
+	
 	void call(R* r) {
 		if (r->getCurrentFBO()) {
 			if (r->getFrame() % NBFRAMEPERSCREEN == 0) {

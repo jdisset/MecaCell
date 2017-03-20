@@ -27,6 +27,13 @@ struct GenericConnectionBodyPlugin {
 	const double gridCellRatio = 4.0;  /// grid size relative to the currentAvgCellSize
 	std::mutex connectionMutex;
 
+	// a callback called at every new connection
+	std::function<void(GenericConnection<Cell> *)> newConnectionCallback =
+	    [](GenericConnection<Cell> *) {};
+	void setNewConnectionCallback(std::function<void(GenericConnection<Cell> *)> f) {
+		newConnectionCallback = f;
+	}
+
 	/* *******
 	 * HOOKS
 	 * *******/
@@ -36,6 +43,7 @@ struct GenericConnectionBodyPlugin {
 		w->threadpool.waitUntilLast();
 		updateCellCellConnections(*w);
 	}
+
 	template <typename W> void postBehaviorUpdate(W *w) {
 		checkForCellCellConnections(*w);
 		w->threadpool.autoChunks(
@@ -61,6 +69,7 @@ struct GenericConnectionBodyPlugin {
 		auto *newConnection = connections.at(cells).get();
 		cells.first->body.cellConnections.push_back(newConnection);
 		cells.second->body.cellConnections.push_back(newConnection);
+		newConnectionCallback(newConnection);
 	}
 	/**
 	 * @brief Disconnect two cells

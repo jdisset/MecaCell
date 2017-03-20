@@ -47,7 +47,7 @@ struct Scene3D {
 	 * @return a vector of container objects names, ordered by distance (closest englobing
 	 * first)
 	 */
-	std::vector<std::string> isInside(const Vector3D &v) {
+	std::vector<std::string> isInside(const Vector3D &v) const {
 		std::vector<std::pair<std::string, double>> containers;
 		for (auto &o : transformedObjects) {
 			std::pair<std::pair<size_t, double>, std::pair<size_t, double>> hits{
@@ -130,8 +130,11 @@ struct Scene3D {
 	 */
 	void load(const string &filepath) {
 		std::ifstream file(filepath);
-		string line;
+		if (!file.is_open()) {
+			throw std::runtime_error("Unable to open scene3D file");
+		}
 
+		string line;
 		Obj3D *currentObjPtr = nullptr;
 		std::string currentObj = "";
 		size_t currentObjVertexId = 0, currentObjUVId = 0, currentObjNormalId = 0;

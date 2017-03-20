@@ -16,6 +16,10 @@ file(GLOB PRIMHEADERS
 	"primitives/*.h"
 	"primitives/*.hpp"
 	)
+file(GLOB PLUGINSHEADERS
+	"plugins/*.h"
+	"plugins/*.hpp"
+	)
 file(GLOB MANAGERSHEADERS
 	"managers/*.h"
 	"managers/*.hpp"
@@ -40,12 +44,13 @@ set(VIEWSRC
 	${VIEWSRC}
 	${RESOURCES}
 	)
-add_library(mecacellviewer SHARED ${VIEWSRC} ${VIEWHEADERS} ${PRIMHEADERS} ${MANAGERSHEADERS} ${RENDERABLESHEADERS} ${UTILITIESHEADERS} ${MENUHEADERS})
+add_library(mecacellviewer SHARED ${VIEWSRC} ${VIEWHEADERS} ${PRIMHEADERS} ${PLUGINSHEADERS} ${MANAGERSHEADERS} ${RENDERABLESHEADERS} ${UTILITIESHEADERS} ${MENUHEADERS})
 qt5_use_modules(mecacellviewer Quick Core Gui OpenGL)
 
 install (TARGETS mecacellviewer DESTINATION lib)
 install (FILES ${VIEWHEADERS} DESTINATION include/mecacell/viewer)
 install (FILES ${PRIMHEADERS} DESTINATION include/mecacell/viewer/primitives)
+install (FILES ${PLUGINSHEADERS} DESTINATION include/mecacell/viewer/plugins)
 install (FILES ${MANAGERSHEADERS} DESTINATION include/mecacell/viewer/managers)
 install (FILES ${UTILITIESHEADERS} DESTINATION include/mecacell/viewer/utilities)
 install (FILES ${RENDERABLESHEADERS} DESTINATION include/mecacell/viewer/renderables)

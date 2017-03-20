@@ -1,6 +1,14 @@
 #ifndef MECACELLVIEWER_MODEL_HPP
 #define MECACELLVIEWER_MODEL_HPP
+#include <QMatrix4x4>
+#include <QOpenGLBuffer>
+#include <QOpenGLShaderProgram>
+#include <QOpenGLTexture>
+#include <QOpenGLVertexArrayObject>
 #include <QThread>
+#include <QVector3D>
+#include <cmath>
+#include <iostream>
 #include <vector>
 #include "../utilities/viewtools.h"
 

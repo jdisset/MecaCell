@@ -1,5 +1,8 @@
 #ifndef MECACELLVIEWER_MESH_VIEWER_PLUGIN_HPP
 #define MECACELLVIEWER_MESH_VIEWER_PLUGIN_HPP
+#include <mecacell/utilities/obj3D.hpp>
+#include "../primitives/model.hpp"
+
 namespace MecacellViewer {
 
 /**
@@ -17,6 +20,7 @@ struct MeshViewerPlugin {
 	 * @param s a pointer to the 3D scene to be rendered
 	 */
 	MeshViewerPlugin(MecaCell::Scene3D* s) : scene(s) {}
+
 	template <typename R> void onLoad(R* renderer) {
 		std::cerr << "MeshViewerPlugin = " << this << std::endl;
 		for (auto& o : scene->transformedObjects) {

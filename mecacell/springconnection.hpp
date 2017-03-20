@@ -33,13 +33,11 @@ namespace MecaCell {
  * An implementaiton of these methods is available in the Orientable and Movable classes.
  */
 template <typename Cell> struct SpringConnection {
-	static const constexpr double COLLISION_DAMPING_RATIO = 0.5;
-	static const constexpr double ADH_DAMPING_RATIO = 1.0;
-	static const constexpr double ANG_ADH_COEF = 10.0;
-	static const constexpr double ADH_CONSTANT =
-	    0.03 * Config::DEFAULT_CELL_STIFFNESS;  // factor by which all adhesion forces is
-	                                            // multiplied
-	static const constexpr double MAX_TS_INCL =
+	double COLLISION_DAMPING_RATIO = 0.5;
+	double ADH_DAMPING_RATIO = 1.0;
+	double ANG_ADH_COEF = 10.0;
+	double ADH_CONSTANT = 0.05;  // factor by which all adhesion forces is multiplied
+	double MAX_TS_INCL =
 	    0.1;  // max angle before we need to reproject our torsion joint rotation
 
 	ordered_pair<Cell *> cells;
@@ -52,7 +50,7 @@ template <typename Cell> struct SpringConnection {
 	Vector3D direction;            // normalized direction from cell 0 to cell 1
 	double dist;                   // distance btwn the two cells
 	std::pair<Joint, Joint> flex, tors;
-	bool adhesionEnabled = true, frictionEnabled = true, flexEnabled = true,
+	bool adhesionEnabled = true, frictionEnabled = false, flexEnabled = false,
 	     torsEnabled = false, fixedAdhesion = false;
 
 	SpringConnection(){};
@@ -114,10 +112,7 @@ template <typename Cell> struct SpringConnection {
 		        cells.first,
 		        (-direction)
 		            .rotated(cells.second->getBody().getOrientationRotation().inverted())));
-		adhesion.k =
-		    max(cells.first->getBoundingBoxRadius(), cells.second->getBoundingBoxRadius())
-
-		    * ADH_CONSTANT * adhCoef;
+		adhesion.k = ADH_CONSTANT * adhCoef;
 		adhesion.c = dampingFromRatio(
 		    ADH_DAMPING_RATIO,
 		    cells.first->getBody().getMass() + cells.second->getBody().getMass(), adhesion.k);
@@ -168,11 +163,6 @@ template <typename Cell> struct SpringConnection {
 		                                    cells.second->getBody().getMomentOfInertia(),
 		                                flex.first.k);
 		flex.second.c = flex.first.c;
-		logger<DBG>("paire ", cells.first->id, " <-> ", cells.second->id);
-		logger<DBG>("first flex dir = ", flex.first.direction, ", target = ",
-		            flex.first.target);
-		logger<DBG>("second flex dir = ", flex.second.direction, ", target = ",
-		            flex.second.target);
 	}
 
 	void init() {

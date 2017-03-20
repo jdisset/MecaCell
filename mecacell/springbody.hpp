@@ -26,6 +26,7 @@ template <typename Cell> class SpringBody : public OrientedParticle {
 	void setRestRadius(double r) { restRadius = r; }
 	double getBoundingBoxRadius() const { return restRadius; };
 	double getStiffness() const { return stiffness; }
+	void setStiffness(double k) { stiffness = k; }
 	double getMomentOfInertia() const { return 0.4 * this->mass * restRadius * restRadius; }
 	template <typename Integrator = Euler> void updatePositionsAndOrientations(double dt) {
 		Integrator::updatePosition(*this, dt);

@@ -20,8 +20,8 @@ template <typename Cell> class ContactSurfaceBody : public OrientedParticle {
 	std::vector<ContactSurface<Cell> *> cellConnections;
 
 	// params
-	double incompressibility = 0.1;
-	double membraneStiffness = 15;
+	double incompressibility = 0.01;
+	double membraneStiffness = 0.5;
 
 	double restRadius = 40;  /// radiius of the cell when at rest
 	// dynamic target radius:
