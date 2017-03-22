@@ -44,7 +44,7 @@ struct GenericConnectionBodyPlugin {
 		updateCellCellConnections(*w);
 	}
 
-	template <typename W> void postBehaviorUpdate(W *w) {
+	template <typename W> void endUpdate(W *w) {
 		checkForCellCellConnections(*w);
 		w->threadpool.autoChunks(
 		    w->cells, MIN_CHUNK_SIZE, AVG_TASKS_PER_THREAD,
@@ -145,13 +145,15 @@ struct GenericConnectionBodyPlugin {
 			c.second->update(w.getDt());
 		}
 		for (auto &con : connections) {
-			if (!con.second->fixedAdhesion && con.second->area <= 0)
-				toDisconnect.push_back(std::make_pair(con.first, con.second.get()));
-			else if (con.first.first->getBody().getConnectedCell(con.second->direction) !=
-			             con.first.second ||
-			         con.first.second->getBody().getConnectedCell(-con.second->direction) !=
-			             con.first.first)
-				toDisconnect.push_back(std::make_pair(con.first, con.second.get()));
+			if (!con.second->unbreakable) {
+				if (con.second->area <= 0)
+					toDisconnect.push_back(std::make_pair(con.first, con.second.get()));
+				else if (con.first.first->getBody().getConnectedCell(con.second->direction) !=
+				             con.first.second ||
+				         con.first.second->getBody().getConnectedCell(-con.second->direction) !=
+				             con.first.first)
+					toDisconnect.push_back(std::make_pair(con.first, con.second.get()));
+			}
 		}
 		for (auto &c : toDisconnect) disconnect(c.first, c.second);
 	}

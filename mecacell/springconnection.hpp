@@ -36,7 +36,7 @@ template <typename Cell> struct SpringConnection {
 	double COLLISION_DAMPING_RATIO = 0.5;
 	double ADH_DAMPING_RATIO = 1.0;
 	double ANG_ADH_COEF = 10.0;
-	double ADH_CONSTANT = 0.05;  // factor by which all adhesion forces is multiplied
+	double ADH_CONSTANT = 0.1;  // factor by which all adhesion forces is multiplied
 	double MAX_TS_INCL =
 	    0.1;  // max angle before we need to reproject our torsion joint rotation
 
@@ -51,7 +51,8 @@ template <typename Cell> struct SpringConnection {
 	double dist;                   // distance btwn the two cells
 	std::pair<Joint, Joint> flex, tors;
 	bool adhesionEnabled = true, frictionEnabled = false, flexEnabled = false,
-	     torsEnabled = false, fixedAdhesion = false;
+	     torsEnabled = false, unbreakable = false;
+	double adhCoef = 0.5;
 
 	SpringConnection(){};
 	SpringConnection(ordered_pair<Cell *> c) : cells(c) { init(); };
@@ -103,15 +104,17 @@ template <typename Cell> struct SpringConnection {
 	}
 
 	void updateAdhesionParams() {
-		double adhCoef = min(
-		    cells.first->getAdhesionWith(
-		        cells.second,
-		        direction.rotated(
-		            cells.first->getBody().getOrientationRotation().inverted())),
-		    cells.second->getAdhesionWith(
-		        cells.first,
-		        (-direction)
-		            .rotated(cells.second->getBody().getOrientationRotation().inverted())));
+		if (!unbreakable) {
+			adhCoef = min(
+			    cells.first->getAdhesionWith(
+			        cells.second,
+			        direction.rotated(
+			            cells.first->getBody().getOrientationRotation().inverted())),
+			    cells.second->getAdhesionWith(
+			        cells.first,
+			        (-direction)
+			            .rotated(cells.second->getBody().getOrientationRotation().inverted())));
+		}
 		adhesion.k = ADH_CONSTANT * adhCoef;
 		adhesion.c = dampingFromRatio(
 		    ADH_DAMPING_RATIO,

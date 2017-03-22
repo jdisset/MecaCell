@@ -24,6 +24,7 @@ template <typename Cell> class SpringBody : public OrientedParticle {
 	using embedded_plugin_t = GenericConnectionBodyPlugin<Cell, SpringConnection>;
 	SpringBody(Cell *c, Vector3D pos = Vector3D::zero()) : OrientedParticle(pos), cell(c) {}
 	void setRestRadius(double r) { restRadius = r; }
+	double getRestRadius() { return restRadius; }
 	double getBoundingBoxRadius() const { return restRadius; };
 	double getStiffness() const { return stiffness; }
 	void setStiffness(double k) { stiffness = k; }

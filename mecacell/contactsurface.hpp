@@ -15,7 +15,7 @@ template <typename Cell> struct ContactSurface {
 	bool pressureEnabled = true;
 	bool adhesionEnabled = true;
 	bool frictionEnabled = false;
-	bool fixedAdhesion = false;  // is this adhesion unbreakable ?
+	bool unbreakable = false;  // is this adhesion unbreakable ?
 
 	/////////////// adhesion ///////////////
 	double adhCoef = 0.5;    // adhesion Coef [0;1]
@@ -226,7 +226,7 @@ template <typename Cell> struct ContactSurface {
 		// on axis forces
 		if (linAdhElongation > Config::DOUBLE_EPSILON) {
 			o0o1 /= linAdhElongation;
-			if (linAdhElongation > bondMaxL && !fixedAdhesion) {
+			if (linAdhElongation > bondMaxL && !unbreakable) {
 				// some bonds are going to break
 				double halfD = 0.5 * (linAdhElongation - bondMaxL);
 				o.first += halfD * o0o1;
@@ -253,8 +253,9 @@ template <typename Cell> struct ContactSurface {
 			}
 			double springSpeed = (linAdhElongation - prevLinAdhElongation) / dt;
 			double k = adhArea * adhCoef * baseBondStrength;
-			double ratioDamping =
-			    dampingFromRatio(dampCoef, cells.first->getBody().getMass() + cells.second->getBody().getMass(), k);
+			double ratioDamping = dampingFromRatio(
+			    dampCoef, cells.first->getBody().getMass() + cells.second->getBody().getMass(),
+			    k);
 
 			Vec F = 0.5 * (k * linAdhElongation + (fixedDamping + ratioDamping) * springSpeed) *
 			        o0o1;
