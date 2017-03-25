@@ -13,13 +13,13 @@ namespace MecaCell {
  * @tparam C the cell type
  */
 template <typename C> struct SimplifiedFluidPlugin {
-	double fluidDensity = 1e-6;  /// bigger fluid density = more resistance
+	double fluidDensity = 1e-4;  /// bigger fluid density = more resistance
 	double dragCoef = 1.0;  /// TODO: should be possible to access the dragCoef of each cell
 
-	MecaCell::Vector3D fluidVelocity =
-	    MecaCell::Vector3D::zero();  /// to generate currents. TODO: various
-	                                 /// current patterns : constant, random,
-	                                 /// from a map...
+	MecaCell::Vector3D fluidVelocity{0, 0, 0};
+	// MecaCell::Vector3D();  /// to generate currents. TODO: various
+	/// current patterns : constant, random,
+	/// from a map...
 
 	/**
 	 * @brief HOOK: computes the forces to be applied to each cells. Called at every
@@ -33,7 +33,7 @@ template <typename C> struct SimplifiedFluidPlugin {
 			double avgCellRadius = 0.0;
 			for (auto &c : w->cells) avgCellRadius += c->getBoundingBoxRadius();
 			avgCellRadius /= static_cast<double>(w->cells.size());
-			MecaCell::Grid<C *> grid(avgCellRadius);
+			MecaCell::Grid<C *> grid(avgCellRadius * 0.8);
 			std::unordered_map<size_t, std::vector<MecaCell::Vector3D>>
 			    exposedVoxels;  // voxelId -> list of exposed normals
 
@@ -41,7 +41,7 @@ template <typename C> struct SimplifiedFluidPlugin {
 			for (auto &c : w->cells) grid.insert(c);
 
 			// then we find voxels that have at least one exposed face
-            for (auto &u : grid.getUnorderedMap()) {
+			for (auto &u : grid.getUnorderedMap()) {
 				if (!grid.getUnorderedMap().count(u.first + MecaCell::Vector3D(1, 0, 0)))
 					exposedVoxels[u.second].push_back(MecaCell::Vector3D(1, 0, 0));
 				if (!grid.getUnorderedMap().count(u.first + MecaCell::Vector3D(-1, 0, 0)))
@@ -61,17 +61,16 @@ template <typename C> struct SimplifiedFluidPlugin {
 				double area = std::pow(grid.getCellSize(), 2);
 				// we need the nb of cells to divide forces when a voxel contains multiple cells
 				// (to address overlaps) :
-                // Cells at cell grid i
-//                 grid.getOrderedVec()[e.first].second
+				// Cells at cell grid grid.getOrderedVec()[e.first].second
 				double nbCells = grid.getOrderedVec()[e.first].second.size();
 				for (auto &c : grid.getOrderedVec()[e.first].second) {  // c = exposed cell
 					for (const auto &dir : e.second) {
-						double normalSpeed = (c->getVelocity() - fluidVelocity).dot(dir);
+						double normalSpeed = (c->getBody().getVelocity() - fluidVelocity).dot(dir);
 						if (normalSpeed > 0) {
-							auto F = (-0.5 * dir * fluidDensity * dragCoef * area * normalSpeed *
-							          normalSpeed) /
-							         nbCells;
-							c->receiveForce(F);
+							auto F =
+							    (-0.5 * dir * fluidDensity * dragCoef * area * normalSpeed) / nbCells;
+							c->getBody().receiveForce(F);
+							//c->setColorHSV(F.length() * 300.0, 0.8, 0.8);
 						}
 					}
 				}
