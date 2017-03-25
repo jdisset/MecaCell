@@ -86,7 +86,16 @@ template <typename O> class Grid {
 				for (double k = minCorner.z(); k <= maxCorner.z(); ++k) {
 					// we test if this cube's center overlaps with the sphere
 					// i j k coords are the bottom front left coords of a 1/cellSize cube
-					Vec cubeCenter(i + cubeSize, j + cubeSize, k + cubeSize);
+					// we need the closest corner of a grid cell relative to the center of the obj
+
+					double cx = i * cubeSize;
+					if (cx < center.x()) cx += cubeSize;
+					double cy = j * cubeSize;
+					if (cy < center.y()) cy += cubeSize;
+					double cz = k * cubeSize;
+					if (cz < center.z()) cz += cubeSize;
+
+					Vec cubeCenter(cx, cy, cz);
 					if ((cubeCenter - center).sqlength() < sqRadius) {
 						insert(Vec(i, j, k), obj);
 					}

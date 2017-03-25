@@ -33,12 +33,12 @@ template <typename C> struct SimplifiedFluidPlugin {
 			double avgCellRadius = 0.0;
 			for (auto &c : w->cells) avgCellRadius += c->getBoundingBoxRadius();
 			avgCellRadius /= static_cast<double>(w->cells.size());
-			MecaCell::Grid<C *> grid(avgCellRadius * 0.8);
+			MecaCell::Grid<C *> grid(avgCellRadius * 1.5);
 			std::unordered_map<size_t, std::vector<MecaCell::Vector3D>>
 			    exposedVoxels;  // voxelId -> list of exposed normals
 
 			// first we voxelize
-			for (auto &c : w->cells) grid.insert(c);
+			for (auto &c : w->cells) grid.insertPrecise(c);
 
 			// then we find voxels that have at least one exposed face
 			for (auto &u : grid.getUnorderedMap()) {
