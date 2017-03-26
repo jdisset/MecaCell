@@ -73,6 +73,13 @@ template <typename O> class Grid {
 		}
 	}
 
+	//double cx = i * cubeSize;
+	//if (abs(cx - center.x()) > abs(cx + cubeSize - center.x())) cx += cubeSize;
+	//double cy = j * cubeSize;
+	//if (abs(cy - center.y()) > abs(cy + cubeSize - center.y())) cy += cubeSize;
+	//double cz = k * cubeSize;
+	//if (abs(cz - center.z()) > abs(cz + cubeSize - center.z())) cz += cubeSize;
+
 	void insertPrecise(const O &obj) {
 		// good for gridSize << boundingboxRadius
 		const Vec &center = ptr(obj)->getPosition();
@@ -89,15 +96,24 @@ template <typename O> class Grid {
 					// we need the closest corner of a grid cell relative to the center of the obj
 
 					double cx = i * cubeSize;
-					if (cx < center.x()) cx += cubeSize;
+					if (abs(cx - center.x()) > abs(cx + cubeSize - center.x())) cx += cubeSize;
 					double cy = j * cubeSize;
-					if (cy < center.y()) cy += cubeSize;
+					if (abs(cy - center.y()) > abs(cy + cubeSize - center.y())) cy += cubeSize;
 					double cz = k * cubeSize;
-					if (cz < center.z()) cz += cubeSize;
+					if (abs(cz - center.z()) > abs(cz + cubeSize - center.z())) cz += cubeSize;
 
 					Vec cubeCenter(cx, cy, cz);
+					// std::cerr << "Pour centre = " << center << ", rayon = " << radius
+					//<< ", cubeSize = " << cubeSize << "    :   minCorner = " << minCorner
+					//<< ", maxCorner = " << maxCorner << ", bfl = " << Vec(i, j, k)
+					//<< "(soit " << Vec(i * cubeSize, j * cubeSize, k * cubeSize)
+					//<< ") et closestCorner = " << cubeCenter;
+
 					if ((cubeCenter - center).sqlength() < sqRadius) {
+						//std::cerr << " [OK]" << std::endl;
 						insert(Vec(i, j, k), obj);
+					} else {
+						//std::cerr << " [REFUS]" << std::endl;
 					}
 				}
 			}

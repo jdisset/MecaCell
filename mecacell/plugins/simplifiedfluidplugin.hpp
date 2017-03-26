@@ -38,7 +38,7 @@ template <typename C> struct SimplifiedFluidPlugin {
 			    exposedVoxels;  // voxelId -> list of exposed normals
 
 			// first we voxelize
-			for (auto &c : w->cells) grid.insertPrecise(c);
+			for (auto &c : w->cells) grid.insert(c);
 
 			// then we find voxels that have at least one exposed face
 			for (auto &u : grid.getUnorderedMap()) {
