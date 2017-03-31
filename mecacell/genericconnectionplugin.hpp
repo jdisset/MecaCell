@@ -41,18 +41,34 @@ struct GenericConnectionBodyPlugin {
 		w->threadpool.autoChunks(w->cells, MIN_CHUNK_SIZE, AVG_TASKS_PER_THREAD,
 		                         [dt = w->getDt()](auto &c) { c->body.updateInternals(dt); });
 		w->threadpool.waitUntilLast();
-		updateCellCellConnections(*w);
 	}
 
 	template <typename W> void endUpdate(W *w) {
+		unsigned int nbIterations = 10;
+
 		checkForCellCellConnections(*w);
-		w->threadpool.autoChunks(
-		    w->cells, MIN_CHUNK_SIZE, AVG_TASKS_PER_THREAD,
-		    [dt = w->getDt()](auto &c) { c->body.updatePositionsAndOrientations(dt); });
-		w->threadpool.waitUntilLast();
+
+		std::vector<std::pair<Vec, Vec>> savedForces;
+		savedForces.reserve(w->cells.size());  // first we save the cell forces and torque
 		for (auto &c : w->cells) {
-			c->body.resetForce();
-			c->body.resetTorque();
+			savedForces.push_back(
+			    std::make_pair<Vec, Vec>(c->getBody().getForce(), c->getBody().getTorque()));
+			c->getBody().resetForce();
+			c->getBody().resetTorque();
+		}
+
+		updateCellCellConnections(*w);
+		double subdt = w->getDt() / static_cast<double>(nbIterations);
+		for (unsigned int i = 0; i < nbIterations; ++i) {
+			for (auto &c : connections) c.second->update(subdt);
+			for (size_t j = 0; j < w->cells.size(); ++j) {
+				auto &c = w->cells[j];
+				c->body.receiveForce(savedForces[j].first);
+				c->body.receiveTorque(savedForces[j].second);
+				c->body.updatePositionsAndOrientations(subdt);
+				c->body.resetForce();
+				c->body.resetTorque();
+			}
 		}
 	}
 
@@ -95,7 +111,8 @@ struct GenericConnectionBodyPlugin {
 	 * @param world world instance
 	 */
 	template <typename W> void checkForCellCellConnections(W &world) {
-		// TODO: try with mutexes instead of colored grid (every batch is a task but there is
+		// TODO: try with mutexes instead of colored grid (every batch is a task but there
+		// is
 		// a shared_mutex for newConnections)
 		const double NEW_CONNECTION_THRESHOLD = 1.0 - 1e-10;
 		Grid<Cell *> grid(std::max(currentAvgCellSize * gridCellRatio, currentMaxCellSize));
@@ -141,9 +158,6 @@ struct GenericConnectionBodyPlugin {
 	 */
 	template <typename W> void updateCellCellConnections(W &w) {
 		std::vector<std::pair<ordered_pair<Cell *>, GenericConnection<Cell> *>> toDisconnect;
-		for (auto &c : connections) {
-			c.second->update(w.getDt());
-		}
 		for (auto &con : connections) {
 			if (!con.second->unbreakable) {
 				if (con.second->area <= 0)

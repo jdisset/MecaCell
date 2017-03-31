@@ -37,6 +37,7 @@ template <typename R> void dragCell(R* r) {
 			                                             projectedPos.z());
 			newPos = newPos / scaleFactor;
 			selectedCell->getBody().moveTo(newPos);
+			selectedCell->getBody().setVelocity(decltype(selectedCell->getPosition())(0, 0, 0));
 		}
 	}
 }
