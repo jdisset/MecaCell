@@ -11,5 +11,5 @@ file(GLOB SRC
 	"../mecacell/geometry/*.hpp"
 	"../mecacell/geometry/*.cpp"
 	)
-add_executable(test ${SRC})
-target_link_libraries(test pthread)
+add_executable(mecacell_test ${SRC})
+target_link_libraries(mecacell_test pthread)
