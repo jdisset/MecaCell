@@ -7,7 +7,7 @@
 #include <set>
 #include <unordered_map>
 #include <vector>
-#include "../geometry/geometry.h"
+#include "../geometry/geometry.hpp"
 #include "unique_vector.hpp"
 #include "utils.h"
 
