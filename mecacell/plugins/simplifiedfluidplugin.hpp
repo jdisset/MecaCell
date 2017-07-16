@@ -70,7 +70,7 @@ template <typename C> struct SimplifiedFluidPlugin {
 							auto F =
 							    (-0.5 * dir * fluidDensity * dragCoef * area * normalSpeed) / nbCells;
 							c->getBody().receiveForce(F);
-							//c->setColorHSV(F.length() * 300.0, 0.8, 0.8);
+							// c->setColorHSV(F.length() * 300.0, 0.8, 0.8);
 						}
 					}
 				}
@@ -78,5 +78,5 @@ template <typename C> struct SimplifiedFluidPlugin {
 		}
 	}
 };
-}
+}  // namespace MecaCell
 #endif

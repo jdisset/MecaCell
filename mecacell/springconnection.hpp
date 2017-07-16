@@ -254,5 +254,5 @@ template <typename Cell> struct SpringConnection {
 		}
 	}
 };
-}
+}  // namespace MecaCell
 #endif

@@ -44,7 +44,7 @@ struct GenericConnectionBodyPlugin {
 	}
 
 	template <typename W> void endUpdate(W *w) {
-		unsigned int nbIterations = 10;
+		unsigned int nbIterations = 12;
 
 		checkForCellCellConnections(*w);
 
