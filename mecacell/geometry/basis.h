@@ -34,5 +34,10 @@ template <typename V> struct Basis {
 	template <typename T>
 	friend std::ostream &operator<<(std::ostream &out, const Basis<T> &b);
 };
+
+template <typename T> inline std::ostream &operator<<(std::ostream &out, const Basis<T> &b) {
+	out << "[ " << b.X << ", " << b.Y << ", "<<b.Z<<" ]";
+	return out;
+}
 }
 #endif
