@@ -4,7 +4,6 @@
 #include "utils.h"
 
 namespace MecaCell {
-std::default_random_engine globalRand(std::random_device{}());
 
 std::vector<std::string> splitStr(const std::string &s, char delim) {
 	std::vector<std::string> res;

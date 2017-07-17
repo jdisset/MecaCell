@@ -9,28 +9,51 @@
 #include "config.hpp"
 #include "logger.hpp"
 
-/**********************************************************************
-*      this file contains various miscelanios utility functions      *
-**********************************************************************/
+/**
+ * @brief this file contains various miscellanious utility functions & helpers     *
+ */
 
 namespace MecaCell {
 
-// global rng engine
-extern std::default_random_engine globalRand;
 
-// shortcut for Vector3D
+/**
+ * @brief alias for Vector3D
+ */
 using Vec = Vector3D;
 
-// returns a pointer (transforms reference into pointer)
+/**
+ * @brief returns a pointer (transforms reference into pointer)
+ *
+ * @tparam T 
+ * @param obj
+ *
+ * @return 
+ */
 template <typename T> inline T *ptr(T &obj) { return &obj; }
+/**
+ * @brief returns a pointer (transforms reference into pointer)
+ *
+ * @tparam T 
+ * @param obj
+ *
+ * @return 
+ */
 template <typename T> inline T *ptr(T *obj) { return obj; }
 
-// linear interpolation
+/**
+ * @brief linear interpolation
+ *
+ * @tparam T
+ * @param a
+ * @param b
+ * @param c coef (0.0 -> 1.0)
+ *
+ * @return 
+ */
 template <typename T> constexpr T lerp(const T &a, const T &b, const double &c) {
 	return a * (1.0 - c) + c * b;
 }
 
-// fuzzy equality
 template <typename T> inline bool fuzzyEqual(const T &a, const T &b, double eps = 1e-6) {
 	return (fabs(a - b) < eps * fabs(a));
 }
@@ -65,7 +88,7 @@ template <typename T> constexpr size_t eToUI(const T &t) {
 inline double dampingFromRatio(const double r, const double m, const double k) {
 	return r * 2.0 * sqrt(m * k);  // for angular springs m is the moment of inertia
 }
-}
+}  // namespace MecaCell
 
 namespace std {
 // hash function} for generic pair
@@ -74,5 +97,5 @@ template <typename T, typename U> struct hash<pair<T, U>> {
 		return hash<T>()(x.first) ^ hash<U>()(x.second);
 	}
 };
-}
+}  // namespace std
 #endif
