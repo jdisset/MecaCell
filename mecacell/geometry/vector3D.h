@@ -7,7 +7,7 @@
 #include <iostream>
 #include "../utilities/config.hpp"
 #include "../utilities/utils.hpp"
-#include "basis.h"
+#include "basis.hpp"
 #include "rotation.h"
 
 namespace MecaCell {
