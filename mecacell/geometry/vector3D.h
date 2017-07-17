@@ -8,6 +8,7 @@
 #include "../utilities/config.hpp"
 #include "../utilities/utils.hpp"
 #include "basis.hpp"
+#include "quaternion.h"
 #include "rotation.h"
 
 namespace MecaCell {
@@ -247,36 +248,253 @@ class Vector3D {
 	friend inline Vector3D operator/(const Vector3D &vector, double divisor);
 	friend inline ostream &operator<<(ostream &out, const Vector3D &v);
 
-	double length() const;
-	double sqlength() const;
+	/**
+	 * @brief compute the length of the vector
+	 *
+	 * @return
+	 */
+	double length() const {
+		return sqrt(coords[0] * coords[0] + coords[1] * coords[1] + coords[2] * coords[2]);
+	}
+	/**
+	 * @brief compute the square length of the current vector (faster than length)
+	 *
+	 * @return
+	 */
+	double sqlength() const {
+		return coords[0] * coords[0] + coords[1] * coords[1] + coords[2] * coords[2];
+	}
 
-	Vector3D rotated(double, const Vector3D &) const;
-	Vector3D rotated(const Rotation<Vector3D> &) const;
-	static void addAsAngularVelocity(const Vector3D &, Rotation<Vector3D> &);
-	static Rotation<Vector3D> getRotation(const Vector3D &, const Vector3D &);
-	static Rotation<Vector3D> rotateRotation(const Rotation<Vector3D> &,
-	                                         const Rotation<Vector3D> &);
-	static Rotation<Vector3D> addRotations(const Rotation<Vector3D> &,
-	                                       const Rotation<Vector3D> &);
-	static Rotation<Vector3D> getRotation(const Vector3D &, const Vector3D &,
-	                                      const Vector3D &, const Vector3D &);
-	static Rotation<Vector3D> getRotation(const Basis<Vector3D> &, const Basis<Vector3D> &);
-	static Vector3D getProjection(const Vector3D &origin, const Vector3D &A,
-	                              const Vector3D &B);
-	static Vector3D getProjectionOnPlane(const Vector3D &o, const Vector3D &n,
-	                                     const Vector3D &p);
+	/**
+	 * @brief gives a rotated copy of the current vector
+	 *
+	 * @param angle the rotation angle in radians
+	 * @param vec the axis of rotation
+	 *
+	 * @return  a rotated copy of the current vector
+	 */
+	Vector3D rotated(double angle, const Vector3D &vec) const {
+		double halfangle = angle * 0.5;
+		Vector3D v = vec * sin(halfangle);
+		Vector3D vcV = 2.0 * v.cross(*this);
+		return *this + cos(halfangle) * vcV + v.cross(vcV);
+	}
+
+	/**
+	 * @brief gives a rotated copy of the current vector
+	 *
+	 * @param r the rotation
+	 *
+	 * @return a rotated copy of the current vector
+	 */
+	Vector3D rotated(const Rotation<Vector3D> &r) const {
+		double halfangle = r.teta * 0.5;
+		Vector3D v = r.n * sin(halfangle);
+		Vector3D vcV = 2.0 * v.cross(*this);
+		return *this + cos(halfangle) * vcV + v.cross(vcV);
+	}
+
+	/**
+	 * @brief adds a vector representing an angular Velocity (or any rotation coded on only
+	 * one vector) to an existing rotation
+	 *
+	 * @param v the single vector coded rotation (its length codes for the angle)
+	 * @param r the rotation which is going to be modified
+	 */
+	static void addAsAngularVelocity(const Vector3D &v, Rotation<Vector3D> &r) {
+		double dTeta = v.length();
+		Vector3D n0(0, 1, 0);
+		if (dTeta > 0) {
+			n0 = v / dTeta;
+		}
+		r = addRotations(r, Rotation<Vector3D>(n0, dTeta));
+	}
+
+	/**
+	 * @brief computes the rotation from one vector to another
+	 *
+	 * @param v0 first vector
+	 * @param v1 second vector
+	 *
+	 * @return a rotation that can transform v0 into v1
+	 */
+	static Rotation<Vector3D> getRotation(const Vector3D &v0, const Vector3D &v1) {
+		Rotation<Vector3D> res;
+		res.teta = acos(min<double>(1.0, max<double>(-1.0, v0.dot(v1))));
+		Vector3D cross = v0.cross(v1);
+		if (cross.sqlength() == 0) {
+			cross = Vector3D(0, 1, 0);
+		}
+		res.n = cross.normalized();
+		return res;
+	}
+
+	/**
+	 * @brief simple raycasting on a plane
+	 *
+	 * @param o a point in the plane
+	 * @param n normal of the plane
+	 * @param p origin of the ray
+	 * @param r direction of the ray
+	 *
+	 * @return l such that p + l.r lies on the plane defined by its normal n and an offset
+	 * o l > 0 means that the ray hits the plane, l < 0 means that the racoords[1] does
+	 * not face the plane l = 0 means that the ray is parallel to the plane or that p is
+	 * on the plane
+	 */
 	static double rayCast(const Vector3D &o, const Vector3D &n, const Vector3D &p,
-	                      const Vector3D &r);
+	                      const Vector3D &r) {
+		double nr = n.dot(r);
+		return (nr == 0) ? 0 : n.dot(o - p) / nr;
+	}
 
-	void normalize();
+	/**
+	 * @brief project a point on a plane
+	 *
+	 * @param o a point in the plane
+	 * @param n the plane's normal
+	 * @param p the point to be projected onto the surface of the plane
+	 *
+	 * @return the projection of p onto a plane defined by its normal n and an
+	 * offset o
+	 */
+	Vector3D getProjectionOnPlane(const Vector3D &o, const Vector3D &n, const Vector3D &p) {
+		return p - (n.dot(p - o) * n);
+	}
+
+	/**
+	 * @brief rotates the axis of rotation of a rotation
+	 *
+	 * @param start
+	 * @param offset
+	 *
+	 * @return
+	 */
+	static Rotation<Vector3D> rotateRotation(const Rotation<Vector3D> &start,
+	                                         const Rotation<Vector3D> &offset) {
+		return Rotation<Vector3D>(start.n.rotated(offset), start.teta);
+	}
+	/**
+	 * @brief adds two rotations
+	 *
+	 * @param R0
+	 * @param R1
+	 *
+	 * @return
+	 */
+	static Rotation<Vector3D> addRotations(const Rotation<Vector3D> &R0,
+	                                       const Rotation<Vector3D> &R1) {
+		// Quaternion q2 = Quaternion(R1.teta, R1.n) * Quaternion(R0.teta, R0.n);
+		// q2.normalize();
+		// return q2.toAxisAngle();
+		return Rotation<Vector3D>();
+	}
+
+	/**
+	 * @brief computes the rotation transform from basis X0,Y0 to X1,Y1
+	 *
+	 * @param X0
+	 * @param Y0
+	 * @param X1
+	 * @param Y1
+	 *
+	 * @return
+	 */
+	static Rotation<Vector3D> getRotation(const Vector3D &X0, const Vector3D &Y0,
+	                                      const Vector3D &X1, const Vector3D &Y1) {
+		// Quaternion q0(X0.normalized(), X1.normalized());
+		// Vector3D Ytmp = q0 * Y0;
+		// Ytmp.normalize();
+		// Quaternion qres = Quaternion(Ytmp, Y1.normalized()) * q0;
+		// qres.normalize();
+		// return qres.toAxisAngle();
+		return Rotation<Vector3D>();
+	}
+	/**
+	 * @brief computes the rotation transform from basis b0 to b1
+	 *
+	 * @param X0
+	 * @param Y0
+	 * @param X1
+	 * @param Y1
+	 *
+	 * @return
+	 */
+	static Rotation<Vector3D> getRotation(const Basis<Vector3D> &b0,
+	                                      const Basis<Vector3D> &b1) {
+		return getRotation(b0.X, b0.Y, b1.X, b1.Y);
+	}
+
+	/**
+	 * @brief computes the orthogonal projection of a point onto a segment AB
+	 *
+	 * @param A the origin of the segment
+	 * @param B the endpoint of the segment
+	 * @param P the point to be projected
+	 *
+	 * @return
+	 */
+	static Vector3D getProjection(const Vector3D &A, const Vector3D &B, const Vector3D &P) {
+		Vector3D a = B - A;
+		return A + a * (a.dot(P - A) / a.sqlength());
+	}
+
+	/**
+	 * @brief normalizes the vector
+	 */
+	void normalize() { *this /= length(); }
+
+	/**
+	 * @brief returns a normalized copy of the current vector
+	 *
+	 * @return
+	 */
 	inline Vector3D normalized() const {
 		double l = length();
 		return l > 0 ? *this / l : zero();
 	}
 
-	std::string toString() const;
-	static int getHash(const int a, const int b);
-	int getHash() const;
+	std::string toString() const {
+		std::stringstream s;
+		s.precision(500);
+		s << "(" << coords[0] << " , " << coords[1] << ", " << coords[2] << ")";
+		return s.str();
+	}
+	/**
+	 * @brief fast hash for two ints
+	 *
+	 * @param a
+	 * @param b
+	 *
+	 * @return
+	 */
+	inline int getHash(const int a, const int b) const {
+		unsigned int A = (unsigned int)(a >= 0 ? 2 * a : -2 * a - 1);
+		unsigned int B = (unsigned int)(b >= 0 ? 2 * b : -2 * b - 1);
+		int C = ((A >= B ? A * A + A + B : A + B * B) / 2);
+		return (a < 0 && b < 0) || (a >= 0 && b >= 0) ? C : -C - 1;
+	}
+
+	/**
+	 * @brief fast hash method
+	 *
+	 * @return
+	 */
+	int getHash() const {
+		return getHash(
+		    static_cast<int>(floor(coords[0])),
+		    getHash(static_cast<int>(floor(coords[1])), static_cast<int>(floor(coords[2]))));
+	}
+
+	/**
+	 * @brief helper method to iterates over a 3D rectangular cuboid bounded by two corner
+	 * vectors
+	 *
+	 * @param v the upper bound corner (lower bound is the current vector)
+	 * @param fun a function taking the upper bound vector as well as an increent (default =
+	 * 1.0)
+	 * @param inc the increment step
+	 */
 	inline void iterateTo(const Vector3D &v,
 	                      const std::function<void(const Vector3D &)> &fun,
 	                      const double inc = 1) const {
@@ -293,8 +511,25 @@ class Vector3D {
 		}
 	}
 
-	Vector3D ortho() const;
-	Vector3D ortho(const Vector3D &v) const;
+	/**
+	 * @brief deterministic generation of an orthogonal vector
+	 *
+	 * @return
+	 */
+	Vector3D ortho() const {
+		if (coords[1] == 0 && coords[0] == 0) {
+			return Vector3D(0.0, 1.0, 0.0);
+		}
+		return Vector3D(-coords[1], coords[0], 0.0);
+	}
+
+	Vector3D ortho(const Vector3D &v) const {
+		if ((v - *this).sqlength() > 0.000000000001) {
+			Vector3D res = cross(v);
+			if (res.sqlength() > 0.0000000000001) return res;
+		}
+		return ortho();
+	}
 };
 
 inline bool operator==(const Vector3D &v1, const Vector3D &v2) {

@@ -134,6 +134,8 @@ template <typename T> constexpr size_t eToUI(const T &t) {
 inline double dampingFromRatio(const double r, const double m, const double k) {
 	return r * 2.0 * sqrt(m * k);  // for angular springs m is the moment of inertia
 }
+
+
 }  // namespace MecaCell
 
 namespace std {
