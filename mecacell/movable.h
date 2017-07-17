@@ -1,6 +1,6 @@
 #ifndef MOVABLE_H
 #define MOVABLE_H
-#include "utilities/utils.h"
+#include "utilities/utils.hpp"
 
 namespace MecaCell {
 class Movable {

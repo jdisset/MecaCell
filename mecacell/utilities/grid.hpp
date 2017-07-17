@@ -9,7 +9,7 @@
 #include <vector>
 #include "../geometry/geometry.hpp"
 #include "unique_vector.hpp"
-#include "utils.h"
+#include "utils.hpp"
 
 namespace MecaCell {
 

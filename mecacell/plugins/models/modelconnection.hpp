@@ -9,7 +9,7 @@
 #include "matrix4x4.h"
 #include "model.h"
 #include "objmodel.h"
-#include "utils.h"
+#include "utils.hpp"
 
 using std::string;
 using std::vector;

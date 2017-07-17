@@ -9,7 +9,7 @@
 #include "utilities/grid.hpp"
 #include "utilities/ordered_hash_map.hpp"
 #include "utilities/ordered_pair.hpp"
-#include "utilities/utils.h"
+#include "utilities/utils.hpp"
 
 namespace MecaCell {
 template <typename H> struct GhostCenter : public OrientedParticle {

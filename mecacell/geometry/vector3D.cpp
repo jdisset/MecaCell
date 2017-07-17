@@ -10,31 +10,7 @@
 
 namespace MecaCell {
 
-// shortcut for Vector3D
-void Vector3D::random() {
-	std::normal_distribution<double> nDist(0.0, 1.0);
-	coords = {{nDist(globalRand), nDist(globalRand), nDist(globalRand)}};
-	normalize();
-}
 
-Vector3D Vector3D::randomUnit() {
-	Vector3D v;
-	v.random();
-	return v;
-}
-
-Vector3D Vector3D::deltaDirection(double amount) {
-	std::normal_distribution<double> nDist(0.0, amount);
-	return Vector3D(coords[0] + nDist(globalRand), coords[1] + nDist(globalRand),
-	                coords[2] + nDist(globalRand))
-	    .normalized();
-}
-
-Vector3D Vector3D::zero() { return Vector3D(0.0, 0.0, 0.0); }
-
-bool Vector3D::isZero() const {
-	return (coords[0] == 0.0 && coords[1] == 0.0 && coords[2] == 0.0);
-}
 
 double Vector3D::length() const {
 	return sqrt(coords[0] * coords[0] + coords[1] * coords[1] + coords[2] * coords[2]);

@@ -1,7 +1,7 @@
 #ifndef MECACELL_GEOMETRY_H
 #define MECACELL_GEOMETRY_H
 #include <vector>
-#include "../utilities/utils.h"
+#include "../utilities/utils.hpp"
 namespace MecaCell {
 
 /**

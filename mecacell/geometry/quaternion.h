@@ -1,7 +1,7 @@
 #ifndef MECACELL_QUATERNION_H
 #define MECACELL_QUATERNION_H
 #include <cmath>
-#include "../utilities/utils.h"
+#include "../utilities/utils.hpp"
 #include "vector3D.h"
 
 namespace MecaCell {

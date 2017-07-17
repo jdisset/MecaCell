@@ -12,7 +12,7 @@
 #include "movable.h"
 #include "orientable.h"
 #include "utilities/unique_vector.hpp"
-#include "utilities/utils.h"
+#include "utilities/utils.hpp"
 
 namespace MecaCell {
 

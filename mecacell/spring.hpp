@@ -1,6 +1,6 @@
 #ifndef SPRING_HPP
 #define SPRING_HPP
-#include "utilities/utils.h"
+#include "utilities/utils.hpp"
 namespace MecaCell {
 ////////////////////////////////////////////////////////////////////
 //                SPRING STRUCTURE

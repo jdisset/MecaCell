@@ -5,11 +5,16 @@
 #include <cmath>
 #include <functional>
 #include <iostream>
-#include "../utilities/utils.h"
+#include "../utilities/config.hpp"
+#include "../utilities/utils.hpp"
 #include "basis.h"
 #include "rotation.h"
 
 namespace MecaCell {
+
+/**
+ * @brief general purpose 3D vector/point class.
+ */
 class Vector3D {
  public:
 	std::array<double, 3> coords;
@@ -21,41 +26,163 @@ class Vector3D {
 	inline Vector3D() : coords{{0, 0, 0}} {}
 	inline explicit Vector3D(double a) : coords{{a, a, a}} {}
 	inline explicit Vector3D(std::array<double, 3> c) : coords(c) {}
-
 	inline Vector3D(const Vector3D &v) : coords(v.coords) {}
 	inline Vector3D(Vector3D &&v) : coords(std::move(v.coords)) {}
+
+	/**
+	 * @brief assignment operator for copy constructing a vector
+	 *
+	 * @param other
+	 *
+	 * @return
+	 */
 	Vector3D &operator=(const Vector3D &other) {
 		if (&other == this) return *this;
 		coords = other.coords;
 		return *this;
 	}
 
+	/**
+	 * @brief dot product calculation
+	 *
+	 * @param v a Vector3D
+	 *
+	 * @return the dot product of this vector against v
+	 */
 	inline double dot(const Vector3D &v) const {
 		return coords[0] * v.coords[0] + coords[1] * v.coords[1] + coords[2] * v.coords[2];
 	}
 
+	/**
+	 * @brief cross product calculation
+	 *
+	 * @param v a Vector3D
+	 *
+	 * @return the cross product of this vector against v
+	 */
 	inline const Vector3D cross(const Vector3D &v) const {
 		return Vector3D(coords[1] * v.coords[2] - coords[2] * v.coords[1],
 		                coords[2] * v.coords[0] - coords[0] * v.coords[2],
 		                coords[0] * v.coords[1] - coords[1] * v.coords[0]);
 	}
 
+	/**
+	 * @brief
+	 *
+	 * @return a reference to the x coordinate
+	 */
 	inline double &xRef() { return coords[0]; }
+	/**
+	 * @brief
+	 *
+	 * @return a reference to the y coordinate
+	 */
 	inline double &yRef() { return coords[1]; }
+	/**
+	 * @brief
+	 *
+	 * @return a reference to the z coordinate
+	 */
 	inline double &zRef() { return coords[2]; }
+	/**
+	 * @brief
+	 *
+	 * @return the const value of the x coordinate
+	 */
 	inline double x() const { return coords[0]; }
+	/**
+	 * @brief
+	 *
+	 * @return the const value of the y coordinate
+	 */
 	inline double y() const { return coords[1]; }
+	/**
+	 * @brief
+	 *
+	 * @return the const value of the z coordinate
+	 */
 	inline double z() const { return coords[2]; }
+
+	/**
+	 * @brief setter for x coordinate
+	 *
+	 * @param f the new value
+	 */
 	inline void setX(const double f) { coords[0] = f; }
+	/**
+	 * @brief setter for y coordinate
+	 *
+	 * @param f the new value
+	 */
 	inline void setY(const double f) { coords[1] = f; }
+	/**
+	 * @brief setter for z coordinate
+	 *
+	 * @param f the new value
+	 */
 	inline void setZ(const double f) { coords[2] = f; }
 
-	void random();
-	Vector3D deltaDirection(double amount);
-	static Vector3D randomUnit();
-	static Vector3D zero();
-	bool isZero() const;
+	/**
+	 * @brief sets the current vector as a random normalized one. Uniform direction
+	 * distribution on all directions of a sphere.
+	 */
+	void random() {
+		std::normal_distribution<double> nDist(0.0, 1.0);
+		coords = {{nDist(Config::globalRand()), nDist(Config::globalRand()),
+		           nDist(Config::globalRand())}};
+		normalize();
+	}
 
+	/**
+	 * @brief creates a random normalized vector. Uniform direction
+	 * distribution on all directions of a sphere.
+	 *
+	 * @return a 3D vector
+	 */
+	static inline Vector3D randomUnit() {
+		Vector3D v;
+		v.random();
+		return v;
+	}
+
+	/**
+	 * @brief returns a vector randomly tilted relatively to the original one
+	 *
+	 * @param amount the width of the normal distribution
+	 *
+	 * @return a 3D vector
+	 */
+	Vector3D deltaDirection(double amount) {
+		std::normal_distribution<double> nDist(0.0, amount);
+		return Vector3D(coords[0] + nDist(Config::globalRand()),
+		                coords[1] + nDist(Config::globalRand()),
+		                coords[2] + nDist(Config::globalRand()))
+		    .normalized();
+	}
+
+	/**
+	 * @brief constructs a zero vector
+	 *
+	 * @return
+	 */
+	static inline Vector3D zero() { return Vector3D(0.0, 0.0, 0.0); }
+
+	/**
+	 * @brief returns true if all vector coordinates are equal to zero
+	 *
+	 * @return
+	 */
+	inline bool isZero() const {
+		return (coords[0] == 0.0 && coords[1] == 0.0 && coords[2] == 0.0);
+	}
+
+	/**
+	 * @brief scalar multiplication operator
+	 *
+	 * @param d
+	 *
+	 * @return
+	 */
 	inline Vector3D &operator*=(double d) {
 		coords[0] *= d;
 		coords[1] *= d;
@@ -63,6 +190,13 @@ class Vector3D {
 		return *this;
 	};
 
+	/**
+	 * @brief scalar division operator
+	 *
+	 * @param d
+	 *
+	 * @return
+	 */
 	inline Vector3D &operator/=(double d) {
 		coords[0] /= d;
 		coords[1] /= d;
@@ -70,6 +204,13 @@ class Vector3D {
 		return *this;
 	};
 
+	/**
+	 * @brief addition operator
+	 *
+	 * @param v
+	 *
+	 * @return
+	 */
 	inline Vector3D &operator+=(const Vector3D &v) {
 		coords[0] += v.coords[0];
 		coords[1] += v.coords[1];
@@ -77,6 +218,13 @@ class Vector3D {
 		return *this;
 	}
 
+	/**
+	 * @brief substract operator
+	 *
+	 * @param v
+	 *
+	 * @return
+	 */
 	inline Vector3D &operator-=(const Vector3D &v) {
 		coords[0] -= v.coords[0];
 		coords[1] -= v.coords[1];
@@ -203,10 +351,10 @@ inline ostream &operator<<(ostream &out, const Vector3D &v) {
 	out << "(" << v.coords[0] << ", " << v.coords[1] << ", " << v.coords[2] << ")";
 	return out;
 }
-}
+}  // namespace MecaCell
 namespace std {
 template <> struct hash<MecaCell::Vector3D> {
 	int operator()(const MecaCell::Vector3D &v) const { return v.getHash(); }
 };
-}
+}  // namespace std
 #endif  // VECTOR3D_H

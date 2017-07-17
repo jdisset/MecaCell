@@ -8,7 +8,7 @@
 #include "integrators.hpp"
 #include "utilities/hooktools.hpp"
 #include "utilities/threadpool.hpp"
-#include "utilities/utils.h"
+#include "utilities/utils.hpp"
 
 namespace MecaCell {
 

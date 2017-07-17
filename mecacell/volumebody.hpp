@@ -6,7 +6,7 @@
 #include "cellcellconnectionmanager.hpp"
 #include "contactsurface.hpp"
 #include "utilities/introspect.hpp"
-#include "utilities/utils.h"
+#include "utilities/utils.hpp"
 
 #define FOUR_THIRD_PI 4.1887902047863909846168578443726705
 

@@ -4,7 +4,7 @@
 #include <utility>
 #include "spring.hpp"
 #include "utilities/ordered_pair.hpp"
-#include "utilities/utils.h"
+#include "utilities/utils.hpp"
 
 namespace MecaCell {
 /**

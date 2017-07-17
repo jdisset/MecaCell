@@ -1,6 +1,6 @@
 #ifndef INTEGRATORS_HPP
 #define INTEGRATORS_HPP
-#include "utilities/utils.h"
+#include "utilities/utils.hpp"
 namespace MecaCell {
 struct Verlet {
 	template <typename C> static void updatePosition(C &c, const double &dt) {

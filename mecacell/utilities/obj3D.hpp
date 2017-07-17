@@ -8,7 +8,7 @@
 #include <vector>
 #include "../geometry/geometry.h"
 #include "../geometry/matrix4x4.h"
-#include "utils.h"
+#include "utils.hpp"
 
 namespace MecaCell {
 

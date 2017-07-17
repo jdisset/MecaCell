@@ -1,6 +1,6 @@
 #ifndef ORIENTABLE_H
 #define ORIENTABLE_H
-#include "utilities/utils.h"
+#include "utilities/utils.hpp"
 namespace MecaCell {
 class Orientable {
  protected:

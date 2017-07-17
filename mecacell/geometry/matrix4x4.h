@@ -1,7 +1,7 @@
 #ifndef MECACELL_MATRIX4X4_HPP
 #define MECACELL_MATRIX4X4_HPP
 #include <array>
-#include "../utilities/utils.h"
+#include "../utilities/utils.hpp"
 #include "rotation.h"
 
 namespace MecaCell {
