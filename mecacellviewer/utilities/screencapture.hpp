@@ -18,8 +18,8 @@ template <typename R> class MenuScreenCapture : public ScreenManager<R> {
 	void saveImg(int W, int H) {
 		std::vector<GLubyte> pixels;
 		pixels.resize(3 * W * H);
-		GL->glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-		GL->glReadPixels(0, 0, W, H, GL_RGB, GL_UNSIGNED_BYTE, &pixels[0]);
+		GL()->glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+		GL()->glReadPixels(0, 0, W, H, GL_RGB, GL_UNSIGNED_BYTE, &pixels[0]);
 		QImage img(&pixels[0], W, H, QImage::Format_RGB888);
 		img.mirrored().save(path + QString("capture_") + QString::number(cap++) + ".jpg");
 	}

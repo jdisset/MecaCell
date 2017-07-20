@@ -25,7 +25,7 @@ template <typename R> class MenuBlur : public ScreenManager<R> {
 		auto* wdw = r->getWindow();
 		auto vps = r->getViewportSize() * wdw->devicePixelRatio();
 		if (r->getCurrentFBO()) {
-			GL->glViewport(0, 0, vps.width(), vps.height());  // viewport reset
+			GL()->glViewport(0, 0, vps.width(), vps.height());  // viewport reset
 			blurTarget.draw(
 			    r->getCurrentFBO()->texture(), 5, vps,
 			    QRect(QPoint(0, 0),
@@ -35,7 +35,7 @@ template <typename R> class MenuBlur : public ScreenManager<R> {
 		}
 	}
 
-	void screenChanged(R* r) {}
+	void screenChanged(R* ) {}
 };
 }
 #endif

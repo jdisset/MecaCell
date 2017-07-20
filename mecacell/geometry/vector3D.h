@@ -384,10 +384,9 @@ class Vector3D {
 	 */
 	static Rotation<Vector3D> addRotations(const Rotation<Vector3D> &R0,
 	                                       const Rotation<Vector3D> &R1) {
-		// Quaternion q2 = Quaternion(R1.teta, R1.n) * Quaternion(R0.teta, R0.n);
-		// q2.normalize();
-		// return q2.toAxisAngle();
-		return Rotation<Vector3D>();
+		auto q2 = Quaternion<Vector3D>(R1.teta, R1.n) * Quaternion<Vector3D>(R0.teta, R0.n);
+		q2.normalize();
+		return q2.toAxisAngle();
 	}
 
 	/**
@@ -402,13 +401,12 @@ class Vector3D {
 	 */
 	static Rotation<Vector3D> getRotation(const Vector3D &X0, const Vector3D &Y0,
 	                                      const Vector3D &X1, const Vector3D &Y1) {
-		// Quaternion q0(X0.normalized(), X1.normalized());
-		// Vector3D Ytmp = q0 * Y0;
-		// Ytmp.normalize();
-		// Quaternion qres = Quaternion(Ytmp, Y1.normalized()) * q0;
-		// qres.normalize();
-		// return qres.toAxisAngle();
-		return Rotation<Vector3D>();
+		Quaternion<Vector3D> q0(X0.normalized(), X1.normalized());
+		Vector3D Ytmp = q0 * Y0;
+		Ytmp.normalize();
+		auto qres = Quaternion<Vector3D>(Ytmp, Y1.normalized()) * q0;
+		qres.normalize();
+		return qres.toAxisAngle();
 	}
 	/**
 	 * @brief computes the rotation transform from basis b0 to b1

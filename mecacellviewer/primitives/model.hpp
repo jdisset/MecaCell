@@ -109,8 +109,8 @@ struct Mesh {
 		shader.setUniformValue(shader.uniformLocation("color"), color);
 		QMatrix4x4 nmatrix = modelMatrix.inverted().transposed();
 		shader.setUniformValue(shader.uniformLocation("normalMatrix"), nmatrix);
-		GL->glDisable(GL_CULL_FACE);
-		GL->glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0);
+		GL()->glDisable(GL_CULL_FACE);
+		GL()->glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0);
 		vao.release();
 		shader.release();
 	}

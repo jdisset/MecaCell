@@ -15,7 +15,6 @@ template <typename R> void dragCell(R* r) {
 		auto viewportSize = r->getViewportSize();
 		auto& camera = r->getCamera();
 		auto selectedCell = r->getSelectedCell();
-		const double stiffness = selectedCell->getBody().getMass() * 100.0;
 		QVector2D mouseNDC(
 		    2.0 * r->getMousePosition().x() / (float)viewportSize.width() - 1.0,
 		    -((2.0 * r->getMousePosition().y()) / (float)viewportSize.height() - 1.0));
@@ -35,7 +34,7 @@ template <typename R> void dragCell(R* r) {
 			QVector3D projectedPos = l0 + d * l;
 			decltype(selectedCell->getPosition()) newPos(projectedPos.x(), projectedPos.y(),
 			                                             projectedPos.z());
-			newPos = newPos / scaleFactor;
+			newPos = newPos;
 			selectedCell->getBody().moveTo(newPos);
 			selectedCell->getBody().setVelocity(decltype(selectedCell->getPosition())(0, 0, 0));
 		}
@@ -61,8 +60,8 @@ template <typename R> void pickCell(R* r, QPointF screenCoords) {
 	double minEyeDist = 1e20;
 	for (auto& c : r->getScenario().getWorld().cells) {
 		if (c->getVisible()) {
-			double sqRad = pow(c->getBoundingBoxRadius() * scaleFactor, 2);
-			QVector3D EC = toQV3D(c->getPosition() * scaleFactor) - camera.getPosition();
+			double sqRad = pow(c->getBoundingBoxRadius(), 2);
+			QVector3D EC = toQV3D(c->getPosition()) - camera.getPosition();
 			QVector3D EV = vray * QVector3D::dotProduct(EC, vray);
 			double eyeDist = EC.lengthSquared();
 			double rayDist = eyeDist - EV.lengthSquared();
@@ -74,5 +73,5 @@ template <typename R> void pickCell(R* r, QPointF screenCoords) {
 	}
 	r->setSelectedCell(res);
 }
-}
+}  // namespace MecacellViewer
 #endif

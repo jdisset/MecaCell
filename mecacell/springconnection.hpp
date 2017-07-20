@@ -228,9 +228,9 @@ template <typename Cell> struct SpringConnection {
 			    torsOther.direction;  // we want torsion springs to stay aligned with each other
 			torsNode.updateDelta();
 			// torsion torque
-			double torque = torsNode.k * torsNode.delta.teta;  // - torsNode.c *
+			double torsionTorque = torsNode.k * torsNode.delta.teta;  // - torsNode.c *
 			// cell->getAngularVelocity().dot(torsNode.delta.teta.n)
-			Vec vTorsion = torque * torsNode.delta.n;
+			Vec vTorsion = torsionTorque * torsNode.delta.n;
 			cell->getBody().receiveTorque(vTorsion);
 		}
 	}

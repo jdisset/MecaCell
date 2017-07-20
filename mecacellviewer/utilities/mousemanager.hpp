@@ -8,13 +8,13 @@
 
 class MouseManager {
  public:
-	template <typename R> void onLoad(R* r) {
-		r->addMouseDragMethod(Qt::LeftButton, [](R* r) {
+	template <typename R> void onLoad(R* renderer) {
+		renderer->addMouseDragMethod(Qt::LeftButton, [](R* r) {
 			QVector2D mouseMovement(r->getMousePosition() - r->getPreviousMousePosition());
 			r->getCamera().moveAroundTarget(-mouseMovement);
 		});
-		r->addMouseDragMethod(Qt::RightButton, [&](R* r) { dragCell(r); });
-		r->addMouseClickMethod(Qt::MidButton,
+		renderer->addMouseDragMethod(Qt::RightButton, [&](R* r) { dragCell(r); });
+		renderer->addMouseClickMethod(Qt::MidButton,
 		                       [](R* r) { pickCell(r, r->getMousePosition()); });
 	}
 };

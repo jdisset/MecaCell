@@ -44,8 +44,8 @@ template <typename R> class DeformableCellGroup : public PaintStep<R> {
 			shader.bind();
 			sphere.vao.bind();
 			normalMap->bind(0);
-			GL->glActiveTexture(GL_TEXTURE0);
-			GL->glBindTexture(GL_TEXTURE_2D, normalMap->textureId());
+			GL()->glActiveTexture(GL_TEXTURE0);
+			GL()->glBindTexture(GL_TEXTURE_2D, normalMap->textureId());
 			shader.setUniformValue(shader.uniformLocation("nmap"), 0);
 			shader.setUniformValue(shader.uniformLocation("projection"), projection);
 			shader.setUniformValue(shader.uniformLocation("view"), view);
@@ -55,7 +55,7 @@ template <typename R> class DeformableCellGroup : public PaintStep<R> {
 			for (auto &c : cells) {
 				if (c->getVisible()) {
 					QMatrix4x4 model;
-					QVector3D center = toQV3D(c->getPosition()) * scaleFactor;
+					QVector3D center = toQV3D(c->getPosition());
 					model.translate(center);
 					QQuaternion rotation =
 					    QQuaternion::fromAxisAndAngle(toQV3D(c->getOrientationRotation().n),
@@ -66,8 +66,7 @@ template <typename R> class DeformableCellGroup : public PaintStep<R> {
 						for (auto &v : newvert) {
 							auto vr = rotation.rotatedVector(v);
 							decltype((*cells.begin())->getPosition()) d(vr.x(), vr.y(), vr.z());
-							v *= std::max(c->getMembraneDistance(d), c->getBoundingBoxRadius()) *
-							     scaleFactor;
+							v *= std::max(c->getMembraneDistance(d), c->getBoundingBoxRadius());
 						}
 						sphere.update(newvert, getColorVector(c, selected == c, colormode), shader);
 					} else {
@@ -76,7 +75,7 @@ template <typename R> class DeformableCellGroup : public PaintStep<R> {
 					QMatrix4x4 nmatrix = (model).inverted().transposed();
 					shader.setUniformValue(shader.uniformLocation("model"), model);
 					shader.setUniformValue(shader.uniformLocation("normalMatrix"), nmatrix);
-					GL->glDrawElements(GL_TRIANGLES, sphere.indices.size(), GL_UNSIGNED_INT, 0);
+					GL()->glDrawElements(GL_TRIANGLES, sphere.indices.size(), GL_UNSIGNED_INT, 0);
 				}
 			}
 			sphere.vao.release();
@@ -84,5 +83,5 @@ template <typename R> class DeformableCellGroup : public PaintStep<R> {
 		}
 	}
 };
-}
+}  // namespace MecacellViewer
 #endif

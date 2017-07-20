@@ -24,6 +24,7 @@ template <typename R> struct MenuElement {
 		for (auto& e : elems) {
 			if (e.name == n) return e;
 		}
+		throw std::runtime_error("menu element not found");
 	}
 	bool isChecked() { return currentChecked; }
 
@@ -33,6 +34,7 @@ template <typename R> struct MenuElement {
 				return "exclusiveGroup";
 			case elementType::group:
 				return "group";
+			default:
 			case elementType::checkable:
 				return "checkable";
 		}
@@ -53,6 +55,7 @@ template <typename R> struct MenuElement {
 		for (auto& e : elems) {
 			if (e.name == s) return &e;
 		}
+		return nullptr;
 	}
 
 	void callAll(R* r) {
@@ -78,7 +81,7 @@ template <typename R> struct MenuElement {
 	void restoreChildrenChecked() {
 		for (auto& e : elems) e.restoreMeAndMyChildrens();
 	}
-	void updateCheckedFromList(R* r, const vector<pair<QList<QVariant>, bool>>& v) {
+	void updateCheckedFromList(R*, const vector<pair<QList<QVariant>, bool>>& v) {
 		for (auto& var : v) {
 			MenuElement<R>* nxt = this;
 			for (auto& e : var.first) {
@@ -100,7 +103,7 @@ template <typename R> struct MenuElement {
 		QString res = "{\"name\":\"" + name + "\",\"type\":\"" + typeToString(type) +
 		              "\", \"checked\":" + (currentChecked ? "true" : "false") +
 		              ",\"elems\":[";
-		for (int i = 0; i < elems.size(); ++i) {
+		for (size_t i = 0; i < elems.size(); ++i) {
 			res += elems[i].toJSON();
 			if (i < elems.size() - 1) {
 				res += ",";

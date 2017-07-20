@@ -18,14 +18,14 @@ template <typename R> class SSAO : public ScreenManager<R> {
 	RenderQuad dumbTarget;
 	// depth texture initialisation
 	void genDepthTexture(QSize s) {
-		GL->glDeleteTextures(1, &depthTex);
-		GL->glGenTextures(1, &depthTex);
-		GL->glBindTexture(GL_TEXTURE_2D, depthTex);
-		GL->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-		GL->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-		GL->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-		GL->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-		GL->glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT32, s.width(), s.height(), 0,
+		GL()->glDeleteTextures(1, &depthTex);
+		GL()->glGenTextures(1, &depthTex);
+		GL()->glBindTexture(GL_TEXTURE_2D, depthTex);
+		GL()->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		GL()->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+		GL()->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+		GL()->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+		GL()->glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT32, s.width(), s.height(), 0,
 		                 GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
 	}
 
@@ -80,7 +80,7 @@ template <typename R> class SSAO : public ScreenManager<R> {
 
 			genDepthTexture(s);
 			ssaofbo->bind();
-			GL->glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D,
+			GL()->glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D,
 			                           depthTex, 0);
 			ssaofbo->release();
 		}

@@ -137,7 +137,7 @@ template <typename Scenario> class Viewer : public SignalSlotRenderer {
 		viewportSize = QSize(static_cast<int>(wdw->width()), static_cast<int>(wdw->height()));
 		scenario.init(argc, argv);
 		GL = QOpenGLContext::currentContext()->functions();
-		GL->initializeOpenGLFunctions();
+		GL()->initializeOpenGLFunctions();
 		////////////////////////////////
 		// list of default paint steps
 		/////////////////////////////////

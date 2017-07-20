@@ -10,13 +10,13 @@ template <typename R> class CellGroup : public PaintStep<R> {
 	unique_ptr<QOpenGLTexture> normalMap = nullptr;
 	IcoSphere sphere;
 
-	using cellcolor_f = std::function<array<double, 3>(R*, C*, bool)>;
-	cellcolor_f cellColor = [] (R* /*renderer*/, C* cell, bool selected) {
-		return selected?
-            std::array<double,3>{1,1,1}
-            : std::array<double, 3>{ cell->getColor(0), cell->getColor(1), cell->getColor(2) };
+	using cellcolor_f = std::function<array<double, 3>(R *, C *, bool)>;
+	cellcolor_f cellColor = [](R * /*renderer*/, C *cell, bool selected) {
+		return selected ? std::array<double, 3>{{1, 1, 1}} :
+		                  std::array<double, 3>{
+		                      {cell->getColor(0), cell->getColor(1), cell->getColor(2)}};
 	};
-    
+
  public:
 	cellMode drawMode = plain;
 	CellGroup() : PaintStep<R>("Cells"), sphere(2) {
@@ -32,11 +32,9 @@ template <typename R> class CellGroup : public PaintStep<R> {
 		sphere.load(shader);
 	}
 
-	void setCellColorLambda (const cellcolor_f &f) {
-		cellColor = f;
-	}
+	void setCellColorLambda(const cellcolor_f &f) { cellColor = f; }
 
-	void call(R *r, bool centersOnly = false) {
+	void callWCenters(R *r, bool centersOnly = false) {
 		const auto &cells = r->getScenario().getWorld().cells;
 		if (cells.size() > 0) {
 			const QMatrix4x4 view = r->getViewMatrix();
@@ -47,8 +45,8 @@ template <typename R> class CellGroup : public PaintStep<R> {
 			shader.bind();
 			sphere.vao.bind();
 			normalMap->bind(0);
-			GL->glActiveTexture(GL_TEXTURE0);
-			GL->glBindTexture(GL_TEXTURE_2D, normalMap->textureId());
+			GL()->glActiveTexture(GL_TEXTURE0);
+			GL()->glBindTexture(GL_TEXTURE_2D, normalMap->textureId());
 			shader.setUniformValue(shader.uniformLocation("nmap"), 0);
 			shader.setUniformValue(shader.uniformLocation("projection"), projection);
 			shader.setUniformValue(shader.uniformLocation("view"), view);
@@ -59,7 +57,6 @@ template <typename R> class CellGroup : public PaintStep<R> {
 			for (auto &c : cells) {
 				if (c->getVisible()) {
 					QMatrix4x4 model;
-					double radius = c->getBoundingBoxRadius();
 					QVector3D center = toQV3D(c->getPosition());
 					model.translate(center);
 					const double bbr = c->getBoundingBoxRadius();
@@ -74,7 +71,7 @@ template <typename R> class CellGroup : public PaintStep<R> {
 					shader.setUniformValue(shader.uniformLocation("normalMatrix"), nmatrix);
 					auto color = cellColorToQVector(cellColor(r, c, selected == c));
 					shader.setUniformValue(shader.uniformLocation("color"), color);
-					GL->glDrawElements(GL_TRIANGLES, sphere.indices.size(), GL_UNSIGNED_INT, 0);
+					GL()->glDrawElements(GL_TRIANGLES, sphere.indices.size(), GL_UNSIGNED_INT, 0);
 				}
 			}
 			sphere.vao.release();
@@ -82,5 +79,5 @@ template <typename R> class CellGroup : public PaintStep<R> {
 		}
 	}
 };
-}
+}  // namespace MecacellViewer
 #endif

@@ -45,7 +45,7 @@ template <typename R> class ConnectionsGroup : public PaintStep<R> {
 			shaderCube.setUniformValue(shaderCube.uniformLocation("model"), model);
 			shaderCube.setUniformValue(shaderCube.uniformLocation("normalMatrix"), nmatrix);
 			shaderCube.setUniformValue(shaderCube.uniformLocation("color"), color);
-			GL->glDrawElements(GL_TRIANGLES, cube.indices.size(), GL_UNSIGNED_INT, 0);
+			GL()->glDrawElements(GL_TRIANGLES, cube.indices.size(), GL_UNSIGNED_INT, 0);
 		}
 		cube.vao.release();
 		shaderCube.release();

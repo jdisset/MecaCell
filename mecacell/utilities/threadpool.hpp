@@ -89,7 +89,7 @@ class ThreadPool {
 		}
 	}
 	template <typename Container, typename F>
-	void autoChunks(Container& v, size_t minChunkSize, size_t avgTasksPerThread, F f) {
+	void autoChunks(Container& v, size_t minChunkSize, double avgTasksPerThread, F f) {
 		if (nthreads > 0 && v.size() > 2 * minChunkSize) {
 			size_t chunkSize = std::max(
 			    minChunkSize, static_cast<size_t>(static_cast<double>(v.size()) /
@@ -101,7 +101,7 @@ class ThreadPool {
 			size_t nextId = 0;
 			do {
 				nextId = std::min(prevId + chunkSize, v.size());
-				nextIt = std::next(prevIt, nextId - prevId);
+				nextIt = std::next(prevIt, static_cast<long>(nextId) - static_cast<long>(prevId));
 				enqueue([prevIt, nextIt, f, &v]() {
 					for (auto i = prevIt; i != nextIt; ++i) f(*i);
 				});

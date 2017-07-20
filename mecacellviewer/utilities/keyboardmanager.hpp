@@ -3,15 +3,15 @@
 #include <QDebug>
 #include <Qt>
 struct KeyboardManager {
-	template <typename R> void onLoad(R* r) {
+	template <typename R> void onLoad(R* renderer) {
 		qDebug() << " KEYBOARD MANAGER LOADED";
-		r->addKeyDownMethod(Qt::Key_Q,
+		renderer->addKeyDownMethod(Qt::Key_Q,
 		                    [](R* r) { r->getCamera().left(r->getTimeSinceLastFrame()); });
-		r->addKeyDownMethod(Qt::Key_D,
+		renderer->addKeyDownMethod(Qt::Key_D,
 		                    [](R* r) { r->getCamera().right(r->getTimeSinceLastFrame()); });
-		r->addKeyDownMethod(Qt::Key_Z,
+		renderer->addKeyDownMethod(Qt::Key_Z,
 		                    [](R* r) { r->getCamera().forward(r->getTimeSinceLastFrame()); });
-		r->addKeyDownMethod(
+		renderer->addKeyDownMethod(
 		    Qt::Key_S, [](R* r) { r->getCamera().backward(r->getTimeSinceLastFrame()); });
 	}
 };

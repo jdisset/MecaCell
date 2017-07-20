@@ -153,10 +153,10 @@ struct GenericConnectionBodyPlugin {
 	 * @brief  updates (compute forces) the connections and delete the resolved ones (when
 	 * cells are not in contact anymore)
 	 *
-	 * @param w the world
+	 * @param the world
 	 * @param W world type
 	 */
-	template <typename W> void updateCellCellConnections(W &w) {
+	template <typename W> void updateCellCellConnections(W &) {
 		std::vector<std::pair<ordered_pair<Cell *>, GenericConnection<Cell> *>> toDisconnect;
 		for (auto &con : connections) {
 			if (!con.second->unbreakable) {

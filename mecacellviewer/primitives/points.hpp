@@ -32,7 +32,7 @@ class Points {
 			model.scale(r, r, r);
 			shader.setUniformValue(shader.uniformLocation("model"), model);
 			shader.setUniformValue(shader.uniformLocation("color"), get<1>(p));
-			GL->glDrawElements(GL_TRIANGLES, sphere.indices.size(), GL_UNSIGNED_INT, 0);
+			GL()->glDrawElements(GL_TRIANGLES, sphere.indices.size(), GL_UNSIGNED_INT, 0);
 		}
 		sphere.vao.release();
 		shader.release();

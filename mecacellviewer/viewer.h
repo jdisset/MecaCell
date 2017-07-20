@@ -152,8 +152,8 @@ template <typename Scenario> class Viewer : public SignalSlotRenderer {
 
 		this->window = wdw;
 		viewportSize = QSize(static_cast<int>(wdw->width()), static_cast<int>(wdw->height()));
-		GL = QOpenGLContext::currentContext()->functions();
-		GL->initializeOpenGLFunctions();
+		GL() = QOpenGLContext::currentContext()->functions();
+		GL()->initializeOpenGLFunctions();
 		////////////////////////////////
 		// list of default paint steps
 		/////////////////////////////////
@@ -167,19 +167,19 @@ template <typename Scenario> class Viewer : public SignalSlotRenderer {
 		screenManagers.push_back(dynamic_cast<ScreenManager<R> *>(paintSteps["SSAO"].get()));
 		screenManagers.push_back(dynamic_cast<ScreenManager<R> *>(paintSteps["Blur"].get()));
 
-		cellsMenu.onToggled = [&](R *r, MenuElement<R> *me) {
+		cellsMenu.onToggled = [&](R *, MenuElement<R> *me) {
 			if (me->isChecked()) {
 				if (me->at("Mesh type").at("Sphere").isChecked()) {
 					paintStepsMethods[10] = [&](R *r) {
 						CellGroup<R> *cells =
 						    dynamic_cast<CellGroup<R> *>(paintSteps["SphereCells"].get());
-						cells->call(r, false);
+						cells->callWCenters(r, false);
 					};
 				} else if (me->at("Mesh type").at("Centers only").isChecked()) {
 					paintStepsMethods[10] = [&](R *r) {
 						CellGroup<R> *cells =
 						    dynamic_cast<CellGroup<R> *>(paintSteps["SphereCells"].get());
-						cells->call(r, true);
+						cells->callWCenters(r, true);
 					};
 				} else
 					paintStepsMethods.erase(10);
@@ -187,7 +187,7 @@ template <typename Scenario> class Viewer : public SignalSlotRenderer {
 				paintStepsMethods.erase(10);
 		};
 
-		cellsMenu.at("Display connections").onToggled = [&](R *r, MenuElement<R> *me) {
+		cellsMenu.at("Display connections").onToggled = [&](R *, MenuElement<R> *me) {
 			if (me->isChecked()) {
 				paintStepsMethods[17] = [&](R *r) {
 					ConnectionsGroup<R> *connections =
@@ -200,7 +200,7 @@ template <typename Scenario> class Viewer : public SignalSlotRenderer {
 				paintStepsMethods.erase(17);
 		};
 		MenuElement<R> ssaoPostproc = {"SSAO"};
-		ssaoPostproc.onToggled = [&](R *r, MenuElement<R> *me) {
+		ssaoPostproc.onToggled = [&](R *, MenuElement<R> *me) {
 			if (me->isChecked()) {
 				paintStepsMethods[1000000] = [&](R *r) { paintSteps["SSAO"]->call(r); };
 			} else {
@@ -222,8 +222,8 @@ template <typename Scenario> class Viewer : public SignalSlotRenderer {
 		displayMenu.callAll(this);
 	}
 	// updates Interface Additions (new buttons, new menu, ...)
-	void applyInterfaceAdditions(SignalSlotBase *b) {
-		QObject *root = b->window();
+	void applyInterfaceAdditions(SignalSlotBase *base) {
+		QObject *root = base->window();
 		for (auto &b : buttons) {
 			auto &bt = b.second;
 			if (bt.needsToBeUpdated()) {
@@ -292,7 +292,7 @@ template <typename Scenario> class Viewer : public SignalSlotRenderer {
 	 *              EVENTS              *
 	 ***********************************/
 	// events handling routine
-	void processEvents(SignalSlotBase *b) {
+	void processEvents(SignalSlotBase *base) {
 		const vector<Qt::MouseButton> acceptedButtons = {
 		    {Qt::LeftButton, Qt::RightButton, Qt::MiddleButton}};
 		// mouse drag (mouse down)
@@ -314,10 +314,10 @@ template <typename Scenario> class Viewer : public SignalSlotRenderer {
 			if (keyUpMethods.count(k)) keyUpMethods.at(k)(this);
 
 		// buttons
-		for (const auto &bName : b->clickedButtons)
+		for (const auto &bName : base->clickedButtons)
 			if (buttons.count(bName)) buttons[bName].clicked(this);
 
-		b->clickedButtons.clear();
+		base->clickedButtons.clear();
 	}
 
 	/***************************************************
@@ -340,14 +340,14 @@ template <typename Scenario> class Viewer : public SignalSlotRenderer {
 		}
 
 		for (auto &f : hooks[Hooks::preDraw]) f(this);
-		 for (auto &s : paintStepsMethods) s.second(this);
-		//auto s = this->getViewportSize() * this->getWindow()->devicePixelRatio() *
-				 //this->getScreenScaleCoef();
-		//GL->glViewport(0, 0, s.width(), s.height());
-		//GL->glDepthMask(true);
-		//GL->glClearColor(0.1, .4, 0.7, 1.0);
-		//GL->glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-		//GL->glEnable(GL_DEPTH_TEST);
+		for (auto &s : paintStepsMethods) s.second(this);
+		// auto s = this->getViewportSize() * this->getWindow()->devicePixelRatio() *
+		// this->getScreenScaleCoef();
+		// GL()->glViewport(0, 0, s.width(), s.height());
+		// GL()->glDepthMask(true);
+		// GL()->glClearColor(0.1, .4, 0.7, 1.0);
+		// GL()->glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		// GL()->glEnable(GL_DEPTH_TEST);
 		for (auto &f : hooks[Hooks::postDraw]) f(this);
 
 		updateStats();
@@ -763,5 +763,5 @@ template <typename Scenario> class Viewer : public SignalSlotRenderer {
 		return app.exec();
 	}
 };
-}
+}  // namespace MecacellViewer
 #endif

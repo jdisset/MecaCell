@@ -42,23 +42,23 @@ class BlurQuad {
 		quad.vao.bind();
 
 		fboB->bind();
-		GL->glActiveTexture(GL_TEXTURE0);
+		GL()->glActiveTexture(GL_TEXTURE0);
 		shader.setUniformValue(shader.uniformLocation("tex"), 0);
 		shader.setUniformValue(shader.uniformLocation("xRatio"),
 		                       (float)r.width() / (float)s.width());
 		for (int i = 0; i < amount; ++i) {
-			if (i == 0) GL->glBindTexture(GL_TEXTURE_2D, tex);
+			if (i == 0) GL()->glBindTexture(GL_TEXTURE_2D, tex);
 			shader.setUniformValue(shader.uniformLocation("dir"), QVector2D(1.0, 0));
-			GL->glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+			GL()->glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 			shader.setUniformValue(shader.uniformLocation("dir"),
 			                       QVector2D(0.70710678118, 0.70710678118));
-			GL->glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+			GL()->glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 			shader.setUniformValue(shader.uniformLocation("dir"),
 			                       QVector2D(-0.70710678118, 0.70710678118));
-			GL->glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+			GL()->glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 			shader.setUniformValue(shader.uniformLocation("dir"), QVector2D(0, 1.0));
-			GL->glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
-			if (i == 0) GL->glBindTexture(GL_TEXTURE_2D, fboB->texture());
+			GL()->glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+			if (i == 0) GL()->glBindTexture(GL_TEXTURE_2D, fboB->texture());
 		}
 		fboB->release();
 		quad.vao.release();

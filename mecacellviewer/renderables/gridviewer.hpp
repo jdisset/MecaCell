@@ -41,7 +41,7 @@ template <typename R> class GridViewer : public PaintStep<R> {
 			shader.setUniformValue(shader.uniformLocation("model"), model);
 			shader.setUniformValue(shader.uniformLocation("normalMatrix"), nmatrix);
 			shader.setUniformValue(shader.uniformLocation("color"), col);
-			GL->glDrawElements(GL_TRIANGLES, cube.indices.size(), GL_UNSIGNED_INT, 0);
+			GL()->glDrawElements(GL_TRIANGLES, cube.indices.size(), GL_UNSIGNED_INT, 0);
 		}
 		cube.vao.release();
 		shader.release();

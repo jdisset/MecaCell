@@ -93,8 +93,8 @@ template <typename Cell> struct ElasticConnection {
 
 		 */
 
-		const double adhCoef = 0.1;
-		double resistiveForce = area * adhCoef;
+		//const double adhCoef = 0.1;
+		//double resistiveForce = area * adhCoef;
 
 		// first we compute the force's component parrallel to the collision axis
 		// and only the forces trying to separate the cells

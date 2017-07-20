@@ -122,10 +122,10 @@ template <typename Cell> struct ContactSurface {
 		auto smallestCell = biggestCell == cells.first ? cells.second : cells.first;
 
 		double biggestCellMidpoint =
-		    0.5 * (distanceBtwnCenters +
-		           (std::pow(biggestCell->getBody().getDynamicRadius(), 2) -
-		            std::pow(smallestCell->getBody().getDynamicRadius(), 2)) /
-		               distanceBtwnCenters);
+		    0.5 *
+		    (distanceBtwnCenters + (std::pow(biggestCell->getBody().getDynamicRadius(), 2) -
+		                            std::pow(smallestCell->getBody().getDynamicRadius(), 2)) /
+		                               distanceBtwnCenters);
 		double smallestCellMidpoint = distanceBtwnCenters - biggestCellMidpoint;
 		if (biggestCell == cells.first)
 			return {biggestCellMidpoint, smallestCellMidpoint};
@@ -140,12 +140,13 @@ template <typename Cell> struct ContactSurface {
 	// correctly been updated before
 
 	// from internal pressure
-	void applyPressureForces(double dt) {
+	void applyPressureForces(double) {
 		// force from pressure is direction to the actual contact surface
 		// and proportional to its surface
-		double adhSpeed = (centersDist - prevCentersDist) / dt;
-		auto F = 0.5 * (area * (max(0.0, cells.first->getBody().getPressure()) +
-		                        max(0.0, cells.second->getBody().getPressure()))) *
+		// double adhSpeed = (centersDist - prevCentersDist) / dt;
+		auto F = 0.5 *
+		         (area * (max(0.0, cells.first->getBody().getPressure()) +
+		                  max(0.0, cells.second->getBody().getPressure()))) *
 		         direction;
 		cells.first->getBody().receiveForce(-F);
 		cells.second->getBody().receiveForce(F);
@@ -287,5 +288,5 @@ template <typename Cell> struct ContactSurface {
 		//}
 	}
 };
-}
+}  // namespace MecaCell
 #endif

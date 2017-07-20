@@ -13,7 +13,7 @@
 
 namespace MecaCell {
 template <typename Cell> class SpringBody : public OrientedParticle {
-	friend class GenericConnectionBodyPlugin<Cell, SpringConnection>;
+	friend struct GenericConnectionBodyPlugin<Cell, SpringConnection>;
 
 	Cell *cell = nullptr;
 	std::vector<SpringConnection<Cell> *> cellConnections;

@@ -32,11 +32,11 @@ template <typename R> class MSAA : public ScreenManager<R> {
 		fbo->bind();
 		auto* wdw = r->getWindow();
 		auto s = r->getViewportSize() * wdw->devicePixelRatio() * r->getScreenScaleCoef();
-		GL->glViewport(0, 0, s.width(), s.height());
-		GL->glDepthMask(true);
-		GL->glClearColor(1.0, 1.0, 1.0, 1.0);
-		GL->glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-		GL->glEnable(GL_DEPTH_TEST);
+		GL()->glViewport(0, 0, s.width(), s.height());
+		GL()->glDepthMask(true);
+		GL()->glClearColor(1.0, 1.0, 1.0, 1.0);
+		GL()->glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		GL()->glEnable(GL_DEPTH_TEST);
 	}
 	void screenChanged(R* r) {
 		auto* wdw = r->getWindow();

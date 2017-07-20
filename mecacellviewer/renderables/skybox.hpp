@@ -35,13 +35,13 @@ template <typename R> class Skybox : public PaintStep<R> {
 		shader.bind();
 		sky.vao.bind();
 		texture->bind(0);
-		GL->glActiveTexture(GL_TEXTURE0);
-		GL->glBindTexture(GL_TEXTURE_2D, texture->textureId());
+		GL()->glActiveTexture(GL_TEXTURE0);
+		GL()->glBindTexture(GL_TEXTURE_2D, texture->textureId());
 		shader.setUniformValue(shader.uniformLocation("tex"), 0);
 		shader.setUniformValue(shader.uniformLocation("projection"), projection);
 		shader.setUniformValue(shader.uniformLocation("view"), view);
 		shader.setUniformValue(shader.uniformLocation("model"), model);
-		GL->glDrawElements(GL_TRIANGLES, sky.indices.size(), GL_UNSIGNED_INT, 0);
+		GL()->glDrawElements(GL_TRIANGLES, sky.indices.size(), GL_UNSIGNED_INT, 0);
 		sky.vao.release();
 		shader.release();
 	}

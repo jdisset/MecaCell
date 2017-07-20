@@ -45,7 +45,7 @@ template <typename R> class ArrowsGroup : public PaintStep<R> {
 			QMatrix4x4 nmatrix = (model).inverted().transposed();
 			shader.setUniformValue(shader.uniformLocation("model"), model);
 			shader.setUniformValue(shader.uniformLocation("normalMatrix"), nmatrix);
-			GL->glDrawElements(GL_TRIANGLES, cube.indices.size(), GL_UNSIGNED_INT, 0);
+			GL()->glDrawElements(GL_TRIANGLES, cube.indices.size(), GL_UNSIGNED_INT, 0);
 		}
 		cube.vao.release();
 		shader.release();
