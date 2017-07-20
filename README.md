@@ -1,5 +1,5 @@
-#MecaCell
-MecaCell is an open-source cellular physics agent-based simulation platform. It is designed with artificial life and morphogenetic engineering in mind and tries to stay not too invasive, lightweight and easily extensible.
+# MecaCell
+MecaCell is an open-source artificial life platform integrating several cellular physics engines for agent-based simulation. It is designed with morphogenetic engineering in mind and tries to stay not too invasive, lightweight and easily extensible.
 It comes in the form of two libraries :
 - **MecaCell** is the _core_ library which contains everything you need to run simulations in console or with your own viewer. It is written in C++11 and has no dependencies other than the C++ standard library.
 - **MecaCellViewer** is a _viewer_ library. It is written in C++, uses OpenGL and depends on Qt5.
@@ -8,13 +8,13 @@ It comes in the form of two libraries :
 ![screenshots](https://github.com/jdisset/MecaCell/blob/screens/githubmecacell.jpg)
 
 
-##Install
+## Install
 You will need cmake 2.8+, a relatively recent C++ compiler (C++11 support is required) and Qt 5.2+
 - Clone this repository
 - cd in it and create a build directory
 - cmake .. && make && make install
 
-##Basic usage & ultra simple example
+## Basic usage & ultra simple example
 You need at least one **cell type**.
    
 Your cell type must inherit from the MecaCell::ConnectableCell (it uses the curriously reccuring template for performances reason, so the inherit line is a little bit more verbose):
