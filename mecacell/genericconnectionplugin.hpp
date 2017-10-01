@@ -13,6 +13,7 @@ namespace MecaCell {
  * @brief Embedded plugin that will handle the collision detection routines. Parallel
  * code.
  */
+static double GRIDSIZE = 120;
 template <typename Cell, template <class> class GenericConnection>
 struct GenericConnectionBodyPlugin {
 	const size_t MIN_CHUNK_SIZE = 5;
@@ -22,9 +23,6 @@ struct GenericConnectionBodyPlugin {
 	    connections;  /// where we keep track of all the
 	/// connections. The ordered_hash_map is to enforce determinism.
 
-	double currentAvgCellSize = 40.0;  /// used to size the space partitioning grid
-	double currentMaxCellSize = 40.0;  /// used to size the space partitioning grid
-	const double gridCellRatio = 4.0;  /// grid size relative to the currentAvgCellSize
 	std::mutex connectionMutex;
 
 	// a callback called at every new connection
@@ -92,10 +90,11 @@ struct GenericConnectionBodyPlugin {
 	 * @param cells the cells that are in contact
 	 */
 	void createConnection(const ordered_pair<Cell *> &cells) {
-		connections[cells] = std::make_unique<GenericConnection<Cell>>(cells);
+		auto ptr = std::make_unique<GenericConnection<Cell>>(cells);
+		auto *newConnection = ptr.get();
+		connections[cells] = std::move(ptr);
 		cells.first->connectedCells.insert(cells.second);
 		cells.second->connectedCells.insert(cells.first);
-		auto *newConnection = connections.at(cells).get();
 		cells.first->body.cellConnections.push_back(newConnection);
 		cells.second->body.cellConnections.push_back(newConnection);
 		newConnectionCallback(newConnection);
@@ -128,14 +127,13 @@ struct GenericConnectionBodyPlugin {
 		// is
 		// a shared_mutex for newConnections)
 		const double NEW_CONNECTION_THRESHOLD = 1.0 - 1e-10;
-		Grid<Cell *> grid(std::max(currentAvgCellSize * gridCellRatio, currentMaxCellSize));
-		for (const auto &c : world.cells) {
-			grid.insert(c);
-		}
+		Grid<Cell *> grid(GRIDSIZE);
+		for (const auto &c : world.cells) grid.insert(c);
 		auto gridCells = grid.getThreadSafeGrid();
 		for (auto &color : gridCells) {
 			std::vector<std::future<std::vector<ordered_pair<Cell *>>>>
 			    newConnectionsFutures;  // we collect all them futures
+			newConnectionsFutures.reserve(color.size());
 			for (auto &batch : color)
 				newConnectionsFutures.push_back(world.threadpool.enqueueWithFuture([&] {
 					std::vector<ordered_pair<Cell *>> newConns;
@@ -157,7 +155,7 @@ struct GenericConnectionBodyPlugin {
 							}
 						}
 					}
-					return newConns;
+					return std::move(newConns);
 				}));
 			for (auto &ncf : newConnectionsFutures)  // and wait for their accomplishment
 				for (const auto &nc : ncf.get()) createConnection(nc);

@@ -28,7 +28,11 @@ class ThreadPool {
 
  public:
 	size_t getNbThreads() { return nthreads; }
-	ThreadPool(size_t nt) : nthreads(nt), stop(false), currentTasks(0) {
+	ThreadPool(size_t nt) : stop(false), currentTasks(0) { setNbThreads(nt); }
+
+	void setNbThreads(size_t n) {
+		workers.clear();
+		nthreads = n;
 		for (size_t i = 0; i < nthreads; ++i)
 			workers.emplace_back([this] {
 				for (;;) {
@@ -49,7 +53,7 @@ class ThreadPool {
 
 	void waitUntilLast() {
 		std::unique_lock<std::mutex> wlock(this->queue_mutex);
-		if (currentTasks > 0)
+		while (currentTasks > 0)
 			this->waitingLast.wait(wlock, [this]() { return currentTasks == 0; });
 	}
 
@@ -57,6 +61,7 @@ class ThreadPool {
 		if (nthreads > 0) {
 			std::unique_lock<std::mutex> lock(queue_mutex);
 			tasks.emplace([func = std::forward<F>(f)]() { std::move(func)(); });
+			++currentTasks;
 			condition.notify_one();
 		} else
 			std::forward<F>(f)();
@@ -65,10 +70,7 @@ class ThreadPool {
 	template <class F> auto enqueueWithFuture(F&& f) {
 		using R = decltype(f());
 		if (nthreads > 0) {
-			{
-				std::unique_lock<std::mutex> lock(queue_mutex);
-				++currentTasks;
-			}
+			++currentTasks;
 			if (stop) throw std::runtime_error("enqueue on stopped ThreadPool");
 			auto taskPtr = new std::packaged_task<R()>([func = std::forward<F>(f)]()->R {
 				return std::move(func)();
