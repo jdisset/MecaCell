@@ -119,6 +119,11 @@ template <typename Cell, typename Integrator = Euler> class World {
 	 */
 	size_t getNbThreads() { return nbThreads; }
 
+	void setNbThreads(size_t n) {
+		nbThreads = n;
+		threadpool.setNbThreads(n);
+	}
+
 	/**********************************************
 	 *               HOOKS & PLUGINS              *
 	 *********************************************/
@@ -287,5 +292,5 @@ template <typename Cell, typename Integrator = Euler> class World {
 		while (!newCells.empty()) delete newCells.back(), newCells.pop_back();
 	}
 };
-}
+}  // namespace MecaCell
 #endif

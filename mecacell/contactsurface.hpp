@@ -19,7 +19,7 @@ template <typename Cell> struct ContactSurface {
 
 	/////////////// adhesion ///////////////
 	double adhCoef = 0.5;    // adhesion Coef [0;1]
-	double dampCoef = 0.1;   // damping [0;1]
+	double ADH_DAMPING_RATIO= 0.1;   // damping [0;1]
 	double bondMaxL = 5.0;   // max length a surface bond can reach before breaking
 	double bondReach = 1.0;  // when are new connection created [0;bondMaxL[
 	double fixedDamping = 0.0;
@@ -255,7 +255,7 @@ template <typename Cell> struct ContactSurface {
 			double springSpeed = (linAdhElongation - prevLinAdhElongation) / dt;
 			double k = adhArea * adhCoef * baseBondStrength;
 			double ratioDamping = dampingFromRatio(
-			    dampCoef, cells.first->getBody().getMass() + cells.second->getBody().getMass(),
+			    ADH_DAMPING_RATIO, cells.first->getBody().getMass() + cells.second->getBody().getMass(),
 			    k);
 
 			Vec F = 0.5 * (k * linAdhElongation + (fixedDamping + ratioDamping) * springSpeed) *
@@ -274,7 +274,7 @@ template <typename Cell> struct ContactSurface {
 		// double springSpeed = (flexAdhElongation - prevFlexAdhElongation) / dt;
 		// double k = adhArea * adhCoef * baseBondStrength;
 		// double ratioDamping =
-		// dampingFromRatio(dampCoef, cells.first->getMass() + cells.second->getMass(), k);
+		// dampingFromRatio(ADH_DAMPING_RATIO, cells.first->getMass() + cells.second->getMass(), k);
 		// Vec F = 0.5 *
 		//(k * flexAdhElongation + (fixedDamping + ratioDamping) * springSpeed) *
 		// m0m1;

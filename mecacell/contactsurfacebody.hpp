@@ -46,7 +46,7 @@ template <typename Cell> class ContactSurfaceBody : public OrientedParticle {
 	}
 	void setVolumeConservationEnabled(bool v) { volumeConservationEnabled = v; }
 	void setRestVolume(double v) { restVolume = v; }
-	void setRestRadius(double r) { restRadius = r; }
+	void setRadius(double r) { restRadius = r; }
 	double getDynamicRadius() const { return dynamicRadius; }
 	double getBoundingBoxRadius() const { return dynamicRadius; };
 	std::tuple<Cell *, double> getConnectedCellAndMembraneDistance(const Vec &d) const {
@@ -72,35 +72,37 @@ template <typename Cell> class ContactSurfaceBody : public OrientedParticle {
 	void computeCurrentAreaAndVolume() {
 		restVolume = (4.0 * M_PI / 3.0) * restRadius * restRadius * restRadius;
 		double volumeLoss = 0;
-		double surfaceLoss = 0;
+		// double surfaceLoss = 0;
 		// cell connections
 		for (auto &con : cellConnections) {
 			auto &midpoint =
 			    cell == con->cells.first ? con->midpoint.first : con->midpoint.second;
 			auto h = dynamicRadius - midpoint;
 			volumeLoss += (M_PI * h / 6.0) * (3.0 * con->sqradius + h * h);
-			surfaceLoss += 2.0 * M_PI * dynamicRadius * h - con->area;
+			// surfaceLoss += 2.0 * M_PI * dynamicRadius * h - con->area;
 		}
 		// TODO : soustraire les overlapps
 		double baseVol = (4.0 * M_PI / 3.0) * dynamicRadius * dynamicRadius * dynamicRadius;
+		// double baseArea = (4.0 * M_PI) * dynamicRadius * dynamicRadius;
 		currentVolume = baseVol - volumeLoss;
+		// currentArea = baseArea - surfaceLoss;
 		const double minVol = 0.1 * restVolume;
-		const double minArea =
-		    0.1 * getRestArea();  // garde fou en attendant de soustraire les overlaps
+		// const double minArea =
+		// 0.1 * getRestArea();  // garde fou en attendant de soustraire les overlaps
 		if (currentVolume < minVol) currentVolume = minVol;
-		if (currentArea < minArea) currentArea = minArea;
+		// if (currentArea < minArea) currentArea = minArea;
 	}
 
 	void updateDynamicRadius(double dt) {
 		if (volumeConservationEnabled) {
-			double dA = currentArea - getRestArea();
+			// double dA = max(0.0,currentArea - getRestArea());
 			double dV = restVolume - currentVolume;
 			auto Fv = incompressibility * dV;
-			auto Fa = membraneStiffness * dA;
+			// auto Fa = membraneStiffness * dA;
 			pressure = Fv / currentArea;
 			double dynSpeed = (dynamicRadius - prevDynamicRadius) / dt;
-			double c = 5.0;
-			dynamicRadius += dt * dt * (Fv - Fa - dynSpeed * c);
+			double c = 1.0;
+			dynamicRadius += dt * dt * (Fv - dynSpeed * c);
 			if (dynamicRadius > restRadius * MAX_DYN_RADIUS_RATIO)
 				dynamicRadius = restRadius * MAX_DYN_RADIUS_RATIO;
 			else if (dynamicRadius < restRadius)
@@ -150,8 +152,8 @@ template <typename Cell> class ContactSurfaceBody : public OrientedParticle {
 	void setStiffness(double k) { membraneStiffness = k; }
 	void setDynamicRadius(double r) { dynamicRadius = r; }
 	double getPressure() const { return pressure; }
-	double getRestRadius(void) const { return restRadius; }
+	double getRadius(void) const { return restRadius; }
 	void moveTo(Vector3D newpos) { this->setPosition(newpos); }
 };
-}
+}  // namespace MecaCell
 #endif
