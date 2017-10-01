@@ -30,6 +30,14 @@ struct GenericConnectionBodyPlugin {
 	// a callback called at every new connection
 	std::function<void(GenericConnection<Cell> *)> newConnectionCallback =
 	    [](GenericConnection<Cell> *) {};
+
+	/**
+	 * @brief Sets a callback function to be called at each connection creation. Can be used
+	 * to override the default connection parameters.
+	 *
+	 * @param f a function taking a pointer to the newly created GenericConnection. Void
+	 * return type.
+	 */
 	void setNewConnectionCallback(std::function<void(GenericConnection<Cell> *)> f) {
 		newConnectionCallback = f;
 	}
@@ -38,13 +46,15 @@ struct GenericConnectionBodyPlugin {
 	 * HOOKS
 	 * *******/
 	template <typename W> void preBehaviorUpdate(W *w) {
-		w->threadpool.autoChunks(w->cells, MIN_CHUNK_SIZE, AVG_TASKS_PER_THREAD,
-		                         [dt = w->getDt()](auto &c) { c->body.updateInternals(dt); });
+		w->threadpool.autoChunks(w->cells, MIN_CHUNK_SIZE,
+		                         AVG_TASKS_PER_THREAD, [dt = w->getDt()](auto &c) {
+			                         c->body.updateInternals(dt);
+		                         });
 		w->threadpool.waitUntilLast();
 	}
 
 	template <typename W> void endUpdate(W *w) {
-		unsigned int nbIterations = 12;
+		unsigned int nbIterations = 2;
 
 		checkForCellCellConnections(*w);
 
@@ -65,6 +75,9 @@ struct GenericConnectionBodyPlugin {
 				auto &c = w->cells[j];
 				c->body.receiveForce(savedForces[j].first);
 				c->body.receiveTorque(savedForces[j].second);
+			}
+			w->allForcesHaveBeenAppliedToCells();
+			for (auto &c : w->cells) {
 				c->body.updatePositionsAndOrientations(subdt);
 				c->body.resetForce();
 				c->body.resetTorque();
@@ -116,7 +129,9 @@ struct GenericConnectionBodyPlugin {
 		// a shared_mutex for newConnections)
 		const double NEW_CONNECTION_THRESHOLD = 1.0 - 1e-10;
 		Grid<Cell *> grid(std::max(currentAvgCellSize * gridCellRatio, currentMaxCellSize));
-		for (const auto &c : world.cells) grid.insert(c);
+		for (const auto &c : world.cells) {
+			grid.insert(c);
+		}
 		auto gridCells = grid.getThreadSafeGrid();
 		for (auto &color : gridCells) {
 			std::vector<std::future<std::vector<ordered_pair<Cell *>>>>
@@ -190,6 +205,6 @@ struct GenericConnectionBodyPlugin {
 		}
 	}
 };
-}
+}  // namespace MecaCell
 
 #endif

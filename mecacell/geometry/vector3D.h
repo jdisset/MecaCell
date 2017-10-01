@@ -358,7 +358,8 @@ class Vector3D {
 	 * @return the projection of p onto a plane defined by its normal n and an
 	 * offset o
 	 */
-	Vector3D getProjectionOnPlane(const Vector3D &o, const Vector3D &n, const Vector3D &p) {
+	static Vector3D getProjectionOnPlane(const Vector3D &o, const Vector3D &n,
+	                                     const Vector3D &p) {
 		return p - (n.dot(p - o) * n);
 	}
 

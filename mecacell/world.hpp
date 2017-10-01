@@ -87,7 +87,9 @@ template <typename Cell, typename Integrator = Euler> class World {
 	/* HOOKS
 	 */
 	DECLARE_HOOK(onAddCell, beginUpdate, preBehaviorUpdate, preDeleteDeadCellsUpdate,
-	             postBehaviorUpdate, endUpdate, destructor)
+	             postBehaviorUpdate, endUpdate, allForcesAppliedToCells, destructor)
+
+	/* CELLS */
 	std::vector<Cell *> cells;  /// all the cells are in this container
 
 	/**
@@ -208,6 +210,14 @@ template <typename Cell, typename Integrator = Euler> class World {
 	}
 
 	/**
+	 * @brief this method triggers the allForcesAppliedToCells.
+	 * It should be called by the embedded physics plugin just before updating positions
+	 */
+	void allForcesHaveBeenAppliedToCells() {
+		for (auto &f : hooks[eToUI(Hooks::allForcesAppliedToCells)]) f(this);
+	}
+
+	/**
 	 * @brief sets the amount by which time is increased at each update() call.
 	 *
 	 * smaller dt values generally results in more stable physics (at the expense of slower
@@ -287,5 +297,5 @@ template <typename Cell, typename Integrator = Euler> class World {
 		while (!newCells.empty()) delete newCells.back(), newCells.pop_back();
 	}
 };
-}
+}  // namespace MecaCell
 #endif

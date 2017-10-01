@@ -24,12 +24,12 @@ void main(){
 	DirectionalLight lights[nbLights];
 	lights[0].direction = vec3(10,10,5);
 	lights[0].color = vec3(1.0,1.0,1.0);
-	lights[0].intensity = 0.5;
+	lights[0].intensity = 0.65;
 	lights[1].direction = vec3(-0.8,0.2,-0.1);
 	lights[1].color = vec3(1.0,0.63,0.57);
 	lights[1].intensity = 0.42;
 	lights[2].direction = vec3(0.8,0.2,0.0);
-	lights[2].color = vec3(0.56,0.65,1.0);
+	lights[2].color = vec3(0.56,0.68,1.0);
 	lights[2].intensity = 0.42;
 
 	vec3 X = dFdx(surfacePosition);
@@ -55,7 +55,6 @@ void main(){
 			float specAngle = max(dot(halfDir, normal), 0.0);
 			specular = pow(specAngle, shininess);
 		}
-
 
 		vec4 specColor = vec4(1.0);
 		specColor.a = modelDiffuseColor.a;

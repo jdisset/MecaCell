@@ -2,7 +2,7 @@
 #include <vector>
 #include "introspect.hpp"
 
-// Quite a lot of stupid macros here but the result is quite pleasant to use.
+// A lot of stupid macros here but the result is quite pleasant to use.
 // I'd like to thank the ViM editor for basically writing this file for me...
 
 // HOOKS ENUM
