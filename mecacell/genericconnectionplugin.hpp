@@ -30,6 +30,13 @@ struct GenericConnectionBodyPlugin {
 	// a callback called at every new connection
 	std::function<void(GenericConnection<Cell> *)> newConnectionCallback =
 	    [](GenericConnection<Cell> *) {};
+
+	/**
+	 * @brief Sets a callback function to be called at each connection creation. Can be used
+	 * to override the default connection parameters.
+	 *
+	 * @param f a function taking a pointer to the newly created GenericConnection. Void return type.
+	 */
 	void setNewConnectionCallback(std::function<void(GenericConnection<Cell> *)> f) {
 		newConnectionCallback = f;
 	}
@@ -38,8 +45,10 @@ struct GenericConnectionBodyPlugin {
 	 * HOOKS
 	 * *******/
 	template <typename W> void preBehaviorUpdate(W *w) {
-		w->threadpool.autoChunks(w->cells, MIN_CHUNK_SIZE, AVG_TASKS_PER_THREAD,
-		                         [dt = w->getDt()](auto &c) { c->body.updateInternals(dt); });
+		w->threadpool.autoChunks(w->cells, MIN_CHUNK_SIZE,
+		                         AVG_TASKS_PER_THREAD, [dt = w->getDt()](auto &c) {
+			                         c->body.updateInternals(dt);
+		                         });
 		w->threadpool.waitUntilLast();
 	}
 
@@ -190,6 +199,6 @@ struct GenericConnectionBodyPlugin {
 		}
 	}
 };
-}
+}  // namespace MecaCell
 
 #endif

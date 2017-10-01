@@ -49,7 +49,7 @@ class ThreadPool {
 
 	void waitUntilLast() {
 		std::unique_lock<std::mutex> wlock(this->queue_mutex);
-		if (currentTasks > 0)
+		while (currentTasks > 0)
 			this->waitingLast.wait(wlock, [this]() { return currentTasks == 0; });
 	}
 
@@ -57,6 +57,7 @@ class ThreadPool {
 		if (nthreads > 0) {
 			std::unique_lock<std::mutex> lock(queue_mutex);
 			tasks.emplace([func = std::forward<F>(f)]() { std::move(func)(); });
+			++currentTasks;
 			condition.notify_one();
 		} else
 			std::forward<F>(f)();
@@ -65,10 +66,7 @@ class ThreadPool {
 	template <class F> auto enqueueWithFuture(F&& f) {
 		using R = decltype(f());
 		if (nthreads > 0) {
-			{
-				std::unique_lock<std::mutex> lock(queue_mutex);
-				++currentTasks;
-			}
+			++currentTasks;
 			if (stop) throw std::runtime_error("enqueue on stopped ThreadPool");
 			auto taskPtr = new std::packaged_task<R()>([func = std::forward<F>(f)]()->R {
 				return std::move(func)();

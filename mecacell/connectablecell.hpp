@@ -63,10 +63,7 @@ class ConnectableCell {
 
 	size_t id = 0;  // mostly for debugging, num of cell by order of addition in world
 	ConnectableCell(const Derived &c)
-	    : Movable(c.getPosition()),
-	      body(static_cast<Derived *>(this)),
-	      dead(false),
-	      color(c.color) {}
+	    : body(static_cast<Derived *>(this)), dead(false), color(c.color) {}
 
 	ConnectableCell(const ConnectableCell &c)
 	    : ConnectableCell(static_cast<const Derived &>(c)) {}
@@ -119,7 +116,6 @@ class ConnectableCell {
 	void setColorRGB(std::array<double, 3> rgb) { color = rgb; }
 	void setColorHSV(double H, double S, double V) { color = hsvToRgb(H, S, V); }
 	void setColorHSV(std::array<double, 3> hsv) { setColorHSV(hsv[0], hsv[1], hsv[2]); }
-	
 
 	/**
 	 * @brief should a viewer displpay this cell ?
@@ -155,5 +151,5 @@ class ConnectableCell {
 	bool getVisible() { return isVisible; }
 	int getNbConnections() const { return connectedCells.size(); }
 };
-}
+}  // namespace MecaCell
 #endif
