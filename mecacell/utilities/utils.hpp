@@ -96,9 +96,8 @@ inline std::vector<std::string> splitStr(const std::string &s, char delim) {
  */
 inline std::array<double, 3> hsvToRgb(double h, double s, double v) {
 	if (s <= 0.0) return {{v, v, v}};
-	double hh = h;
-	if (hh >= 360.0) hh = 0.0;
-	hh /= 60.0;
+	double hh = fmod(h, 1.0);
+	hh *= 6.0;
 	unsigned int i = static_cast<unsigned int>(hh);
 	double ff = hh - static_cast<double>(i);
 	double p = v * (1.0 - s);
@@ -134,7 +133,6 @@ template <typename T> constexpr size_t eToUI(const T &t) {
 inline double dampingFromRatio(const double r, const double m, const double k) {
 	return r * 2.0 * sqrt(m * k);  // for angular springs m is the moment of inertia
 }
-
 
 }  // namespace MecaCell
 

@@ -28,7 +28,11 @@ class ThreadPool {
 
  public:
 	size_t getNbThreads() { return nthreads; }
-	ThreadPool(size_t nt) : nthreads(nt), stop(false), currentTasks(0) {
+	ThreadPool(size_t nt) : stop(false), currentTasks(0) { setNbThreads(nt); }
+
+	void setNbThreads(size_t n) {
+		workers.clear();
+		nthreads = n;
 		for (size_t i = 0; i < nthreads; ++i)
 			workers.emplace_back([this] {
 				for (;;) {
