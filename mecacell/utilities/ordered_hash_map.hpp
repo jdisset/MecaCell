@@ -20,12 +20,11 @@ template <typename K, typename V> struct ordered_hash_map {
 	void emplace(const K &k, const V &v) { (*this)[k] = v; }
 	void erase(const K &k) {
 		if (um.count(k)) {
-			auto id = um[k];
-			vec.erase(vec.begin() + (int)id);
+			const int id = um[k];
+			vec[id] = std::move(vec.back());
+			vec.pop_back();
 			um.erase(k);
-			for (auto &u : um) {
-				if (u.second > id) u.second--;
-			}
+			um[vec[id].first] = id;
 		}
 	}
 	using const_iterator = typename decltype(vec)::const_iterator;
@@ -35,5 +34,5 @@ template <typename K, typename V> struct ordered_hash_map {
 	iterator begin() { return vec.begin(); }
 	iterator end() { return vec.end(); }
 };
-}
+}  // namespace MecaCell
 #endif

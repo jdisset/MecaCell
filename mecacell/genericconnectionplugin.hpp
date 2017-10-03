@@ -7,6 +7,7 @@
 #include "utilities/grid.hpp"
 #include "utilities/ordered_hash_map.hpp"
 #include "utilities/ordered_pair.hpp"
+//#include "utilities/external/tsl/ordered_map.h"
 
 namespace MecaCell {
 /**
@@ -18,6 +19,8 @@ template <typename Cell, template <class> class GenericConnection>
 struct GenericConnectionBodyPlugin {
 	const size_t MIN_CHUNK_SIZE = 5;
 	const size_t AVG_TASKS_PER_THREAD = 3;
+	// tsl::ordered_map<ordered_pair<Cell *>, std::unique_ptr<GenericConnection<Cell>>>
+	// connections;
 	ordered_hash_map<ordered_pair<Cell *>,
 	                 std::unique_ptr<GenericConnection<Cell>>>
 	    connections;  /// where we keep track of all the
@@ -44,10 +47,8 @@ struct GenericConnectionBodyPlugin {
 	 * HOOKS
 	 * *******/
 	template <typename W> void preBehaviorUpdate(W *w) {
-		w->threadpool.autoChunks(w->cells, 100,
-		                         5, [dt = w->getDt()](auto &c) {
-			                         c->body.updateInternals(dt);
-		                         });
+		w->threadpool.autoChunks(
+		    w->cells, 100, 5, [dt = w->getDt()](auto &c) { c->body.updateInternals(dt); });
 		w->threadpool.waitUntilLast();
 	}
 
@@ -205,7 +206,7 @@ struct GenericConnectionBodyPlugin {
 				               con.first.second ||
 				           con.first.second->getBody().getConnectedCell(-con.second->direction) !=
 				               con.first.first) {
-					// toDisconnect.push_back(std::make_pair(con.first, con.second.get()));
+					toDisconnect.push_back(std::make_pair(con.first, con.second.get()));
 				}
 			}
 		}
