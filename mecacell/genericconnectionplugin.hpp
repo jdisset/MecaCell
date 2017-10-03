@@ -44,8 +44,8 @@ struct GenericConnectionBodyPlugin {
 	 * HOOKS
 	 * *******/
 	template <typename W> void preBehaviorUpdate(W *w) {
-		w->threadpool.autoChunks(w->cells, MIN_CHUNK_SIZE,
-		                         AVG_TASKS_PER_THREAD, [dt = w->getDt()](auto &c) {
+		w->threadpool.autoChunks(w->cells, 100,
+		                         5, [dt = w->getDt()](auto &c) {
 			                         c->body.updateInternals(dt);
 		                         });
 		w->threadpool.waitUntilLast();
@@ -68,7 +68,10 @@ struct GenericConnectionBodyPlugin {
 		updateCellCellConnections(*w);
 		double subdt = w->getDt() / static_cast<double>(nbIterations);
 		for (unsigned int i = 0; i < nbIterations; ++i) {
-			for (auto &c : connections) c.second->update(subdt);
+			// for (auto &c : connections) c.second->update(subdt);
+			w->threadpool.autoChunks(connections, 100, 5,
+			                         [subdt](auto &c) { c.second->update(subdt); });
+			w->threadpool.waitUntilLast();
 			for (size_t j = 0; j < w->cells.size(); ++j) {
 				auto &c = w->cells[j];
 				c->body.receiveForce(savedForces[j].first);
@@ -127,38 +130,61 @@ struct GenericConnectionBodyPlugin {
 		// is
 		// a shared_mutex for newConnections)
 		const double NEW_CONNECTION_THRESHOLD = 1.0 - 1e-10;
-		Grid<Cell *> grid(GRIDSIZE);
-		for (const auto &c : world.cells) grid.insert(c);
-		auto gridCells = grid.getThreadSafeGrid();
-		for (auto &color : gridCells) {
-			std::vector<std::future<std::vector<ordered_pair<Cell *>>>>
-			    newConnectionsFutures;  // we collect all them futures
-			newConnectionsFutures.reserve(color.size());
-			for (auto &batch : color)
-				newConnectionsFutures.push_back(world.threadpool.enqueueWithFuture([&] {
-					std::vector<ordered_pair<Cell *>> newConns;
-					for (size_t i = 0; i < batch.size(); ++i) {
-						for (size_t j = i + 1; j < batch.size(); ++j) {
-							auto op = make_ordered_cell_pair(batch[i], batch[j]);
-							Vec AB = op.second->getPosition() - op.first->getPosition();
-							double sqDistance = AB.sqlength();
-							if (sqDistance < std::pow(op.first->body.getBoundingBoxRadius() +
-							                              op.second->body.getBoundingBoxRadius(),
-							                          2)) {
-								if (!op.first->isConnectedTo(op.second) && op.first != op.second) {
-									double dist = sqrt(sqDistance);
-									Vec dir = AB / dist;
-									auto d0 = op.first->body.getPreciseMembraneDistance(dir);
-									auto d1 = op.second->body.getPreciseMembraneDistance(-dir);
-									if (dist < NEW_CONNECTION_THRESHOLD * (d0 + d1)) newConns.push_back(op);
+		if (GRIDSIZE > 0) {
+			Grid<Cell *> grid(GRIDSIZE);
+			for (const auto &c : world.cells) grid.insert(c);
+			auto gridCells = grid.getThreadSafeGrid();
+			for (auto &color : gridCells) {
+				std::vector<std::future<std::vector<ordered_pair<Cell *>>>>
+				    newConnectionsFutures;  // we collect all them futures
+				newConnectionsFutures.reserve(color.size());
+				for (auto &batch : color)
+					newConnectionsFutures.push_back(world.threadpool.enqueueWithFuture([&] {
+						std::vector<ordered_pair<Cell *>> newConns;
+						for (size_t i = 0; i < batch.size(); ++i) {
+							for (size_t j = i + 1; j < batch.size(); ++j) {
+								auto op = make_ordered_cell_pair(batch[i], batch[j]);
+								Vec AB = op.second->getPosition() - op.first->getPosition();
+								double sqDistance = AB.sqlength();
+								if (sqDistance < std::pow(op.first->body.getBoundingBoxRadius() +
+								                              op.second->body.getBoundingBoxRadius(),
+								                          2)) {
+									if (!op.first->isConnectedTo(op.second) && op.first != op.second) {
+										double dist = sqrt(sqDistance);
+										Vec dir = AB / dist;
+										auto d0 = op.first->body.getPreciseMembraneDistance(dir);
+										auto d1 = op.second->body.getPreciseMembraneDistance(-dir);
+										if (dist < NEW_CONNECTION_THRESHOLD * (d0 + d1))
+											newConns.push_back(op);
+									}
 								}
 							}
 						}
+						return std::move(newConns);
+					}));
+				for (auto &ncf : newConnectionsFutures)  // and wait for their accomplishment
+					for (const auto &nc : ncf.get()) createConnection(nc);
+			}
+		} else {
+			auto &batch = world.cells;
+			for (size_t i = 0; i < batch.size(); ++i) {
+				for (size_t j = i + 1; j < batch.size(); ++j) {
+					auto op = make_ordered_cell_pair(batch[i], batch[j]);
+					Vec AB = op.second->getPosition() - op.first->getPosition();
+					double sqDistance = AB.sqlength();
+					if (sqDistance < std::pow(op.first->body.getBoundingBoxRadius() +
+					                              op.second->body.getBoundingBoxRadius(),
+					                          2)) {
+						if (!op.first->isConnectedTo(op.second) && op.first != op.second) {
+							double dist = sqrt(sqDistance);
+							Vec dir = AB / dist;
+							auto d0 = op.first->body.getPreciseMembraneDistance(dir);
+							auto d1 = op.second->body.getPreciseMembraneDistance(-dir);
+							if (dist < NEW_CONNECTION_THRESHOLD * (d0 + d1)) createConnection(op);
+						}
 					}
-					return std::move(newConns);
-				}));
-			for (auto &ncf : newConnectionsFutures)  // and wait for their accomplishment
-				for (const auto &nc : ncf.get()) createConnection(nc);
+				}
+			}
 		}
 	}
 
@@ -173,13 +199,14 @@ struct GenericConnectionBodyPlugin {
 		std::vector<std::pair<ordered_pair<Cell *>, GenericConnection<Cell> *>> toDisconnect;
 		for (auto &con : connections) {
 			if (!con.second->unbreakable) {
-				if (con.second->area <= 0)
+				if (con.second->area <= 0) {
 					toDisconnect.push_back(std::make_pair(con.first, con.second.get()));
-				else if (con.first.first->getBody().getConnectedCell(con.second->direction) !=
-				             con.first.second ||
-				         con.first.second->getBody().getConnectedCell(-con.second->direction) !=
-				             con.first.first)
-					toDisconnect.push_back(std::make_pair(con.first, con.second.get()));
+				} else if (con.first.first->getBody().getConnectedCell(con.second->direction) !=
+				               con.first.second ||
+				           con.first.second->getBody().getConnectedCell(-con.second->direction) !=
+				               con.first.first) {
+					// toDisconnect.push_back(std::make_pair(con.first, con.second.get()));
+				}
 			}
 		}
 		for (auto &c : toDisconnect) disconnect(c.first, c.second);
