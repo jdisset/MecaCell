@@ -29,6 +29,7 @@
 <file>shaders/line.frag</file>
 <file>shaders/model.frag</file>
 <file>shaders/flat.frag</file>
+<file>shaders/smooth.frag</file>
 <file>shaders/texture.vert</file>
 <file>shaders/viewprojection.vert</file>
 <file>shaders/line.geom</file>

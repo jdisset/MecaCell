@@ -23,11 +23,16 @@ struct Spring {
 		prevLength = length;
 		length = l;
 	}
+
+	double computeForce(double dt) {
+		double v = (length - prevLength) / dt;
+		return 0.5 * (k * (length - restLength) + c * v);
+	}
+
 	template <typename A, typename B>
 	void applyForce(A &a, B &b, const Vector3D &direction, double dt) {
 		// direction = a -> b
-		double v = (length - prevLength) / dt;
-		double f = 0.5 * (k * (length - restLength) + c * v);
+		double f = computeForce(dt);
 		a.receiveForce(direction * f);
 		b.receiveForce(-direction * f);
 	}
@@ -59,6 +64,6 @@ struct Joint {
 	}
 	void updateDelta() { delta = Vec::getRotation(direction, target); }
 };
-}
+}  // namespace MecaCell
 
 #endif

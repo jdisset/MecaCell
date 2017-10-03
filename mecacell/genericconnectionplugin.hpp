@@ -13,7 +13,7 @@ namespace MecaCell {
  * @brief Embedded plugin that will handle the collision detection routines. Parallel
  * code.
  */
-static double GRIDSIZE;
+static double GRIDSIZE = 120;
 template <typename Cell, template <class> class GenericConnection>
 struct GenericConnectionBodyPlugin {
 	const size_t MIN_CHUNK_SIZE = 5;
@@ -23,9 +23,6 @@ struct GenericConnectionBodyPlugin {
 	    connections;  /// where we keep track of all the
 	/// connections. The ordered_hash_map is to enforce determinism.
 
-	double currentAvgCellSize = 40.0;   /// used to size the space partitioning grid
-	double currentMaxCellSize = 40.0;   /// used to size the space partitioning grid
-	const double gridCellRatio = 10.0;  /// grid size relative to the currentAvgCellSize
 	std::mutex connectionMutex;
 
 	// a callback called at every new connection
@@ -55,7 +52,7 @@ struct GenericConnectionBodyPlugin {
 	}
 
 	template <typename W> void endUpdate(W *w) {
-		unsigned int nbIterations = 12;
+		unsigned int nbIterations = 2;
 
 		checkForCellCellConnections(*w);
 
@@ -76,6 +73,9 @@ struct GenericConnectionBodyPlugin {
 				auto &c = w->cells[j];
 				c->body.receiveForce(savedForces[j].first);
 				c->body.receiveTorque(savedForces[j].second);
+			}
+			w->allForcesHaveBeenAppliedToCells();
+			for (auto &c : w->cells) {
 				c->body.updatePositionsAndOrientations(subdt);
 				c->body.resetForce();
 				c->body.resetTorque();
@@ -127,12 +127,7 @@ struct GenericConnectionBodyPlugin {
 		// is
 		// a shared_mutex for newConnections)
 		const double NEW_CONNECTION_THRESHOLD = 1.0 - 1e-10;
-		currentAvgCellSize = 0;
-		// for (const auto &c : world.cells) currentAvgCellSize += c->getBoundingBoxRadius();
-		// if (world.cells.size() > 0)
-		// currentAvgCellSize /= static_cast<double>(world.cells.size());
 		Grid<Cell *> grid(GRIDSIZE);
-		// Grid<Cell *> grid(GRIDSIZE);
 		for (const auto &c : world.cells) grid.insert(c);
 		auto gridCells = grid.getThreadSafeGrid();
 		for (auto &color : gridCells) {

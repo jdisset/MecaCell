@@ -62,6 +62,7 @@ class ConnectableCell {
 	bool isConnectedTo(Derived *c) { return connectedCells.count(c); }
 
 	size_t id = 0;  // mostly for debugging, num of cell by order of addition in world
+	size_t getId() { return id; }
 	ConnectableCell(const Derived &c)
 	    : body(static_cast<Derived *>(this)), dead(false), color(c.color) {}
 

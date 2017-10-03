@@ -81,7 +81,6 @@ template <typename Cell> class ElasticBody {
 
 	template <typename Integrator = Euler> void updatePositionsAndOrientations(double dt) {
 		Integrator::updatePosition(realCenter, dt);
-		// Integrator::updateOrientation(realCenter, moi, dt);
 	}
 
 	std::tuple<Cell *, double> getConnectedCellAndMembraneDistance(const Vec &d) const {
