@@ -17,7 +17,6 @@ template <typename K, typename V> struct ordered_hash_map {
 	bool count(const K &k) { return um.count(k); }
 	size_t size() const { return vec.size(); }
 	V &at(const K &k) { return vec[um.at(k)].second; }
-	void emplace(const K &k, const V &v) { (*this)[k] = v; }
 	void erase(const K &k) {
 		if (um.count(k)) {
 			const int id = um[k];

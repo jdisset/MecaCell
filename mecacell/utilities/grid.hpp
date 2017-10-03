@@ -43,6 +43,29 @@ template <typename O> class Grid {
 		return res;
 	}
 
+	std::array<vector<vector<O>>, 8> getThreadSafeGrid(int minEl) const {
+		// same color batches can be safely treated in parallel (if max O size < cellSize)
+		std::array<std::vector<std::vector<O>>, 8> res;
+		for (const auto &c : orderedVec) res[vecToColor(c.first)].push_back(c.second);
+		for (auto &color : res) {
+			if (color.size() > 1) {
+				for (auto it = std::next(color.begin()); it != color.end();) {
+					if ((*std::prev(it)).size() <
+					    minEl) {      // batch too small, we merge with the previous one
+						auto &b = *it;  // current batch
+						auto pv = std::prev(it);
+						auto &a = *pv;  // prev one
+						a.insert(a.end(), b.begin(), b.end());
+						it = color.erase(it);
+					} else {
+						++it;
+					}
+				}
+			}
+		}
+		return res;
+	}
+
 	inline size_t vecToColor(const Vec &v) const {
 		return (abs((int)v.x()) % 2) + (abs((int)v.y()) % 2) * 2 + (abs((int)v.z()) % 2) * 4;
 	}
@@ -73,12 +96,12 @@ template <typename O> class Grid {
 		}
 	}
 
-	//double cx = i * cubeSize;
-	//if (abs(cx - center.x()) > abs(cx + cubeSize - center.x())) cx += cubeSize;
-	//double cy = j * cubeSize;
-	//if (abs(cy - center.y()) > abs(cy + cubeSize - center.y())) cy += cubeSize;
-	//double cz = k * cubeSize;
-	//if (abs(cz - center.z()) > abs(cz + cubeSize - center.z())) cz += cubeSize;
+	// double cx = i * cubeSize;
+	// if (abs(cx - center.x()) > abs(cx + cubeSize - center.x())) cx += cubeSize;
+	// double cy = j * cubeSize;
+	// if (abs(cy - center.y()) > abs(cy + cubeSize - center.y())) cy += cubeSize;
+	// double cz = k * cubeSize;
+	// if (abs(cz - center.z()) > abs(cz + cubeSize - center.z())) cz += cubeSize;
 
 	void insertPrecise(const O &obj) {
 		// good for gridSize << boundingboxRadius
@@ -110,10 +133,10 @@ template <typename O> class Grid {
 					//<< ") et closestCorner = " << cubeCenter;
 
 					if ((cubeCenter - center).sqlength() < sqRadius) {
-						//std::cerr << " [OK]" << std::endl;
+						// std::cerr << " [OK]" << std::endl;
 						insert(Vec(i, j, k), obj);
 					} else {
-						//std::cerr << " [REFUS]" << std::endl;
+						// std::cerr << " [REFUS]" << std::endl;
 					}
 				}
 			}
@@ -205,5 +228,5 @@ template <typename O> class Grid {
 		orderedVec = decltype(orderedVec)();
 	}
 };
-}
+}  // namespace MecaCell
 #endif

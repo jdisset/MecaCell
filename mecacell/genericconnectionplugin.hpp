@@ -134,35 +134,36 @@ struct GenericConnectionBodyPlugin {
 		if (GRIDSIZE > 0) {
 			Grid<Cell *> grid(GRIDSIZE);
 			for (const auto &c : world.cells) grid.insert(c);
-			auto gridCells = grid.getThreadSafeGrid();
+			auto gridCells = grid.getThreadSafeGrid(world.cells.size() / (10 * 8.0));
 			for (auto &color : gridCells) {
 				std::vector<std::future<std::vector<ordered_pair<Cell *>>>>
 				    newConnectionsFutures;  // we collect all them futures
 				newConnectionsFutures.reserve(color.size());
 				for (auto &batch : color)
-					newConnectionsFutures.push_back(world.threadpool.enqueueWithFuture([&] {
-						std::vector<ordered_pair<Cell *>> newConns;
-						for (size_t i = 0; i < batch.size(); ++i) {
-							for (size_t j = i + 1; j < batch.size(); ++j) {
-								auto op = make_ordered_cell_pair(batch[i], batch[j]);
-								Vec AB = op.second->getPosition() - op.first->getPosition();
-								double sqDistance = AB.sqlength();
-								if (sqDistance < std::pow(op.first->body.getBoundingBoxRadius() +
-								                              op.second->body.getBoundingBoxRadius(),
-								                          2)) {
-									if (!op.first->isConnectedTo(op.second) && op.first != op.second) {
-										double dist = sqrt(sqDistance);
-										Vec dir = AB / dist;
-										auto d0 = op.first->body.getPreciseMembraneDistance(dir);
-										auto d1 = op.second->body.getPreciseMembraneDistance(-dir);
-										if (dist < NEW_CONNECTION_THRESHOLD * (d0 + d1))
-											newConns.push_back(op);
+					if (batch.size() > 1)
+						newConnectionsFutures.push_back(world.threadpool.enqueueWithFuture([&] {
+							std::vector<ordered_pair<Cell *>> newConns;
+							for (size_t i = 0; i < batch.size(); ++i) {
+								for (size_t j = i + 1; j < batch.size(); ++j) {
+									auto op = make_ordered_cell_pair(batch[i], batch[j]);
+									Vec AB = op.second->getPosition() - op.first->getPosition();
+									double sqDistance = AB.sqlength();
+									if (sqDistance < std::pow(op.first->body.getBoundingBoxRadius() +
+									                              op.second->body.getBoundingBoxRadius(),
+									                          2)) {
+										if (!op.first->isConnectedTo(op.second) && op.first != op.second) {
+											double dist = sqrt(sqDistance);
+											Vec dir = AB / dist;
+											auto d0 = op.first->body.getPreciseMembraneDistance(dir);
+											auto d1 = op.second->body.getPreciseMembraneDistance(-dir);
+											if (dist < NEW_CONNECTION_THRESHOLD * (d0 + d1))
+												newConns.push_back(op);
+										}
 									}
 								}
 							}
-						}
-						return std::move(newConns);
-					}));
+							return std::move(newConns);
+						}));
 				for (auto &ncf : newConnectionsFutures)  // and wait for their accomplishment
 					for (const auto &nc : ncf.get()) createConnection(nc);
 			}
