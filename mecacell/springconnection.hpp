@@ -36,7 +36,7 @@ template <typename Cell> struct SpringConnection {
 	double COLLISION_DAMPING_RATIO = 0.5;
 	double ADH_DAMPING_RATIO = 1.0;
 	double ANG_ADH_COEF = 10.0;
-	double ADH_CONSTANT = 0.1;  // factor by which all adhesion forces is multiplied
+	double ADH_CONSTANT = 1.0;  // factor by which all adhesion forces is multiplied
 	double MAX_TS_INCL =
 	    0.1;  // max angle before we need to reproject our torsion joint rotation
 

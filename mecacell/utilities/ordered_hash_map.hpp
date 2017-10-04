@@ -1,11 +1,13 @@
 #ifndef ORDERED_HASH_MAP_HPP
 #define ORDERED_HASH_MAP_HPP
 #include <unordered_map>
+#include "external/flat_hash_map.hpp"
 #include <vector>
 namespace MecaCell {
 template <typename K, typename V> struct ordered_hash_map {
 	// deterministic ordered hash_map
 	std::unordered_map<K, size_t> um;
+	//ska::flat_hash_map<K, size_t> um;
 	std::vector<std::pair<K, V>> vec;
 	V &operator[](const K &k) {
 		if (!um.count(k)) {

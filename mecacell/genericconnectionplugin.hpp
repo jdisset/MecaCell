@@ -134,10 +134,13 @@ struct GenericConnectionBodyPlugin {
 		if (GRIDSIZE > 0) {
 			Grid<Cell *> grid(GRIDSIZE);
 			for (const auto &c : world.cells) grid.insert(c);
-			auto gridCells = grid.getThreadSafeGrid(world.cells.size() / (10 * 8.0));
+			int minCellPerBatch = 0;
+			if (world.threadpool.getNbThreads() > 0)
+				minCellPerBatch = world.cells.size() / (10 * 8.0);
+			auto gridCells = grid.getThreadSafeGrid(minCellPerBatch);
 			for (auto &color : gridCells) {
 				std::vector<std::future<std::vector<ordered_pair<Cell *>>>>
-				    newConnectionsFutures;  // we collect all them futures
+				    newConnectionsFutures;  // we collect all the futures
 				newConnectionsFutures.reserve(color.size());
 				for (auto &batch : color)
 					if (batch.size() > 1)

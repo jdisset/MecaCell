@@ -9,6 +9,7 @@
 #include <vector>
 #include "../geometry/geometry.hpp"
 #include "unique_vector.hpp"
+#include "external/flat_hash_map.hpp"
 #include "utils.hpp"
 
 namespace MecaCell {
@@ -22,6 +23,7 @@ template <typename O> class Grid {
  private:
 	double cellSize;  // actually it's 1/cellSize, just so we can multiply instead of divide
 	std::unordered_map<Vec, size_t> um;                      // position -> orderedVec index
+	//ska::flat_hash_map<Vec, size_t> um;                      // position -> orderedVec index
 	std::vector<std::pair<Vec, std::vector<O>>> orderedVec;  // for determinism
 
  public:
@@ -47,18 +49,20 @@ template <typename O> class Grid {
 		// same color batches can be safely treated in parallel (if max O size < cellSize)
 		std::array<std::vector<std::vector<O>>, 8> res;
 		for (const auto &c : orderedVec) res[vecToColor(c.first)].push_back(c.second);
-		for (auto &color : res) {
-			if (color.size() > 1) {
-				for (auto it = std::next(color.begin()); it != color.end();) {
-					if ((*std::prev(it)).size() <
-					    minEl) {      // batch too small, we merge with the previous one
-						auto &b = *it;  // current batch
-						auto pv = std::prev(it);
-						auto &a = *pv;  // prev one
-						a.insert(a.end(), b.begin(), b.end());
-						it = color.erase(it);
-					} else {
-						++it;
+		if (minEl > 1) {
+			for (auto &color : res) {
+				if (color.size() > 1) {
+					for (auto it = std::next(color.begin()); it != color.end();) {
+						if ((*std::prev(it)).size() <
+						    minEl) {      // batch too small, we merge with the previous one
+							auto &b = *it;  // current batch
+							auto pv = std::prev(it);
+							auto &a = *pv;  // prev one
+							a.insert(a.end(), b.begin(), b.end());
+							it = color.erase(it);
+						} else {
+							++it;
+						}
 					}
 				}
 			}
