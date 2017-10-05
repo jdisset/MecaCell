@@ -9,7 +9,6 @@
 #include <vector>
 #include "../geometry/geometry.hpp"
 #include "unique_vector.hpp"
-#include "external/flat_hash_map.hpp"
 #include "utils.hpp"
 
 namespace MecaCell {
@@ -23,7 +22,6 @@ template <typename O> class Grid {
  private:
 	double cellSize;  // actually it's 1/cellSize, just so we can multiply instead of divide
 	std::unordered_map<Vec, size_t> um;                      // position -> orderedVec index
-	//ska::flat_hash_map<Vec, size_t> um;                      // position -> orderedVec index
 	std::vector<std::pair<Vec, std::vector<O>>> orderedVec;  // for determinism
 
  public:

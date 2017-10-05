@@ -115,6 +115,7 @@ struct GenericConnectionBodyPlugin {
 		cells.first->eraseConnectedCell(cells.second);
 		cells.second->eraseConnectedCell(cells.first);
 		connections.erase(cells);
+		assert(!connections.count(cells));
 	}
 	void deleteImpossibleConnections() {
 		for (auto &c : connections) {
