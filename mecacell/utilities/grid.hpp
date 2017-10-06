@@ -120,12 +120,12 @@ template <typename O> class Grid {
 					// i j k coords are the bottom front left coords of a 1/cellSize cube
 					// we need the closest corner of a grid cell relative to the center of the obj
 
-					double cx = i * cubeSize;
-					if (abs(cx - center.x()) > abs(cx + cubeSize - center.x())) cx += cubeSize;
-					double cy = j * cubeSize;
-					if (abs(cy - center.y()) > abs(cy + cubeSize - center.y())) cy += cubeSize;
-					double cz = k * cubeSize;
-					if (abs(cz - center.z()) > abs(cz + cubeSize - center.z())) cz += cubeSize;
+					double cx = (i + 0.5) * cubeSize;
+					// if (abs(cx - center.x()) > abs(cx + cubeSize - center.x())) cx += cubeSize;
+					double cy = (j + 0.5) * cubeSize;
+					// if (abs(cy - center.y()) > abs(cy + cubeSize - center.y())) cy += cubeSize;
+					double cz = (k + 0.5) * cubeSize;
+					// if (abs(cz - center.z()) > abs(cz + cubeSize - center.z())) cz += cubeSize;
 
 					Vec cubeCenter(cx, cy, cz);
 					// std::cerr << "Pour centre = " << center << ", rayon = " << radius

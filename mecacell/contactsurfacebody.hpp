@@ -95,14 +95,14 @@ template <typename Cell> class ContactSurfaceBody : public OrientedParticle {
 
 	void updateDynamicRadius(double dt) {
 		if (volumeConservationEnabled) {
-			// double dA = max(0.0,currentArea - getRestArea());
+			double dA = max(0.0, currentArea - getRestArea());
 			double dV = restVolume - currentVolume;
 			auto Fv = incompressibility * dV;
-			// auto Fa = membraneStiffness * dA;
+			auto Fa = membraneStiffness * dA;
 			pressure = Fv / currentArea;
 			double dynSpeed = (dynamicRadius - prevDynamicRadius) / dt;
-			double c = 1.0;
-			dynamicRadius += dt * dt * (Fv - dynSpeed * c);
+			double c = .1;
+			dynamicRadius += dt * dt * (Fv - Fa - dynSpeed * c);
 			if (dynamicRadius > restRadius * MAX_DYN_RADIUS_RATIO)
 				dynamicRadius = restRadius * MAX_DYN_RADIUS_RATIO;
 			else if (dynamicRadius < restRadius)
