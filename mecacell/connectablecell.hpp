@@ -34,15 +34,24 @@ class ConnectableCell {
  public:
 	using body_t = Body<Derived>;
 	using embedded_plugin_t = typename body_t::embedded_plugin_t;
+	//using vec_t = decltype((body_t) nullptr->getPosition());
 	friend body_t;
 	friend embedded_plugin_t;
 
  protected:
 	body_t body;  // core implementation
 	bool dead = false;
-	array<double, 3> color = {{0.75, 0.12, 0.07}};
+
+	// viewer related attributes. They probably could be moved elswhere but are clearly
+	// harmless and greatly simplify basic usage of a simple viewer. They might also be used
+	// toconvey information in headless mode
+	bool isVisible = true;  // should we display this cell? (cosmetic only - cell is still
+	                        // present and active -)
+	array<double, 3> color = {
+	    {0.75, 0.12, 0.07}};  // cell's color (interpreted as RGB by viewer)
+
 	unique_vector<Derived *> connectedCells;  // list of currently connected cells
-	bool isVisible = true;                    // should a viewer display this cell?
+
 	// helpers & shortcuts
 	inline Derived *selfptr() { return static_cast<Derived *>(this); }
 	inline Derived &self() { return static_cast<Derived &>(*this); }
