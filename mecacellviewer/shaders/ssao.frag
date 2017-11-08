@@ -73,10 +73,11 @@ void main(){
 	z0 = getLinearDepth(UV);
 	if (z0<0.9){
 
-		float aoLarge = computeAO(z0,0.008,0.017,9.0);
-		float aoMedium = computeAO(z0,0.005,0.003,7.0);
-		float aoSmall = computeAO(z0, 0.002,0.001,4.0);
-		FragColor.rgb = color.rgb*vec3(aoLarge*aoMedium*aoSmall);
+		float aoLarge = computeAO(z0,0.0008,0.017,12.0);
+		float aoMedium = computeAO(z0,0.005,0.005,8.0);
+		float aoSmall = computeAO(z0, 0.002,0.001,6.0);
+		vec3 ao = vec3(pow(aoLarge*aoMedium*aoSmall,1.4f));
+		FragColor.rgb = color.rgb*ao;
 		FragColor.rgb += (1.0-computeThing(z0,0.001,0.005,7.0))*0.5;
 		FragColor.a = 1.0;
 		/*[>FragColor.rgb = vec3(computeThing(z0,0.000003,0.00001,5.0));<]*/
@@ -85,8 +86,8 @@ void main(){
 		FragColor.rgb = vec3(color);
 	}
 	FragColor.a=color.a;
-	float contrast = 1.15;
+	float contrast = 1.14;
 	FragColor.rgb = (FragColor.rgb - 0.5) * max(contrast, 0.0) + 0.5;
-	gl_FragDepth = texture(depthBuf,UV).r; 
+	gl_FragDepth = texture(depthBuf,UV).r;
 
 }
