@@ -48,16 +48,16 @@ template <typename Cell, typename Integrator = Euler> class World {
 	struct dumb {};
 	template <class, class = MecaCell::void_t<>>
 	struct embedded_plugin_type {  // declaration
-		using type = dumb;  // defaults to dummy char type if no embedded plugin is defined
+		using type = dumb;  // defaults to empty type if no embedded plugin is defined
 	};
 	template <class T>  // specialization
 	struct embedded_plugin_type<T, void_t<typename T::embedded_plugin_t>> {
 		using type = typename T::embedded_plugin_t;  // embedded plugin detected
 	};
 	using cellPlugin_t =
-	    typename embedded_plugin_type<cell_t>::type;  // either dumb struct or the
+	    typename embedded_plugin_type<cell_t>::type;  // either dumb empty struct or the
 	                                                  // plugin type
-	                                                  // defined by Cell
+	                                                  // defined by Cell (if existing)
  protected:
 	size_t frame = 0;         /// +1 at each update. cf getNbUpdates()
 	size_t nbAddedCells = 0;  /// +1 on cell add. Used for cell's unique ids
@@ -65,6 +65,9 @@ template <typename Cell, typename Integrator = Euler> class World {
 	    1;  /// period at which the world should call the cells updateBehavior method.
 	bool parallelUpdateBehavior = false;
 
+	/**
+	 * @brief removes all cells marked dead
+	 */
 	void deleteDeadCells() {
 		for (auto i = cells.begin(); i != cells.end();) {
 			if ((*i)->isDead()) {
@@ -183,15 +186,31 @@ template <typename Cell, typename Integrator = Euler> class World {
 	/**
 	 * @brief get the number of update since the creation of the world
 	 *
-	 * @return
+	 * @return number of updates
 	 */
 	size_t getNbUpdates() const { return frame; }
 
 	/**
-	 * @brief adds a cell to the cells container.
+	 * @brief Creates a new cell and adds it through addCell()
 	 *
-	 * Construction should be done by the user but deletion is automatically handled by
-	 * the world (ex. ' addCell(new MyCell()); ' )
+	 * @tparam Args
+	 * @param args Cell's constructor parameters
+	 *
+	 * @return a pointer to the new Cell
+	 */
+	template <typename... Args> Cell *createCell(Args &&... args) {
+		Cell *c = new Cell(std::forward<Args>(args)...);
+		addCell(c);
+		return c;
+	}
+
+	/**
+	 * @brief adds a cell to the new cells batch (which will be added to the main cells
+	 * container at the end of the update cycle - or can be forced manually)
+	 *
+	 * Construction can be done by the user but deletion is automatically handled by
+	 * the world (ex. ' addCell(new MyCell()); ' ). createCell(...) should probably be used
+	 * instead.
 	 *
 	 * @param c a pointer to the cell
 	 */
@@ -258,6 +277,10 @@ template <typename Cell, typename Integrator = Euler> class World {
 		return vecRes;
 	}
 
+	/**
+	 * @brief calls the updateBehavior of each cell, potentially in parallel
+	 * (see parallelUpdateBehavior and nbThreads)
+	 */
 	void callUpdateBehavior() {
 		const size_t MIN_CHUNK_SIZE = 2;
 		const double AVG_TASKS_PER_THREAD = 3.0;
@@ -294,7 +317,7 @@ template <typename Cell, typename Integrator = Euler> class World {
 	}
 
 	/**
-	 * @brief destructor. Triggers the destructor hooks and delete all cells.
+	 * @brief World's destructor. Triggers the destructor hooks and delete all cells.
 	 */
 	~World() {
 		for (auto &f : hooks[eToUI(Hooks::destructor)]) f(this);
