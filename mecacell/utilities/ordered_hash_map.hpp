@@ -19,7 +19,7 @@ template <typename K, typename V> struct ordered_hash_map {
 	V &at(const K &k) { return vec[um.at(k)].second; }
 	void erase(const K &k) {
 		if (um.count(k)) {
-			const int id = um[k];
+			const size_t id = um[k];
 			if (id < vec.size() - 1) {
 				vec[id] = std::move(vec.back());
 				um[vec[id].first] = id;

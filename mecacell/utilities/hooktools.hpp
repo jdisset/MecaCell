@@ -69,10 +69,6 @@
 #define _COUNT_ARGS(...) _ARG_PATTERN_MATCH(__VA_ARGS__, 9, 8, 7, 6, 5, 4, 3, 2, 1)
 #define _ARG_PATTERN_MATCH(_1, _2, _3, _4, _5, _6, _7, _8, _9, N, ...) N
 
-#define HOOKCHK_BEGIN                                               \
-	template <class HookableClass, class hook_s> struct hookChecker { \
-		using H = std::remove_pointer_t<std::remove_reference_t<HookableClass>>;
-
 #define HCHK_M(hName)                                                                 \
 	template <class P>                                                                  \
 	static std::enable_if_t<is_##hName##_callable<P, hook_s>::value> register_##hName(  \
@@ -193,13 +189,29 @@
 	H_REG(h8);                                       \
 	H_REG(h9);
 
-#define DECLARE_HOOK(...)                             \
-	HOOKS_ENUM(__VA_ARGS__)                             \
-	OVERLOADED_MACRO(CREATE_MC, __VA_ARGS__)            \
-	HOOKCHK_BEGIN                                       \
-	OVERLOADED_MACRO(HCHK_M, __VA_ARGS__)               \
-	}                                                   \
-	;                                                   \
-	using hook_t = std::function<hook_s>;               \
-	std::array<std::vector<hook_t>, Hooks::LAST> hooks; \
-	template <class P> void registerPlugin(P &p) { OVERLOADED_MACRO(H_REG, __VA_ARGS__) }
+#define DECLARE_HOOK(...)                                                      \
+	HOOKS_ENUM(__VA_ARGS__)                                                      \
+	OVERLOADED_MACRO(CREATE_MC, __VA_ARGS__)                                     \
+	CREATE_METHOD_CHECKS(onRegister);                                             \
+	template <class HookableClass, class hook_s> struct hookChecker {            \
+		using H = std::remove_pointer_t<std::remove_reference_t<HookableClass>>;   \
+		using hook_t = std::function<hook_s>;                                      \
+		template <class P>                                                         \
+		static std::enable_if_t<is_onRegister_callable<P, hook_s>::value, hook_t>  \
+		    getOnRegister(P &p) {                                                  \
+			return [&](H *hc) { p.onRegister(hc); };                                 \
+		}                                                                          \
+                                                                               \
+		template <class P>                                                         \
+		static std::enable_if_t<!is_onRegister_callable<P, hook_s>::value, hook_t> \
+		    getOnRegister(P &) {                                                   \
+			return [&](H *) {};                                                      \
+		}                                                                          \
+		OVERLOADED_MACRO(HCHK_M, __VA_ARGS__)                                      \
+	};                                                                           \
+	using hook_t = std::function<hook_s>;                                        \
+	std::array<std::vector<hook_t>, Hooks::LAST> hooks;                          \
+	template <class P> hook_t registerPlugin(P &p) {                             \
+		OVERLOADED_MACRO(H_REG, __VA_ARGS__)                                       \
+		return hookChecker<decltype(this), hook_s>::getOnRegister(p);              \
+	}

@@ -43,7 +43,7 @@ template <typename O> class Grid {
 		return res;
 	}
 
-	std::array<vector<vector<O>>, 8> getThreadSafeGrid(int minEl) const {
+	std::array<vector<vector<O>>, 8> getThreadSafeGrid(size_t minEl) const {
 		// same color batches can be safely treated in parallel (if max O size < cellSize)
 		std::array<std::vector<std::vector<O>>, 8> res;
 		for (const auto &c : orderedVec) res[vecToColor(c.first)].push_back(c.second);
