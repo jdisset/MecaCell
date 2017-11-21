@@ -151,12 +151,10 @@ template <typename Cell, typename Integrator = Euler> class World {
 	 * Available hooks are:
 	 *  - beginUpdate: called at each world update before everything else
 	 *  - preBehaviorUpdate: called the world calls every individual updateBehavior(World&)
-	 * cells
-	 * methods
-	 *  - postBehaviorUpdate: called after updateBehavior(World&) and just before dead cells
-	 * are
-	 * removed (this is where death-related cleanup should be made, before the cell is
-	 * automatically effectively removed from the world)
+	 * cells methods
+	 *  - postBehaviorUpdate: called after updateBehavior(World&) and just
+	 * before dead cells are removed (this is where death-related cleanup should be made,
+	 * before the cell is automatically effectively removed from the world)
 	 *  - endUpdate: called at the end of each world update routine
 	 *  - addCell: called after each cell addition to the world (the new cell is thus
 	 * guaranteed to be the last one in the cells container)
@@ -166,7 +164,8 @@ template <typename Cell, typename Integrator = Euler> class World {
 	 */
 	template <typename P, typename... Rest>
 	void registerPlugins(P &&p, Rest &&... otherPlugins) {
-		registerPlugin(std::forward<P>(p));
+		// registerPlugin returns the onRegister hook from the plugin
+		registerPlugin(std::forward<P>(p))(this);
 		registerPlugins(std::forward<Rest>(otherPlugins)...);
 	}
 	void registerPlugins() {}  /// end of recursion
