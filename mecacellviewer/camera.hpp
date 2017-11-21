@@ -1,17 +1,17 @@
 #ifndef CAMERA_HPP
 #define CAMERA_HPP
-#include <QVector2D>
-#include <QVector3D>
-#include <QQuaternion>
-#include <QSizeF>
-#include <iostream>
 #include <QDebug>
 #include <QMatrix4x4>
+#include <QQuaternion>
+#include <QSizeF>
+#include <QVector2D>
+#include <QVector3D>
+#include <iostream>
 
 class Camera : public QObject {
 	Q_OBJECT
 
-public:
+ public:
 	enum ProjectionType { Perspective, Orthographic };
 	enum RotateOrder {
 		TiltPanRoll,
@@ -24,7 +24,7 @@ public:
 	enum Mode { fps, centered };
 	// in centered mode x is left/right, y is up/down, z is forward/backward
 
-private:
+ private:
 	ProjectionType projectionType = Perspective;
 	Mode mode = fps;
 	float fieldOfView = 35;
@@ -48,7 +48,7 @@ private:
 	QVector3D torque;
 	QVector3D angularVelocity;
 
-public:
+ public:
 	Camera() {}
 
 	void update(Camera &c) {
@@ -63,6 +63,12 @@ public:
 	}
 
 	QVector3D getOrientation() { return viewVector.normalized(); }
+
+	void setForce(const QVector3D &value) { force = value; }
+
+	void setMass(float value) { mass = value; }
+
+	void setFriction(float value) { friction = value; }
 
 	void setProjectionType(ProjectionType value) { projectionType = value; }
 
@@ -92,14 +98,10 @@ public:
 			viewSize = sz;
 		}
 	}
-	
-	const QVector3D& getSpeed (void) const {
-        return speed;
-    }
-    
-    const QVector3D& getForce (void) const {
-        return force;
-    }
+
+	const QVector3D &getSpeed(void) const { return speed; }
+
+	const QVector3D &getForce(void) const { return force; }
 
 	QVector3D translation(const QVector3D &v) const {
 		// translation is expressed in camera space...
@@ -152,7 +154,7 @@ public:
 
 	/*********************************
 	 *     MOVEMENT & ORIENTATION
-	*********************************/
+	 *********************************/
 	void translate(QVector3D v) {
 		position += translation(v);
 		viewVector = target - position;
@@ -243,7 +245,7 @@ public:
 	}
 	/**************************
 	 *          SET
-	**************************/
+	 **************************/
 	void setUpVector(const QVector3D &vec) { upVector = vec; }
 	void setTarget(const QVector3D &vertex) {
 		target = vertex;
@@ -261,7 +263,7 @@ public:
 
 	/**************************
 	 *          GET
-	**************************/
+	 **************************/
 	ProjectionType getProjectionType() const { return projectionType; }
 	QSizeF getViewSize() const { return viewSize; }
 	float getNearPlane() const { return nearPlane; }
