@@ -76,7 +76,7 @@ std::pair<bool, Vec> inline projectionIntriangle(const Vec &v0, const Vec &v1,
  *
  * @return the smallest distance to an edge
  */
-double closestDistToTriangleEdge(const Vec &v0, const Vec &v1, const Vec &v2,
+double inline closestDistToTriangleEdge(const Vec &v0, const Vec &v1, const Vec &v2,
                                  const Vec &p) {
 	Vec a = v1 - v0;
 	Vec b = v2 - v0;
