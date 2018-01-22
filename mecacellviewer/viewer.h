@@ -85,7 +85,7 @@ template <typename Scenario> class Viewer : public SignalSlotRenderer {
 	// Events
 	int mouseWheel = 0;
 	QPointF mousePosition, mousePrevPosition;
-	QFlags<Qt::MouseButtons> mouseClickedButtons, mouseDblClickedButtons,
+	QFlags<Qt::MouseButton> mouseClickedButtons, mouseDblClickedButtons,
 	    mousePressedButtons;
 	std::set<Qt::Key> keyDown, keyUp, keyPress;
 

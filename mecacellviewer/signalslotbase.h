@@ -49,7 +49,7 @@ class SignalSlotBase : public QQuickItem {
 	bool initialized = false;
 	QMouseEvent lastMouseEvent = QMouseEvent(QEvent::None, QPointF(0, 0), Qt::NoButton,
 	                                         Qt::NoButton, Qt::NoModifier);
-	QFlags<Qt::MouseButtons> mouseClickedButtons, mouseDblClickedButtons;
+	QFlags<Qt::MouseButton> mouseClickedButtons, mouseDblClickedButtons;
 	std::set<QString> clickedButtons;
 
 	/******************************
