@@ -71,7 +71,7 @@ class ConnectableCell {
 	bool isConnectedTo(Derived *c) { return connectedCells.count(c); }
 
 	size_t id = 0;  // mostly for debugging, num of cell by order of addition in world
-	size_t getId() { return id; }
+	size_t getId() const { return id; }
 	ConnectableCell(const Derived &c)
 	    : body(static_cast<Derived *>(this)), dead(false), color(c.color) {}
 
@@ -116,7 +116,7 @@ class ConnectableCell {
 	 */
 	void die() { dead = true; }
 	bool isDead() { return dead; }
-	Vector3D getPosition() { return body.getPosition(); }
+	Vector3D getPosition() const { return body.getPosition(); }
 
 	void setColorRGB(size_t r, size_t g, size_t b) {
 		color = {{static_cast<double>(r) / 255.0, static_cast<double>(g) / 255.0,
