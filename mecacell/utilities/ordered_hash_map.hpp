@@ -7,6 +7,7 @@ template <typename K, typename V> struct ordered_hash_map {
 	// deterministic ordered hash_map
 	std::unordered_map<K, size_t> um;
 	std::vector<std::pair<K, V>> vec;
+
 	V &operator[](const K &k) {
 		if (!um.count(k)) {
 			um[k] = vec.size();
@@ -14,6 +15,7 @@ template <typename K, typename V> struct ordered_hash_map {
 		}
 		return vec[um[k]].second;
 	}
+
 	bool count(const K &k) { return um.count(k); }
 	size_t size() const { return vec.size(); }
 	V &at(const K &k) { return vec[um.at(k)].second; }

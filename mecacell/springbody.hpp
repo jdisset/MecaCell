@@ -16,11 +16,11 @@ template <typename Cell> class SpringBody : public OrientedParticle {
 	friend struct GenericConnectionBodyPlugin<Cell, SpringConnection>;
 
 	Cell *cell = nullptr;
-	std::vector<SpringConnection<Cell> *> cellConnections;
 	double radius = Config::DEFAULT_CELL_RADIUS;        // radiius of the cell when at rest
 	double stiffness = Config::DEFAULT_CELL_STIFFNESS;  // cell's body stiffness
 
  public:
+	std::vector<SpringConnection<Cell> *> cellConnections;
 	using embedded_plugin_t = GenericConnectionBodyPlugin<Cell, SpringConnection>;
 	SpringBody(Cell *c, Vector3D pos = Vector3D::zero()) : OrientedParticle(pos), cell(c) {}
 	void setRadius(double r) { radius = r; }

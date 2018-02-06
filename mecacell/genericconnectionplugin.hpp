@@ -28,6 +28,8 @@ struct GenericConnectionBodyPlugin {
 
 	std::mutex connectionMutex;
 
+	bool collisionCheck = true;
+
 	// a callback called at every new connection
 	std::function<void(GenericConnection<Cell> *)> newConnectionCallback =
 	    [](GenericConnection<Cell> *) {};
@@ -47,15 +49,15 @@ struct GenericConnectionBodyPlugin {
 	 * HOOKS
 	 * *******/
 	template <typename W> void preBehaviorUpdate(W *w) {
-		w->threadpool.autoChunks(
-		    w->cells, 100, 5, [dt = w->getDt()](auto &c) { c->body.updateInternals(dt); });
+		w->threadpool.autoChunks(w->cells, 100, 5,
+		                         [dt = w->getDt()](auto &c) { c->body.updateInternals(dt); });
 		w->threadpool.waitUntilLast();
 	}
 
 	template <typename W> void endUpdate(W *w) {
 		unsigned int nbIterations = 2;
 
-		checkForCellCellConnections(*w);
+		if (collisionCheck) checkForCellCellConnections(*w);
 
 		std::vector<std::pair<Vec, Vec>> savedForces;
 		savedForces.reserve(w->cells.size());  // first we save the cell forces and torque

@@ -27,8 +27,9 @@ template <typename T> inline ordered_pair<T> make_ordered_pair(const T &a, const
 namespace std {
 template <typename T> struct hash<MecaCell::ordered_pair<T>> {
 	size_t operator()(const MecaCell::ordered_pair<T> &x) const {
-		assert(x.first->id < x.second->id);
-		return hash<size_t>()(x.first->id) ^ hash<size_t>()(x.second->id);
+		// assert(x.first->id < x.second->id);
+		// return hash<size_t>()(x.first->id) ^ hash<size_t>()(x.second->id);
+		return x.first->id * 10 ^ 9 + x.second->id;
 	}
 };
 }  // namespace std
