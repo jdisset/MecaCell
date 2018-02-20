@@ -11,6 +11,11 @@
 #include <thread>
 #include <type_traits>
 #include <vector>
+#ifdef _WIN32
+#include "mingw/mingw.condition_variable.h"
+#include "mingw/mingw.mutex.h"
+#include "mingw/mingw.thread.h"
+#endif
 
 /**
  * @brief Simple threadpool, largely inspired by github.com/progschj/ThreadPool
