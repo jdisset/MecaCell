@@ -6,6 +6,7 @@
 #include <functional>
 #include <iostream>
 #include "../utilities/config.hpp"
+#include "../utilities/exportable.hpp"
 #include "../utilities/utils.hpp"
 #include "basis.hpp"
 #include "quaternion.h"
@@ -529,6 +530,8 @@ class Vector3D {
 		}
 		return ortho();
 	}
+
+	EXPORTABLE(Vector3D, KV(coords));
 };
 
 inline bool operator==(const Vector3D &v1, const Vector3D &v2) {

@@ -11,6 +11,7 @@
 #include "geometry/rotation.h"
 #include "movable.h"
 #include "orientable.h"
+#include "utilities/exportable.hpp"
 #include "utilities/unique_vector.hpp"
 #include "utilities/utils.hpp"
 
@@ -27,14 +28,14 @@ namespace MecaCell {
  * meaningful parameters and methods. It also represents the cell's center, which can
  * be seen as its kernel (it is NOT always the center of mass, but often close enough)
  *
- * @tparam Body the body implemebtation (which contains most of the core logic)
+ * @tparam Body the body implementation (which contains most of the core logic)
  */
 template <class Derived, template <class> class Body = ContactSurfaceBody>
 class ConnectableCell {
  public:
 	using body_t = Body<Derived>;
 	using embedded_plugin_t = typename body_t::embedded_plugin_t;
-	//using vec_t = decltype((body_t) nullptr->getPosition());
+	// using vec_t = decltype((body_t) nullptr->getPosition());
 	friend body_t;
 	friend embedded_plugin_t;
 
@@ -160,6 +161,8 @@ class ConnectableCell {
 	}
 	bool getVisible() { return isVisible; }
 	int getNbConnections() const { return connectedCells.size(); }
+
+	EXPORTABLE(ConnectableCell, KV(body), KV(id));
 };
 }  // namespace MecaCell
 #endif
