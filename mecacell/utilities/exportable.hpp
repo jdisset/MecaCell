@@ -61,7 +61,7 @@
 		};                                                                              \
 		std::function<std::string(void)> save = [this]() { return to_json().dump(2); }; \
 	};                                                                                \
-	Exportable getExport() { return Exportable(*this); }
+	Exportable getExport() const { return Exportable(*this); }
 
 #define EXPORTABLE2(S, v0) EXPORTABLE_INHERIT3(S, BaseExportable, v0)
 
@@ -95,7 +95,7 @@
 		};                                                                              \
 		std::function<std::string(void)> save = [this]() { return to_json().dump(2); }; \
 	};                                                                                \
-	Exportable getExport() { return Exportable(*this); }
+	Exportable getExport() const { return Exportable(*this); }
 
 #define EXPORTABLE3(S, v0, v1) EXPORTABLE_INHERIT4(S, BaseExportable, v0, v1)
 
@@ -133,7 +133,7 @@
 		};                                                                              \
 		std::function<std::string(void)> save = [this]() { return to_json().dump(2); }; \
 	};                                                                                \
-	Exportable getExport() { return Exportable(*this); }
+	Exportable getExport() const { return Exportable(*this); }
 
 #define EXPORTABLE4(S, v0, v1, v2) EXPORTABLE_INHERIT5(S, BaseExportable, v0, v1, v2)
 
@@ -176,7 +176,7 @@
 		};                                                                              \
 		std::function<std::string(void)> save = [this]() { return to_json().dump(2); }; \
 	};                                                                                \
-	Exportable getExport() { return Exportable(*this); }
+	Exportable getExport() const { return Exportable(*this); }
 
 #define EXPORTABLE5(S, v0, v1, v2, v3) \
 	EXPORTABLE_INHERIT6(S, BaseExportable, v0, v1, v2, v3)
@@ -225,7 +225,7 @@
 		};                                                                              \
 		std::function<std::string(void)> save = [this]() { return to_json().dump(2); }; \
 	};                                                                                \
-	Exportable getExport() { return Exportable(*this); }
+	Exportable getExport() const { return Exportable(*this); }
 
 #define EXPORTABLE6(S, v0, v1, v2, v3, v4) \
 	EXPORTABLE_INHERIT7(S, BaseExportable, v0, v1, v2, v3, v4)
@@ -278,7 +278,7 @@
 		};                                                                              \
 		std::function<std::string(void)> save = [this]() { return to_json().dump(2); }; \
 	};                                                                                \
-	Exportable getExport() { return Exportable(*this); }
+	Exportable getExport() const { return Exportable(*this); }
 
 #define EXPORTABLE7(S, v0, v1, v2, v3, v4, v5) \
 	EXPORTABLE_INHERIT8(S, BaseExportable, v0, v1, v2, v3, v4, v5)
@@ -336,7 +336,7 @@
 		};                                                                              \
 		std::function<std::string(void)> save = [this]() { return to_json().dump(2); }; \
 	};                                                                                \
-	Exportable getExport() { return Exportable(*this); }
+	Exportable getExport() const { return Exportable(*this); }
 
 #define EXPORTABLE8(S, v0, v1, v2, v3, v4, v5, v6) \
 	EXPORTABLE_INHERIT9(S, BaseExportable, v0, v1, v2, v3, v4, v5, v6)
@@ -398,7 +398,7 @@
 		};                                                                              \
 		std::function<std::string(void)> save = [this]() { return to_json().dump(2); }; \
 	};                                                                                \
-	Exportable getExport() { return Exportable(*this); }
+	Exportable getExport() const { return Exportable(*this); }
 
 #define EXPORTABLE9(S, v0, v1, v2, v3, v4, v5, v6, v7) \
 	EXPORTABLE_INHERIT10(S, BaseExportable, v0, v1, v2, v3, v4, v5, v6, v7)
@@ -465,7 +465,7 @@
 		};                                                                              \
 		std::function<std::string(void)> save = [this]() { return to_json().dump(2); }; \
 	};                                                                                \
-	Exportable getExport() { return Exportable(*this); }
+	Exportable getExport() const { return Exportable(*this); }
 
 #define EXPORTABLE10(S, v0, v1, v2, v3, v4, v5, v6, v7, v8) \
 	EXPORTABLE_INHERIT11(S, BaseExportable, v0, v1, v2, v3, v4, v5, v6, v7, v8)
@@ -536,7 +536,7 @@
 		};                                                                              \
 		std::function<std::string(void)> save = [this]() { return to_json().dump(2); }; \
 	};                                                                                \
-	Exportable getExport() { return Exportable(*this); }
+	Exportable getExport() const { return Exportable(*this); }
 
 #define EXPORTABLE11(S, v0, v1, v2, v3, v4, v5, v6, v7, v8, v9) \
 	EXPORTABLE_INHERIT12(S, BaseExportable, v0, v1, v2, v3, v4, v5, v6, v7, v8, v9)
@@ -612,7 +612,7 @@
 		};                                                                              \
 		std::function<std::string(void)> save = [this]() { return to_json().dump(2); }; \
 	};                                                                                \
-	Exportable getExport() { return Exportable(*this); }
+	Exportable getExport() const { return Exportable(*this); }
 
 #define EXPORTABLE12(S, v0, v1, v2, v3, v4, v5, v6, v7, v8, v9, v10) \
 	EXPORTABLE_INHERIT13(S, BaseExportable, v0, v1, v2, v3, v4, v5, v6, v7, v8, v9, v10)
@@ -692,7 +692,7 @@
 		};                                                                                  \
 		std::function<std::string(void)> save = [this]() { return to_json().dump(2); };     \
 	};                                                                                    \
-	Exportable getExport() { return Exportable(*this); }
+	Exportable getExport() const { return Exportable(*this); }
 
 #define EXPORTABLE13(S, v0, v1, v2, v3, v4, v5, v6, v7, v8, v9, v10, v11)              \
 	EXPORTABLE_INHERIT14(S, BaseExportable, v0, v1, v2, v3, v4, v5, v6, v7, v8, v9, v10, \
@@ -779,7 +779,7 @@
 		};                                                                                  \
 		std::function<std::string(void)> save = [this]() { return to_json().dump(2); };     \
 	};                                                                                    \
-	Exportable getExport() { return Exportable(*this); }
+	Exportable getExport() const { return Exportable(*this); }
 
 #define EXPORTABLE14(S, v0, v1, v2, v3, v4, v5, v6, v7, v8, v9, v10, v11, v12)         \
 	EXPORTABLE_INHERIT15(S, BaseExportable, v0, v1, v2, v3, v4, v5, v6, v7, v8, v9, v10, \
@@ -870,7 +870,7 @@
 		};                                                                                  \
 		std::function<std::string(void)> save = [this]() { return to_json().dump(2); };     \
 	};                                                                                    \
-	Exportable getExport() { return Exportable(*this); }
+	Exportable getExport() const { return Exportable(*this); }
 
 #define EXPORTABLE15(S, v0, v1, v2, v3, v4, v5, v6, v7, v8, v9, v10, v11, v12, v13)    \
 	EXPORTABLE_INHERIT16(S, BaseExportable, v0, v1, v2, v3, v4, v5, v6, v7, v8, v9, v10, \
@@ -966,7 +966,7 @@
 		};                                                                                  \
 		std::function<std::string(void)> save = [this]() { return to_json().dump(2); };     \
 	};                                                                                    \
-	Exportable getExport() { return Exportable(*this); }
+	Exportable getExport() const { return Exportable(*this); }
 
 #define EXPORTABLE16(S, v0, v1, v2, v3, v4, v5, v6, v7, v8, v9, v10, v11, v12, v13, v14) \
 	EXPORTABLE_INHERIT17(S, BaseExportable, v0, v1, v2, v3, v4, v5, v6, v7, v8, v9, v10,   \
@@ -1066,7 +1066,7 @@
 		};                                                                                  \
 		std::function<std::string(void)> save = [this]() { return to_json().dump(2); };     \
 	};                                                                                    \
-	Exportable getExport() { return Exportable(*this); }
+	Exportable getExport() const { return Exportable(*this); }
 
 #define EXPORTABLE17(S, v0, v1, v2, v3, v4, v5, v6, v7, v8, v9, v10, v11, v12, v13, v14, \
                      v15)                                                                \
@@ -1172,7 +1172,7 @@
 		};                                                                                  \
 		std::function<std::string(void)> save = [this]() { return to_json().dump(2); };     \
 	};                                                                                    \
-	Exportable getExport() { return Exportable(*this); }
+	Exportable getExport() const { return Exportable(*this); }
 
 #define EXPORTABLE18(S, v0, v1, v2, v3, v4, v5, v6, v7, v8, v9, v10, v11, v12, v13, v14, \
                      v15, v16)                                                           \
@@ -1282,7 +1282,7 @@
 		};                                                                                  \
 		std::function<std::string(void)> save = [this]() { return to_json().dump(2); };     \
 	};                                                                                    \
-	Exportable getExport() { return Exportable(*this); }
+	Exportable getExport() const { return Exportable(*this); }
 
 #define EXPORTABLE19(S, v0, v1, v2, v3, v4, v5, v6, v7, v8, v9, v10, v11, v12, v13, v14, \
                      v15, v16, v17)                                                      \
@@ -1397,7 +1397,7 @@
 		};                                                                                  \
 		std::function<std::string(void)> save = [this]() { return to_json().dump(2); };     \
 	};                                                                                    \
-	Exportable getExport() { return Exportable(*this); }
+	Exportable getExport() const { return Exportable(*this); }
 
 #define EXPORTABLE20(S, v0, v1, v2, v3, v4, v5, v6, v7, v8, v9, v10, v11, v12, v13, v14, \
                      v15, v16, v17, v18)                                                 \
@@ -1516,7 +1516,7 @@
 		};                                                                                  \
 		std::function<std::string(void)> save = [this]() { return to_json().dump(2); };     \
 	};                                                                                    \
-	Exportable getExport() { return Exportable(*this); }
+	Exportable getExport() const { return Exportable(*this); }
 
 #define EXPORTABLE21(S, v0, v1, v2, v3, v4, v5, v6, v7, v8, v9, v10, v11, v12, v13, v14, \
                      v15, v16, v17, v18, v19)                                            \
@@ -1640,7 +1640,7 @@
 		};                                                                                  \
 		std::function<std::string(void)> save = [this]() { return to_json().dump(2); };     \
 	};                                                                                    \
-	Exportable getExport() { return Exportable(*this); }
+	Exportable getExport() const { return Exportable(*this); }
 
 #define EXPORTABLE22(S, v0, v1, v2, v3, v4, v5, v6, v7, v8, v9, v10, v11, v12, v13, v14, \
                      v15, v16, v17, v18, v19, v20)                                       \
@@ -1768,7 +1768,7 @@
 		};                                                                                  \
 		std::function<std::string(void)> save = [this]() { return to_json().dump(2); };     \
 	};                                                                                    \
-	Exportable getExport() { return Exportable(*this); }
+	Exportable getExport() const { return Exportable(*this); }
 
 #define EXPORTABLE23(S, v0, v1, v2, v3, v4, v5, v6, v7, v8, v9, v10, v11, v12, v13, v14, \
                      v15, v16, v17, v18, v19, v20, v21)                                  \
@@ -1901,7 +1901,7 @@
 		};                                                                                  \
 		std::function<std::string(void)> save = [this]() { return to_json().dump(2); };     \
 	};                                                                                    \
-	Exportable getExport() { return Exportable(*this); }
+	Exportable getExport() const { return Exportable(*this); }
 
 #define EXPORTABLE24(S, v0, v1, v2, v3, v4, v5, v6, v7, v8, v9, v10, v11, v12, v13, v14, \
                      v15, v16, v17, v18, v19, v20, v21, v22)                             \
@@ -2038,7 +2038,7 @@
 		};                                                                                   \
 		std::function<std::string(void)> save = [this]() { return to_json().dump(2); };      \
 	};                                                                                     \
-	Exportable getExport() { return Exportable(*this); }
+	Exportable getExport() const { return Exportable(*this); }
 
 #define EXPORTABLE25(S, v0, v1, v2, v3, v4, v5, v6, v7, v8, v9, v10, v11, v12, v13, v14, \
                      v15, v16, v17, v18, v19, v20, v21, v22, v23)                        \
@@ -2181,7 +2181,7 @@
 		};                                                                                   \
 		std::function<std::string(void)> save = [this]() { return to_json().dump(2); };      \
 	};                                                                                     \
-	Exportable getExport() { return Exportable(*this); }
+	Exportable getExport() const { return Exportable(*this); }
 
 #define EXPORTABLE26(S, v0, v1, v2, v3, v4, v5, v6, v7, v8, v9, v10, v11, v12, v13, v14, \
                      v15, v16, v17, v18, v19, v20, v21, v22, v23, v24)                   \
@@ -2329,7 +2329,7 @@
 		};                                                                                   \
 		std::function<std::string(void)> save = [this]() { return to_json().dump(2); };      \
 	};                                                                                     \
-	Exportable getExport() { return Exportable(*this); }
+	Exportable getExport() const { return Exportable(*this); }
 
 #define EXPORTABLE27(S, v0, v1, v2, v3, v4, v5, v6, v7, v8, v9, v10, v11, v12, v13, v14, \
                      v15, v16, v17, v18, v19, v20, v21, v22, v23, v24, v25)              \
@@ -2482,7 +2482,7 @@
 		};                                                                                   \
 		std::function<std::string(void)> save = [this]() { return to_json().dump(2); };      \
 	};                                                                                     \
-	Exportable getExport() { return Exportable(*this); }
+	Exportable getExport() const { return Exportable(*this); }
 
 #define EXPORTABLE28(S, v0, v1, v2, v3, v4, v5, v6, v7, v8, v9, v10, v11, v12, v13, v14, \
                      v15, v16, v17, v18, v19, v20, v21, v22, v23, v24, v25, v26)         \
@@ -2639,7 +2639,7 @@
 		};                                                                                   \
 		std::function<std::string(void)> save = [this]() { return to_json().dump(2); };      \
 	};                                                                                     \
-	Exportable getExport() { return Exportable(*this); }
+	Exportable getExport() const { return Exportable(*this); }
 
 #define EXPORTABLE29(S, v0, v1, v2, v3, v4, v5, v6, v7, v8, v9, v10, v11, v12, v13, v14, \
                      v15, v16, v17, v18, v19, v20, v21, v22, v23, v24, v25, v26, v27)    \
@@ -2801,7 +2801,7 @@
 		};                                                                                   \
 		std::function<std::string(void)> save = [this]() { return to_json().dump(2); };      \
 	};                                                                                     \
-	Exportable getExport() { return Exportable(*this); }
+	Exportable getExport() const { return Exportable(*this); }
 
 #define EXPORTABLE30(S, v0, v1, v2, v3, v4, v5, v6, v7, v8, v9, v10, v11, v12, v13, v14, \
                      v15, v16, v17, v18, v19, v20, v21, v22, v23, v24, v25, v26, v27,    \
@@ -2968,7 +2968,7 @@
 		};                                                                                   \
 		std::function<std::string(void)> save = [this]() { return to_json().dump(2); };      \
 	};                                                                                     \
-	Exportable getExport() { return Exportable(*this); }
+	Exportable getExport() const { return Exportable(*this); }
 
 #define EXPORTABLE31(S, v0, v1, v2, v3, v4, v5, v6, v7, v8, v9, v10, v11, v12, v13, v14, \
                      v15, v16, v17, v18, v19, v20, v21, v22, v23, v24, v25, v26, v27,    \
@@ -3140,7 +3140,7 @@
 		};                                                                                   \
 		std::function<std::string(void)> save = [this]() { return to_json().dump(2); };      \
 	};                                                                                     \
-	Exportable getExport() { return Exportable(*this); }
+	Exportable getExport() const { return Exportable(*this); }
 
 #define EXPORTABLE32(S, v0, v1, v2, v3, v4, v5, v6, v7, v8, v9, v10, v11, v12, v13, v14, \
                      v15, v16, v17, v18, v19, v20, v21, v22, v23, v24, v25, v26, v27,    \
@@ -3316,7 +3316,7 @@
 		};                                                                                   \
 		std::function<std::string(void)> save = [this]() { return to_json().dump(2); };      \
 	};                                                                                     \
-	Exportable getExport() { return Exportable(*this); }
+	Exportable getExport() const { return Exportable(*this); }
 
 #define EXPORTABLE33(S, v0, v1, v2, v3, v4, v5, v6, v7, v8, v9, v10, v11, v12, v13, v14, \
                      v15, v16, v17, v18, v19, v20, v21, v22, v23, v24, v25, v26, v27,    \
