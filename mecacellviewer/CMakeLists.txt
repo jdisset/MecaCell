@@ -45,7 +45,7 @@ set(VIEWSRC
 	${RESOURCES}
 	)
 add_library(mecacellviewer SHARED ${VIEWSRC} ${VIEWHEADERS} ${PRIMHEADERS} ${PLUGINSHEADERS} ${MANAGERSHEADERS} ${RENDERABLESHEADERS} ${UTILITIESHEADERS} ${MENUHEADERS})
-qt5_use_modules(mecacellviewer Quick Core Gui OpenGL)
+target_link_libraries(mecacellviewer Qt5::Quick Qt5::Core Qt5::Gui OpenGL)
 
 install (TARGETS mecacellviewer DESTINATION lib)
 install (FILES ${VIEWHEADERS} DESTINATION include/mecacell/viewer)
