@@ -6,7 +6,7 @@
 #include <string>
 #include <utility>
 #include <vector>
-#include "../geometry/geometry.h"
+#include "../geometry/geometry.hpp"
 #include "../geometry/matrix4x4.h"
 #include "utils.hpp"
 
