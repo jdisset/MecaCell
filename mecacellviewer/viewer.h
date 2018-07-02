@@ -756,7 +756,6 @@ template <typename Scenario> class Viewer : public SignalSlotRenderer {
 
 		engine->rootContext()->setContextProperty("glview", ssb);
 		ssb->init(this);
-		ssb->setWorldUpdate(true);
 		view->setPosition(viewPos);
 		if (!viewSize.isNull()) view->resize(viewSize);
 		view->show();
