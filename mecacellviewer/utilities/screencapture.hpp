@@ -1,21 +1,13 @@
-#ifndef SCREENCAPTURE_HPP
-#define SCREENCAPTURE_HPP
-#include "viewtools.h"
-#include "screenmanager.hpp"
-#include <memory>
-#include <QOpenGLFramebufferObject>
-#include <QOpenGLFramebufferObjectFormat>
+#ifndef SCREENCAPTURE_MECACELLVIEWERPLUGIN_HPP
+#define SCREENCAPTURE_MECACELLVIEWERPLUGIN_HPP
+#include <QImage>
+/**
+ * @brief ScreenCapturePlugin creates a checkable option in the menu that enables screen
+ * capture
+ */
 
-namespace MecacellViewer {
-template <typename R> class MenuScreenCapture : public ScreenManager<R> {
- public:
-	QString path = "./";
-	MenuScreenCapture(R* r, QString p = "./")
-	    : ScreenManager<R>("menuScreenCapture"), path(p) {}
-	int cap = 0;
-	int NBFRAMEPERSCREEN = 10;
-
-	void saveImg(int W, int H) {
+struct ScreenCapturePlugin {
+	void saveImg(int W, int H, const QString &path) {
 		std::vector<GLubyte> pixels;
 		pixels.resize(3 * W * H);
 		GL()->glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
@@ -24,22 +16,24 @@ template <typename R> class MenuScreenCapture : public ScreenManager<R> {
 		img.mirrored().save(path + QString("capture_") + QString::number(cap++) + ".jpg");
 	}
 
-	// void saveImg() {
-	// r->getCurrentFBO()->toImage().save(path + QString("capture_") +
-	// QString::number(cap++) + ".png");
-	//}
-	
-	void call(R* r) {
-		if (r->getCurrentFBO()) {
-			if (r->getFrame() % NBFRAMEPERSCREEN == 0) {
-				auto s = r->getWindow()->renderTargetSize();
-				// saveImg(s.width(), s.height());
-				saveImg(r->getWindow()->width()*2.0, r->getWindow()->height()*2.0);
-			}
-		}
+	QString path = "./capture/";
+	int cap = 0;
+	int skippedFrame = 0;
+	template <typename R> void onLoad(R *renderer) {
+		MenuElement<R> *nativeDisplayMenu = renderer->getDisplayMenu();
+		MenuElement<R> capture = {"Enable screen capture", true};
+		capture.onToggled = [&](R *r, MenuElement<R> *me) {
+			if (me->isChecked())
+				r->addPaintStepsMethods(1000000000, [&](R *r2) {
+					if (r2->getCurrentFBO() && r2->getFrame() % (1 + skippedFrame) == 0) {
+						saveImg(r2->getWindow()->width(), r2->getWindow()->height(), path);
+					}
+				});
+			else
+				r->erasePaintStepsMethods(1000000000);
+		};
+		nativeDisplayMenu->add(capture);
 	}
-
-	void screenChanged(R* r) {}
 };
-}
+
 #endif
