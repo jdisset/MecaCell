@@ -36,6 +36,7 @@ template <typename Scenario> class Viewer : public SignalSlotRenderer {
 	using R = Viewer<Scenario>;
 	using hook_s = void(R *);
 	using ButtonType = Button<R>;
+	SignalSlotBase* ssb;
 
 	DECLARE_HOOK(preLoad, preLoop, preDraw, postDraw, onLoad)
 
@@ -751,10 +752,11 @@ template <typename Scenario> class Viewer : public SignalSlotRenderer {
 		view->setFlags(Qt::Window | Qt::CustomizeWindowHint | Qt::WindowMinMaxButtonsHint |
 		               Qt::WindowTitleHint | Qt::WindowCloseButtonHint |
 		               Qt::WindowFullscreenButtonHint);
-		SignalSlotBase *ssb = root->findChild<SignalSlotBase *>("renderer");
+		ssb = root->findChild<SignalSlotBase *>("renderer");
 
 		engine->rootContext()->setContextProperty("glview", ssb);
 		ssb->init(this);
+		ssb->setWorldUpdate(true);
 		view->setPosition(viewPos);
 		if (!viewSize.isNull()) view->resize(viewSize);
 		view->show();
