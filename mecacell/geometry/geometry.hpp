@@ -26,7 +26,7 @@ std::pair<bool, Vec> inline rayInTriangle(const Vec &v0, const Vec &v1, const Ve
 	if (l > 0) {
 		Vec p = o + l * r;
 		Vec w = p - v0;
-		double nsq = n.sqlength();
+		double nsq = n.squaredNorm();
 		l = u.cross(w).dot(n) / nsq;
 		double b = w.cross(v).dot(n) / nsq;
 		double a = 1.0 - l - b;
@@ -57,7 +57,7 @@ std::pair<bool, Vec> inline projectionIntriangle(const Vec &v0, const Vec &v1,
 	Vec v = v2 - v0;
 	Vec n = u.cross(v);
 	Vec w = p - v0;
-	double nsq = n.sqlength();
+	double nsq = n.squaredNorm();
 	double l = u.cross(w).dot(n) / nsq;
 	double b = w.cross(v).dot(n) / nsq;
 	double a = 1.0 - l - b;
@@ -77,7 +77,7 @@ std::pair<bool, Vec> inline projectionIntriangle(const Vec &v0, const Vec &v1,
  * @return the smallest distance to an edge
  */
 double inline closestDistToTriangleEdge(const Vec &v0, const Vec &v1, const Vec &v2,
-                                 const Vec &p) {
+                                        const Vec &p) {
 	Vec a = v1 - v0;
 	Vec b = v2 - v0;
 	Vec c = v2 - v1;
@@ -90,25 +90,25 @@ double inline closestDistToTriangleEdge(const Vec &v0, const Vec &v1, const Vec 
 	double sqV1pc = v1p.dot(c);
 	double adist, bdist, cdist;
 	double v0dist, v1dist, v2dist;
-	v0dist = v0p.sqlength();
-	v1dist = v1p.sqlength();
-	v2dist = v2p.sqlength();
-	if (sqV0pa >= 0 && sqV0pa <= a.sqlength()) {
-		adist = ((v0 + (sqV0pa / a.sqlength()) * a) - p).sqlength();
+	v0dist = v0p.squaredNorm();
+	v1dist = v1p.squaredNorm();
+	v2dist = v2p.squaredNorm();
+	if (sqV0pa >= 0 && sqV0pa <= a.squaredNorm()) {
+		adist = ((v0 + (sqV0pa / a.squaredNorm()) * a) - p).squaredNorm();
 	} else if (sqV0pa < 0) {  // v0 is the closest
 		adist = v0dist;
 	} else {  // v1 is the closest
 		adist = v1dist;
 	}
-	if (sqV0pb >= 0 && sqV0pb <= b.sqlength()) {
-		bdist = ((v0 + (sqV0pb / b.sqlength()) * b) - p).sqlength();
+	if (sqV0pb >= 0 && sqV0pb <= b.squaredNorm()) {
+		bdist = ((v0 + (sqV0pb / b.squaredNorm()) * b) - p).squaredNorm();
 	} else if (sqV0pb < 0) {  // v0 is the closest
 		bdist = v0dist;
 	} else {  // v2 is the closest
 		bdist = v2dist;
 	}
-	if (sqV1pc >= 0 && sqV1pc <= c.sqlength()) {
-		cdist = ((v1 + (sqV1pc / c.sqlength()) * c) - p).sqlength();
+	if (sqV1pc >= 0 && sqV1pc <= c.squaredNorm()) {
+		cdist = ((v1 + (sqV1pc / c.squaredNorm()) * c) - p).squaredNorm();
 	} else if (sqV1pc < 0) {  // v1 is the closest
 		cdist = v1dist;
 	} else {  // v2 is the closest
@@ -116,8 +116,6 @@ double inline closestDistToTriangleEdge(const Vec &v0, const Vec &v1, const Vec 
 	}
 	return sqrt(min(adist, min(bdist, cdist)));
 }
-
-
 
 }  // namespace MecaCell
 #endif

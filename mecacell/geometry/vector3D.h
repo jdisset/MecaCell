@@ -19,15 +19,15 @@ namespace MecaCell {
  */
 class Vector3D {
  public:
-	std::array<double, 3> coords;
+	std::array<num_t, 3> coords;
 
 	static const int dimension = 3;
-	inline Vector3D(double a, double b, double c) : coords{{a, b, c}} {}
+	inline Vector3D(num_t a, num_t b, num_t c) : coords{{a, b, c}} {}
 	template <typename T>
 	Vector3D(const T &otherV) : coords{{otherV.x(), otherV.y(), otherV.z()}} {}
 	inline Vector3D() : coords{{0, 0, 0}} {}
-	inline explicit Vector3D(double a) : coords{{a, a, a}} {}
-	inline explicit Vector3D(std::array<double, 3> c) : coords(c) {}
+	inline explicit Vector3D(num_t a) : coords{{a, a, a}} {}
+	inline explicit Vector3D(std::array<num_t, 3> c) : coords(c) {}
 	inline Vector3D(const Vector3D &v) : coords(v.coords) {}
 	inline Vector3D(Vector3D &&v) : coords(std::move(v.coords)) {}
 
@@ -51,7 +51,7 @@ class Vector3D {
 	 *
 	 * @return the dot product of this vector against v
 	 */
-	inline double dot(const Vector3D &v) const {
+	inline num_t dot(const Vector3D &v) const {
 		return coords[0] * v.coords[0] + coords[1] * v.coords[1] + coords[2] * v.coords[2];
 	}
 
@@ -73,63 +73,63 @@ class Vector3D {
 	 *
 	 * @return a reference to the x coordinate
 	 */
-	inline double &xRef() { return coords[0]; }
+	inline num_t &xRef() { return coords[0]; }
 	/**
 	 * @brief
 	 *
 	 * @return a reference to the y coordinate
 	 */
-	inline double &yRef() { return coords[1]; }
+	inline num_t &yRef() { return coords[1]; }
 	/**
 	 * @brief
 	 *
 	 * @return a reference to the z coordinate
 	 */
-	inline double &zRef() { return coords[2]; }
+	inline num_t &zRef() { return coords[2]; }
 	/**
 	 * @brief
 	 *
 	 * @return the const value of the x coordinate
 	 */
-	inline double x() const { return coords[0]; }
+	inline num_t x() const { return coords[0]; }
 	/**
 	 * @brief
 	 *
 	 * @return the const value of the y coordinate
 	 */
-	inline double y() const { return coords[1]; }
+	inline num_t y() const { return coords[1]; }
 	/**
 	 * @brief
 	 *
 	 * @return the const value of the z coordinate
 	 */
-	inline double z() const { return coords[2]; }
+	inline num_t z() const { return coords[2]; }
 
 	/**
 	 * @brief setter for x coordinate
 	 *
 	 * @param f the new value
 	 */
-	inline void setX(const double f) { coords[0] = f; }
+	inline void setX(const num_t f) { coords[0] = f; }
 	/**
 	 * @brief setter for y coordinate
 	 *
 	 * @param f the new value
 	 */
-	inline void setY(const double f) { coords[1] = f; }
+	inline void setY(const num_t f) { coords[1] = f; }
 	/**
 	 * @brief setter for z coordinate
 	 *
 	 * @param f the new value
 	 */
-	inline void setZ(const double f) { coords[2] = f; }
+	inline void setZ(const num_t f) { coords[2] = f; }
 
 	/**
 	 * @brief sets the current vector as a random normalized one. Uniform direction
 	 * distribution on all directions of a sphere.
 	 */
 	void random() {
-		std::normal_distribution<double> nDist(0.0, 1.0);
+		std::normal_distribution<num_t> nDist(0.0, 1.0);
 		coords = {{nDist(Config::globalRand()), nDist(Config::globalRand()),
 		           nDist(Config::globalRand())}};
 		normalize();
@@ -154,8 +154,8 @@ class Vector3D {
 	 *
 	 * @return a 3D vector
 	 */
-	Vector3D deltaDirection(double amount) {
-		std::normal_distribution<double> nDist(0.0, amount);
+	Vector3D deltaDirection(num_t amount) {
+		std::normal_distribution<num_t> nDist(0.0, amount);
 		return Vector3D(coords[0] + nDist(Config::globalRand()),
 		                coords[1] + nDist(Config::globalRand()),
 		                coords[2] + nDist(Config::globalRand()))
@@ -185,7 +185,7 @@ class Vector3D {
 	 *
 	 * @return
 	 */
-	inline Vector3D &operator*=(double d) {
+	inline Vector3D &operator*=(num_t d) {
 		coords[0] *= d;
 		coords[1] *= d;
 		coords[2] *= d;
@@ -199,7 +199,7 @@ class Vector3D {
 	 *
 	 * @return
 	 */
-	inline Vector3D &operator/=(double d) {
+	inline Vector3D &operator/=(num_t d) {
 		coords[0] /= d;
 		coords[1] /= d;
 		coords[2] /= d;
@@ -237,16 +237,16 @@ class Vector3D {
 	friend inline bool operator==(const Vector3D &v1, const Vector3D &v2);
 	friend inline bool operator!=(const Vector3D &v1, const Vector3D &v2);
 	friend inline Vector3D operator+(const Vector3D &v1, const Vector3D &v2);
-	friend inline Vector3D operator+(const Vector3D &v1, double f);
-	friend inline Vector3D operator+(double f, const Vector3D &v1);
+	friend inline Vector3D operator+(const Vector3D &v1, num_t f);
+	friend inline Vector3D operator+(num_t f, const Vector3D &v1);
 	friend inline Vector3D operator-(const Vector3D &v1, const Vector3D &v2);
-	friend inline Vector3D operator-(const Vector3D &v1, double f);
-	friend inline Vector3D operator-(double f, const Vector3D &v1);
-	friend inline Vector3D operator*(double factor, const Vector3D &vector);
-	friend inline Vector3D operator*(const Vector3D &vector, double factor);
+	friend inline Vector3D operator-(const Vector3D &v1, num_t f);
+	friend inline Vector3D operator-(num_t f, const Vector3D &v1);
+	friend inline Vector3D operator*(num_t factor, const Vector3D &vector);
+	friend inline Vector3D operator*(const Vector3D &vector, num_t factor);
 	friend inline Vector3D operator*(const Vector3D &v1, const Vector3D &v2);
 	friend inline Vector3D operator-(const Vector3D &vector);
-	friend inline Vector3D operator/(const Vector3D &vector, double divisor);
+	friend inline Vector3D operator/(const Vector3D &vector, num_t divisor);
 	friend inline ostream &operator<<(ostream &out, const Vector3D &v);
 
 	/**
@@ -254,17 +254,19 @@ class Vector3D {
 	 *
 	 * @return
 	 */
-	double length() const {
+	num_t length() const {
 		return sqrt(coords[0] * coords[0] + coords[1] * coords[1] + coords[2] * coords[2]);
 	}
+	num_t norm() const { return length(); }
 	/**
 	 * @brief compute the square length of the current vector (faster than length)
 	 *
 	 * @return
 	 */
-	double sqlength() const {
+	num_t sqlength() const {
 		return coords[0] * coords[0] + coords[1] * coords[1] + coords[2] * coords[2];
 	}
+	num_t squaredNorm() const { return sqlength(); }
 
 	/**
 	 * @brief gives a rotated copy of the current vector
@@ -274,8 +276,8 @@ class Vector3D {
 	 *
 	 * @return  a rotated copy of the current vector
 	 */
-	Vector3D rotated(double angle, const Vector3D &vec) const {
-		double halfangle = angle * 0.5;
+	Vector3D rotated(num_t angle, const Vector3D &vec) const {
+		num_t halfangle = angle * 0.5;
 		Vector3D v = vec * sin(halfangle);
 		Vector3D vcV = 2.0 * v.cross(*this);
 		return *this + cos(halfangle) * vcV + v.cross(vcV);
@@ -289,7 +291,7 @@ class Vector3D {
 	 * @return a rotated copy of the current vector
 	 */
 	Vector3D rotated(const Rotation<Vector3D> &r) const {
-		double halfangle = r.teta * 0.5;
+		num_t halfangle = r.teta * 0.5;
 		Vector3D v = r.n * sin(halfangle);
 		Vector3D vcV = 2.0 * v.cross(*this);
 		return *this + cos(halfangle) * vcV + v.cross(vcV);
@@ -303,7 +305,7 @@ class Vector3D {
 	 * @param r the rotation which is going to be modified
 	 */
 	static void addAsAngularVelocity(const Vector3D &v, Rotation<Vector3D> &r) {
-		double dTeta = v.length();
+		num_t dTeta = v.length();
 		Vector3D n0(0, 1, 0);
 		if (dTeta > 0) {
 			n0 = v / dTeta;
@@ -321,7 +323,7 @@ class Vector3D {
 	 */
 	static Rotation<Vector3D> getRotation(const Vector3D &v0, const Vector3D &v1) {
 		Rotation<Vector3D> res;
-		res.teta = acos(min<double>(1.0, max<double>(-1.0, v0.dot(v1))));
+		res.teta = acos(min<num_t>(1.0, max<num_t>(-1.0, v0.dot(v1))));
 		Vector3D cross = v0.cross(v1);
 		if (cross.sqlength() == 0) {
 			cross = Vector3D(0, 1, 0);
@@ -343,9 +345,9 @@ class Vector3D {
 	 * not face the plane l = 0 means that the ray is parallel to the plane or that p is
 	 * on the plane
 	 */
-	static double rayCast(const Vector3D &o, const Vector3D &n, const Vector3D &p,
-	                      const Vector3D &r) {
-		double nr = n.dot(r);
+	static num_t rayCast(const Vector3D &o, const Vector3D &n, const Vector3D &p,
+	                     const Vector3D &r) {
+		num_t nr = n.dot(r);
 		return (nr == 0) ? 0 : n.dot(o - p) / nr;
 	}
 
@@ -450,7 +452,7 @@ class Vector3D {
 	 * @return
 	 */
 	inline Vector3D normalized() const {
-		double l = length();
+		num_t l = length();
 		return l > 0 ? *this / l : zero();
 	}
 
@@ -497,7 +499,7 @@ class Vector3D {
 	 */
 	inline void iterateTo(const Vector3D &v,
 	                      const std::function<void(const Vector3D &)> &fun,
-	                      const double inc = 1) const {
+	                      const num_t inc = 1) const {
 		Vector3D base(floor(min(coords[0], v.coords[0])), floor(min(coords[1], v.coords[1])),
 		              floor(min(coords[2], v.coords[2])));
 		Vector3D nxt(ceil(max(coords[0], v.coords[0])), ceil(max(coords[1], v.coords[1])),
@@ -547,10 +549,10 @@ inline Vector3D operator+(const Vector3D &v1, const Vector3D &v2) {
 	return Vector3D(v1.coords[0] + v2.coords[0], v1.coords[1] + v2.coords[1],
 	                v1.coords[2] + v2.coords[2]);
 }
-inline Vector3D operator+(const double f, const Vector3D &v) {
+inline Vector3D operator+(const num_t f, const Vector3D &v) {
 	return Vector3D(v.coords[0] + f, v.coords[1] + f, v.coords[2] + f);
 }
-inline Vector3D operator+(const Vector3D &v, const double f) {
+inline Vector3D operator+(const Vector3D &v, const num_t f) {
 	return Vector3D(v.coords[0] + f, v.coords[1] + f, v.coords[2] + f);
 }
 
@@ -563,17 +565,17 @@ inline Vector3D operator*(const Vector3D &v1, const Vector3D &v2) {
 	                v1.coords[2] * v2.coords[2]);
 }
 
-inline Vector3D operator*(const double f, const Vector3D &v) {
+inline Vector3D operator*(const num_t f, const Vector3D &v) {
 	return Vector3D(v.coords[0] * f, v.coords[1] * f, v.coords[2] * f);
 }
-inline Vector3D operator*(const Vector3D &v, const double f) {
+inline Vector3D operator*(const Vector3D &v, const num_t f) {
 	return Vector3D(v.coords[0] * f, v.coords[1] * f, v.coords[2] * f);
 }
 
-inline Vector3D operator-(const double f, const Vector3D &v) {
+inline Vector3D operator-(const num_t f, const Vector3D &v) {
 	return Vector3D(v.coords[0] - f, v.coords[1] - f, v.coords[2] - f);
 }
-inline Vector3D operator-(const Vector3D &v, const double f) {
+inline Vector3D operator-(const Vector3D &v, const num_t f) {
 	return Vector3D(v.coords[0] - f, v.coords[1] - f, v.coords[2] - f);
 }
 
@@ -581,7 +583,7 @@ inline Vector3D operator-(const Vector3D &v) {
 	return Vector3D(-v.coords[0], -v.coords[1], -v.coords[2]);
 }
 
-inline Vector3D operator/(const Vector3D &v, const double f) {
+inline Vector3D operator/(const Vector3D &v, const num_t f) {
 	return Vector3D(v.coords[0] / f, v.coords[1] / f, v.coords[2] / f);
 }
 inline ostream &operator<<(ostream &out, const Vector3D &v) {

@@ -27,37 +27,37 @@ namespace MecaCell {
  * - Vec getAngularVelocity()
  * - Basis getOrientation()
  * - Rotation getOrientationRotation()
- * - double getInertia()
- * - void receiveForce(double intensity, Vec direction, bool compressive)
+ * - num_t getInertia()
+ * - void receiveForce(num_t intensity, Vec direction, bool compressive)
  * - void receiveTorque(Vec acc)
  * An implementaiton of these methods is available in the Orientable and Movable classes.
  */
 template <typename Cell> struct SpringConnection {
-	double COLLISION_DAMPING_RATIO = 0.5;
-	double ADH_DAMPING_RATIO = 1.0;
-	double ANG_ADH_COEF = 10.0;
-	double ADH_CONSTANT = 1.0;  // factor by which all adhesion forces is multiplied
-	double MAX_TS_INCL =
+	num_t COLLISION_DAMPING_RATIO = 0.5;
+	num_t ADH_DAMPING_RATIO = 1.0;
+	num_t ANG_ADH_COEF = 10.0;
+	num_t ADH_CONSTANT = 1.0;  // factor by which all adhesion forces is multiplied
+	num_t MAX_TS_INCL =
 	    0.1;  // max angle before we need to reproject our torsion joint rotation
 
 	ordered_pair<Cell *> cells;
 	Spring collision;
 	Spring adhesion;
-	std::pair<double, double>
-	    midpoint;         // contact disk's distance to center (viewed from each cell)
-	double sqradius = 0;  // squared radius of the contact disk
-	double area = 0, adhArea = 0;  // area of the contact disk
-	Vector3D direction;            // normalized direction from cell 0 to cell 1
-	double dist;                   // distance btwn the two cells
+	std::pair<num_t, num_t>
+	    midpoint;        // contact disk's distance to center (viewed from each cell)
+	num_t sqradius = 0;  // squared radius of the contact disk
+	num_t area = 0, adhArea = 0;  // area of the contact disk
+	Vector3D direction;           // normalized direction from cell 0 to cell 1
+	num_t dist;                   // distance btwn the two cells
 	std::pair<Joint, Joint> flex, tors;
 	bool adhesionEnabled = true, frictionEnabled = false, flexEnabled = false,
 	     torsEnabled = false, unbreakable = false;
-	double adhCoef = 0.5;
+	num_t adhCoef = 0.5;
 
 	SpringConnection(){};
 	SpringConnection(ordered_pair<Cell *> c) : cells(c) { init(); };
 
-	std::pair<double, double> computeMidpoints(double distanceBtwnCenters) {
+	std::pair<num_t, num_t> computeMidpoints(num_t distanceBtwnCenters) {
 		// return the current contact disk's center distance to each cells centers
 		if (dist <= Config::DOUBLE_EPSILON) return {0, 0};
 
@@ -67,12 +67,12 @@ template <typename Cell> struct SpringConnection {
 		                       cells.second;
 		auto smallestCell = biggestCell == cells.first ? cells.second : cells.first;
 
-		double biggestCellMidpoint =
+		num_t biggestCellMidpoint =
 		    0.5 * (distanceBtwnCenters +
 		           (std::pow(biggestCell->getBody().getBoundingBoxRadius(), 2) -
 		            std::pow(smallestCell->getBody().getBoundingBoxRadius(), 2)) /
 		               distanceBtwnCenters);
-		double smallestCellMidpoint = distanceBtwnCenters - biggestCellMidpoint;
+		num_t smallestCellMidpoint = distanceBtwnCenters - biggestCellMidpoint;
 		if (biggestCell == cells.first)
 			return {biggestCellMidpoint, smallestCellMidpoint};
 		else
@@ -112,7 +112,7 @@ template <typename Cell> struct SpringConnection {
 			            cells.first->getBody().getOrientationRotation().inverted())),
 			    cells.second->getAdhesionWith(
 			        cells.first,
-			        (-direction)
+			        static_cast<Vec>(-direction)
 			            .rotated(cells.second->getBody().getOrientationRotation().inverted())));
 		}
 		adhesion.k = ADH_CONSTANT * adhCoef;
@@ -181,17 +181,17 @@ template <typename Cell> struct SpringConnection {
 		}
 	}
 
-	template <int n> void updateJointsForces(double dt) {
+	template <int n> void updateJointsForces(num_t dt) {
 		Joint &torsNode = n == 0 ? tors.first : tors.second;
 		Joint &torsOther = n == 0 ? tors.second : tors.first;
 		Joint &flexNode = n == 0 ? flex.first : flex.second;
 		const auto &cell = cells.template get<n>();
 		const auto &other = cells.template get < n == 0 ? 1 : 0 > ();
-		const double sign = n == 0 ? 1 : -1;
+		const num_t sign = n == 0 ? 1 : -1;
 
 		if (flexNode.maxTetaAutoCorrect &&
 		    flexNode.delta.teta > flexNode.maxTeta) {  // if we passed flex break angle
-			double dif = flexNode.delta.teta - flexNode.maxTeta;
+			num_t dif = flexNode.delta.teta - flexNode.maxTeta;
 			flexNode.r = flexNode.r + Rotation<Vec>(flexNode.delta.n, dif);
 			flexNode.direction =
 			    flexNode.direction.rotated(Rotation<Vec>(flexNode.delta.n, dif));
@@ -200,7 +200,7 @@ template <typename Cell> struct SpringConnection {
 			                                                       flexNode.direction.ortho()));
 		}
 		flexNode.delta.n.normalize();
-		double torque =
+		num_t torque =
 		    flexNode.k * flexNode.delta.teta +
 		    flexNode.c * ((flexNode.delta.teta - flexNode.prevDelta.teta) / dt);  // -kx - cv
 		Vec vFlex = flexNode.delta.n * torque;                                    // torque
@@ -214,7 +214,7 @@ template <typename Cell> struct SpringConnection {
 		flexNode.prevDelta = flexNode.delta;
 		if (torsEnabled) {
 			// updating torsion joint (needs to stay perp to direction)
-			double scalar = torsNode.direction.dot(direction);
+			num_t scalar = torsNode.direction.dot(direction);
 			// if the angle between our torsion spring and direction is too far from 90°,
 			// we reproject & recompute it
 			if (abs(scalar) > MAX_TS_INCL) {
@@ -228,14 +228,14 @@ template <typename Cell> struct SpringConnection {
 			    torsOther.direction;  // we want torsion springs to stay aligned with each other
 			torsNode.updateDelta();
 			// torsion torque
-			double torsionTorque = torsNode.k * torsNode.delta.teta;  // - torsNode.c *
+			num_t torsionTorque = torsNode.k * torsNode.delta.teta;  // - torsNode.c *
 			// cell->getAngularVelocity().dot(torsNode.delta.teta.n)
 			Vec vTorsion = torsionTorque * torsNode.delta.n;
 			cell->getBody().receiveTorque(vTorsion);
 		}
 	}
 
-	void update(double dt) {
+	void update(num_t dt) {
 		updateDirection();
 		// updating collision and adhesion springs
 		collision.updateLength(dist);

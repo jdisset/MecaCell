@@ -6,8 +6,8 @@
 #include <unordered_map>
 #include <utility>
 #include <vector>
-#include "../geometry/vector3D.h"
 #include "config.hpp"
+#include "../geometry/vector3D.h"
 #include "logger.hpp"
 
 /**

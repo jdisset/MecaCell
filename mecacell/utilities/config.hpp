@@ -3,6 +3,9 @@
 #include <random>
 
 namespace MecaCell {
+
+using num_t = double;
+
 struct Config {
 	// TYPES
 	using random_engine_t = std::mt19937;  // used for random vectors
