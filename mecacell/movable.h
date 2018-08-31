@@ -11,6 +11,7 @@ class Movable {
 	Vec force = Vec::zero();
 	bool movementEnabled = true;
 	double mass = Config::DEFAULT_CELL_MASS;
+	double invMass = 1.0 / Config::DEFAULT_CELL_MASS;
 	double totalForce = 0;
 
  public:
@@ -28,11 +29,19 @@ class Movable {
 	Vec getVelocity() const { return velocity; }
 	Vec getForce() const { return force; }
 	double getMass() const { return mass; }
+	double getInvMass() const { return invMass; }
 	void setPosition(const Vec &p) { position = p; }
 	void setPrevposition(const Vec &p) { prevposition = p; }
 	void setVelocity(const Vec &v) { velocity = v; }
 	void setForce(const Vec &f) { force = f; }
-	void setMass(const double m) { mass = m; }
+	void setMass(const double m) {
+		mass = m;
+		invMass = (m != 0) ? (1.0 / m) : 0;
+	}
+	void setInvMass(const double w) {
+		invMass = w;
+		mass = (w != 0) ? (1.0 / w) : 0;
+	}
 	/**********************************************
 	 *                 UPDATES
 	 **********************************************/
@@ -48,5 +57,5 @@ class Movable {
 		force = Vec::zero();
 	}
 };
-}
+}  // namespace MecaCell
 #endif

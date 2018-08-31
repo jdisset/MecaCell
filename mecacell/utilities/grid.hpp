@@ -19,20 +19,24 @@ namespace MecaCell {
  * @tparam O the type of object that are stored
  */
 template <typename O> class Grid {
+ public:
+	using ivec_t = std::array<int, 3>;
+	using AABB_t = std::pair<ivec_t, ivec_t>;
+
  private:
 	num_t cellSize;  // actually it's 1/cellSize, just so we can multiply instead of divide
-	std::unordered_map<Vec, size_t> um;                      // position -> orderedVec index
-	std::vector<std::pair<Vec, std::vector<O>>> orderedVec;  // for determinism
+	std::unordered_map<ivec_t, size_t> um;  // position -> orderedVec index
+	std::vector<std::pair<ivec_t, std::vector<O>>> orderedVec;  // for determinism
 
  public:
 	Grid(num_t cs) : cellSize(1.0 / cs) {}
 	size_t size() { return um.size(); };
-	std::vector<std::pair<Vec, std::vector<O>>> &getOrderedVec() { return orderedVec; }
-	std::unordered_map<Vec, size_t> &getUnorderedMap() { return um; }
+	std::vector<std::pair<ivec_t, std::vector<O>>> &getOrderedVec() { return orderedVec; }
+	std::unordered_map<ivec_t, size_t> &getUnorderedMap() { return um; }
 
 	num_t getCellSize() const { return 1.0 / cellSize; }
 
-	const std::vector<std::pair<Vec, std::vector<O>>> &getContent() const {
+	const std::vector<std::pair<ivec_t, std::vector<O>>> &getContent() const {
 		return orderedVec;
 	}
 
@@ -68,8 +72,11 @@ template <typename O> class Grid {
 		return res;
 	}
 
-	inline size_t vecToColor(const Vec &v) const {
-		return (abs((int)v.x()) % 2) + (abs((int)v.y()) % 2) * 2 + (abs((int)v.z()) % 2) * 4;
+	// inline size_t vecToColor(const Vec &v) const {
+	// return (abs((int)v.x()) % 2) + (abs((int)v.y()) % 2) * 2 + (abs((int)v.z()) % 2) * 4;
+	//}
+	inline size_t vecToColor(const ivec_t &v) const {
+		return (abs(v[0]) % 2) + (abs(v[1]) % 2) * 2 + (abs(v[2]) % 2) * 4;
 	}
 
 	template <typename V> void insert(V &&k, const O &o) {
@@ -84,19 +91,42 @@ template <typename O> class Grid {
 		insert(getIndexFromPosition(ptr(obj)->getPosition()), obj);
 	}
 
-	void insert(const O &obj) {
+	bool AABBCollision(const O &o1, const O &o2) {
+		auto a = getAABBVec(o1);
+		auto b = getAABBVec(o2);
+		return (a.first.x() <= b.second.x() && a.second.x() >= b.first.x()) &&
+		       (a.first.y() <= b.second.y() && a.second.y() >= b.first.y()) &&
+		       (a.first.z() <= b.second.z() && a.second.z() >= b.first.z());
+	}
+
+	int fastFloor(const num_t &n) { return (int)floor(n); }
+
+	std::pair<Vec, Vec> getAABBVec(const O &obj) {
 		const Vec &center = ptr(obj)->getPosition();
-		const num_t &radius = ptr(obj)->getBoundingBoxRadius();
-		Vec minCorner = getIndexFromPosition(center - Vec(radius));
-		Vec maxCorner = getIndexFromPosition(center + Vec(radius));
-		for (num_t i = minCorner.x(); i <= maxCorner.x(); ++i) {
-			for (num_t j = minCorner.y(); j <= maxCorner.y(); ++j) {
-				for (num_t k = minCorner.z(); k <= maxCorner.z(); ++k) {
-					insert(Vec(i, j, k), obj);
+		const Vec R{ptr(obj)->getBoundingBoxRadius()};
+		return std::make_pair<Vec, Vec>(center - R, center + R);
+	}
+
+	AABB_t getAABB(const O &obj) {
+		const Vec &center = ptr(obj)->getPosition();
+		const Vec R{ptr(obj)->getBoundingBoxRadius()};
+		Vec minCorner = (center - R) * cellSize;
+		Vec maxCorner = (center + R) * cellSize;
+		return std::make_pair<ivec_t, ivec_t>(
+		    {{fastFloor(minCorner.x()), fastFloor(minCorner.y()), fastFloor(minCorner.z())}},
+		    {{fastFloor(maxCorner.x()), fastFloor(maxCorner.y()), fastFloor(maxCorner.z())}});
+	}
+
+	void insert(const O &obj, const AABB_t &aabb) {
+		for (int i = aabb.first[0]; i <= aabb.second[0]; ++i) {
+			for (int j = aabb.first[1]; j <= aabb.second[1]; ++j) {
+				for (int k = aabb.first[2]; k <= aabb.second[2]; ++k) {
+					insert(ivec_t{i, j, k}, obj);
 				}
 			}
 		}
 	}
+	void insert(const O &obj) { insert(obj, getAABB(obj)); }
 
 	// num_t cx = i * cubeSize;
 	// if (abs(cx - center.x()) > abs(cx + cubeSize - center.x())) cx += cubeSize;
@@ -106,61 +136,60 @@ template <typename O> class Grid {
 	// if (abs(cz - center.z()) > abs(cz + cubeSize - center.z())) cz += cubeSize;
 
 	void insertPrecise(const O &obj) {
-		// good for gridSize << boundingboxRadius
-		const Vec &center = ptr(obj)->getPosition();
-		const num_t &radius = ptr(obj)->getBoundingBoxRadius();
-		const num_t sqRadius = radius * radius;
-		const num_t cubeSize = 1.0 / cellSize;
-		Vec minCorner = getIndexFromPosition(center - Vec(radius));
-		Vec maxCorner = getIndexFromPosition(center + Vec(radius));
-		for (num_t i = minCorner.x(); i <= maxCorner.x(); ++i) {
-			for (num_t j = minCorner.y(); j <= maxCorner.y(); ++j) {
-				for (num_t k = minCorner.z(); k <= maxCorner.z(); ++k) {
-					// we test if this cube's center overlaps with the sphere
-					// i j k coords are the bottom front left coords of a 1/cellSize cube
-					// we need the closest corner of a grid cell relative to the center of the obj
+		/* // good for gridSize << boundingboxRadius*/
+		// const Vec &center = ptr(obj)->getPosition();
+		// const num_t &radius = ptr(obj)->getBoundingBoxRadius();
+		// const num_t sqRadius = radius * radius;
+		// const num_t cubeSize = 1.0 / cellSize;
+		// Vec minCorner = getIndexFromPosition(center - Vec(radius));
+		// Vec maxCorner = getIndexFromPosition(center + Vec(radius));
+		// for (num_t i = minCorner.x(); i <= maxCorner.x(); ++i) {
+		// for (num_t j = minCorner.y(); j <= maxCorner.y(); ++j) {
+		// for (num_t k = minCorner.z(); k <= maxCorner.z(); ++k) {
+		//// we test if this cube's center overlaps with the sphere
+		//// i j k coords are the bottom front left coords of a 1/cellSize cube
+		//// we need the closest corner of a grid cell relative to the center of the obj
 
-					num_t cx = (i + 0.5) * cubeSize;
-					// if (abs(cx - center.x()) > abs(cx + cubeSize - center.x())) cx += cubeSize;
-					num_t cy = (j + 0.5) * cubeSize;
-					// if (abs(cy - center.y()) > abs(cy + cubeSize - center.y())) cy += cubeSize;
-					num_t cz = (k + 0.5) * cubeSize;
-					// if (abs(cz - center.z()) > abs(cz + cubeSize - center.z())) cz += cubeSize;
+		// num_t cx = (i + 0.5) * cubeSize;
+		//// if (abs(cx - center.x()) > abs(cx + cubeSize - center.x())) cx += cubeSize;
+		// num_t cy = (j + 0.5) * cubeSize;
+		//// if (abs(cy - center.y()) > abs(cy + cubeSize - center.y())) cy += cubeSize;
+		// num_t cz = (k + 0.5) * cubeSize;
+		//// if (abs(cz - center.z()) > abs(cz + cubeSize - center.z())) cz += cubeSize;
 
-					Vec cubeCenter(cx, cy, cz);
-					// std::cerr << "Pour centre = " << center << ", rayon = " << radius
-					//<< ", cubeSize = " << cubeSize << "    :   minCorner = " << minCorner
-					//<< ", maxCorner = " << maxCorner << ", bfl = " << Vec(i, j, k)
-					//<< "(soit " << Vec(i * cubeSize, j * cubeSize, k * cubeSize)
-					//<< ") et closestCorner = " << cubeCenter;
+		// Vec cubeCenter(cx, cy, cz);
+		//// std::cerr << "Pour centre = " << center << ", rayon = " << radius
+		////<< ", cubeSize = " << cubeSize << "    :   minCorner = " << minCorner
+		////<< ", maxCorner = " << maxCorner << ", bfl = " << Vec(i, j, k)
+		////<< "(soit " << Vec(i * cubeSize, j * cubeSize, k * cubeSize)
+		////<< ") et closestCorner = " << cubeCenter;
 
-					if ((cubeCenter - center).squaredNorm() < sqRadius) {
-						// std::cerr << " [OK]" << std::endl;
-						insert(Vec(i, j, k), obj);
-					} else {
-						// std::cerr << " [REFUS]" << std::endl;
-					}
-				}
-			}
-		}
+		// if ((cubeCenter - center).squaredNorm() < sqRadius) {
+		//// std::cerr << " [OK]" << std::endl;
+		// insert(Vec(i, j, k), obj);
+		//} else {
+		//// std::cerr << " [REFUS]" << std::endl;
+		//}
+		//}
+		//}
+		/*}*/
 	}
 
 	void insert(const O &obj, const Vec &p0, const Vec &p1,
 	            const Vec &p2) {  // insert triangles
-		Vec blf(min(p0.x(), min(p1.x(), p2.x())), min(p0.y(), min(p1.y(), p2.y())),
-		        min(p0.z(), min(p1.z(), p2.z())));
-		Vec trb(max(p0.x(), max(p1.x(), p2.x())), max(p0.y(), max(p1.y(), p2.y())),
-		        max(p0.z(), max(p1.z(), p2.z())));
-		num_t cs = 1.0 / cellSize;
-		getIndexFromPosition(blf).iterateTo(getIndexFromPosition(trb) + 1, [&](const Vec &v) {
-			Vec center = cs * v;
-			std::pair<bool, Vec> projec = projectionIntriangle(p0, p1, p2, center);
-			if ((center - projec.second).squaredNorm() < 0.8 * cs * cs) {
-				if (projec.first || closestDistToTriangleEdge(p0, p1, p2, center) < 0.87 * cs) {
-					insert(v, obj);
-				}
-			}
-		});
+		/* Vec blf(min(p0.x(), min(p1.x(), p2.x())), min(p0.y(), min(p1.y(), p2.y())),*/
+		// min(p0.z(), min(p1.z(), p2.z())));
+		// Vec trb(max(p0.x(), max(p1.x(), p2.x())), max(p0.y(), max(p1.y(), p2.y())),
+		// max(p0.z(), max(p1.z(), p2.z())));
+		// num_t cs = 1.0 / cellSize;
+		// getIndexFromPosition(blf).iterateTo(getIndexFromPosition(trb) + 1, [&](const Vec
+		// &v) { Vec center = cs * v; std::pair<bool, Vec> projec = projectionIntriangle(p0,
+		// p1, p2, center); if ((center - projec.second).squaredNorm() < 0.8 * cs * cs) { if
+		// (projec.first || closestDistToTriangleEdge(p0, p1, p2, center) < 0.87 * cs) {
+		// insert(v, obj);
+		//}
+		/*}*/
+		//});
 	}
 
 	Vec getIndexFromPosition(const Vec &v) const {
@@ -229,6 +258,6 @@ template <typename O> class Grid {
 		um.clear();
 		orderedVec = decltype(orderedVec)();
 	}
-};
+};  // namespace MecaCell
 }  // namespace MecaCell
 #endif

@@ -6,8 +6,9 @@
 #define ADD_BUTTON(...)
 #endif
 
-#include "utilities/config.hpp"
+#include "basecell.hpp"
 #include "connectablecell.hpp"
 #include "integrators.hpp"
+#include "utilities/config.hpp"
 #include "world.hpp"
 #endif

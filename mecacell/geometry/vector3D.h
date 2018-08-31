@@ -45,6 +45,15 @@ class Vector3D {
 	}
 
 	/**
+	 * @brief subscript operator
+	 *
+	 * @param i
+	 *
+	 * @return  coords[i]
+	 */
+	num_t &operator[](const size_t &i) { return coords[i]; }
+
+	/**
 	 * @brief dot product calculation
 	 *
 	 * @param v a Vector3D
@@ -482,10 +491,18 @@ class Vector3D {
 	 *
 	 * @return
 	 */
+	/* int getHash() const {*/
+	// return getHash(
+	// static_cast<int>(floor(coords[0])),
+	// getHash(static_cast<int>(floor(coords[1])), static_cast<int>(floor(coords[2]))));
+	/*}*/
+
 	int getHash() const {
-		return getHash(
-		    static_cast<int>(floor(coords[0])),
-		    getHash(static_cast<int>(floor(coords[1])), static_cast<int>(floor(coords[2]))));
+		const int p1 = 73856093;
+		const int p2 = 19349663;
+		const int p3 = 83492791;
+		return (static_cast<int>(coords[0]) * p1) xor (static_cast<int>(coords[1]) * p2) xor
+		       (static_cast<int>(coords[2]) * p3);
 	}
 
 	/**

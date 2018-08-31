@@ -6,7 +6,7 @@ struct Verlet {
 	template <typename C> static void updatePosition(C &c, const double &dt) {
 		// position
 		auto oldVel = c.getVelocity();
-		c.setVelocity(c.getVelocity() + c.getForce() * dt / c.getMass());
+		c.setVelocity(c.getVelocity() + c.getForce() * dt * c.getInvMass());
 		c.setPrevposition(c.getPosition());
 		c.setPosition(c.getPosition() + (c.getVelocity() + oldVel) * dt * 0.5);
 	}
@@ -24,7 +24,7 @@ struct Verlet {
 struct Euler {
 	template <typename C> static void updatePosition(C &c, const double &dt) {
 		// position
-		c.setVelocity(c.getVelocity() + c.getForce() * dt / c.getMass());
+		c.setVelocity(c.getVelocity() + c.getForce() * dt * c.getInvMass());
 		c.setPrevposition(c.getPosition());
 		c.setPosition(c.getPosition() + c.getVelocity() * dt);
 	}
@@ -37,5 +37,5 @@ struct Euler {
 		c.updateCurrentOrientation();
 	}
 };
-}
+}  // namespace MecaCell
 #endif

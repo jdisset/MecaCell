@@ -95,21 +95,6 @@ class ConnectableCell {
 
 	ConnectableCell() : ConnectableCell(Vec(0, 0, 0)) {}
 
-	/**
-	 * @brief Copy constructor with translation
-	 *
-	 * Useful for division, for example. Shifts the created cell relatively to the copied
-	 * one.
-	 *
-	 * @param c the copied cell
-	 * @param translation the vector by which the created cell is translated
-	 */
-	ConnectableCell(const Derived &c, const Vec &translation)
-	    : Movable(c.getPosition() + translation, c.mass),
-	      body(static_cast<Derived *>(this)),
-	      dead(false),
-	      color(c.color) {}
-
 	/*************** UPDATES **************/
 
 	/**

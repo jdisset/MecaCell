@@ -6,8 +6,8 @@
 #include <unordered_map>
 #include <utility>
 #include <vector>
-#include "config.hpp"
 #include "../geometry/vector3D.h"
+#include "config.hpp"
 #include "logger.hpp"
 
 /**
@@ -141,6 +141,15 @@ namespace std {
 template <typename T, typename U> struct hash<pair<T, U>> {
 	size_t operator()(const pair<T, U> &x) const {
 		return hash<T>()(x.first) ^ hash<U>()(x.second);
+	}
+};
+
+template <> struct hash<std::array<int, 3>> {
+	int operator()(const std::array<int, 3> &coords) const {
+		const int p1 = 73856093;
+		const int p2 = 19349663;
+		const int p3 = 83492791;
+		return (coords[0] * p1) xor (coords[1] * p2) xor (coords[2] * p3);
 	}
 };
 }  // namespace std

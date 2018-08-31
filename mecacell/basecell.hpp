@@ -1,6 +1,9 @@
 #ifndef MECACELL_BASECELL_HPP
 #define MECACELL_BASECELL_HPP
+#include <utility>
+#include "utilities/config.hpp"
 
+namespace MecaCell {
 /*----------------------------------------------------------------------------*\
 |																			   |
 |      						   MecaCell::BaseCell							   |
@@ -18,12 +21,11 @@
  *
  * @tparam Body the body implementation (which contains most of the core logic)
  */
-template <class Derived, template <class> class Body = ContactSurfaceBody>
-class BaseCell {
+template <class Derived, template <class> class Body> class BaseCell {
  public:
 	using body_t = Body<Derived>;
 	using embedded_plugin_t = typename body_t::embedded_plugin_t;
-	using vec_t = decltype((body_t) nullptr->getPosition());
+	using vec_t = decltype(std::declval<body_t>().getPosition());
 
 	friend body_t;
 	friend embedded_plugin_t;
@@ -36,7 +38,7 @@ class BaseCell {
 	/*----------------------------------------------------------------------------*\
 	|   	 			 		  	 CONSTRUCTORS								   |
 	\*----------------------------------------------------------------------------*/
-	BaseCell(const Derived &c) : body(static_cast<Derived *>(this)) {}
+	BaseCell(const Derived &) : body(static_cast<Derived *>(this)) {}
 	BaseCell(const vec_t &pos) : body(static_cast<Derived *>(this), pos) {}
 
 	/*----------------------------------------------------------------------------*\
@@ -52,7 +54,11 @@ class BaseCell {
 	\*----------------------------------------------------------------------------*/
 	void die() { dead = true; }     // flag the cell for destruction
 	bool isDead() { return dead; }  // simple getter
-	vec_t getPosition() { return body.getPosition(); }
+	auto getPosition() { return body.getPosition(); }
+	body_t &getBody() { return body; }
+	num_t getColor(unsigned int i) { return 0.7; }
+	bool getVisible() { return true; }
+	num_t getBoundingBoxRadius() { return body.getBoundingBoxRadius(); }
 };
-
+}  // namespace MecaCell
 #endif
