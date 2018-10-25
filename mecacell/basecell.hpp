@@ -2,6 +2,7 @@
 #define MECACELL_BASECELL_HPP
 #include <utility>
 #include "utilities/config.hpp"
+#include "utilities/exportable.hpp"
 
 namespace MecaCell {
 /*----------------------------------------------------------------------------*\
@@ -56,9 +57,12 @@ template <class Derived, template <class> class Body> class BaseCell {
 	bool isDead() { return dead; }  // simple getter
 	auto getPosition() { return body.getPosition(); }
 	body_t &getBody() { return body; }
-	num_t getColor(unsigned int i) { return 0.7; }
+	num_t getColor(unsigned int) { return 0.7; }
 	bool getVisible() { return true; }
 	num_t getBoundingBoxRadius() { return body.getBoundingBoxRadius(); }
+
+	// serialize/export
+	EXPORTABLE(BaseCell, KV(body), KV(id));
 };
 }  // namespace MecaCell
 #endif

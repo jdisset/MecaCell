@@ -4,7 +4,7 @@
 #include <cmath>
 #include <cstdlib>
 #include <iostream>
-#include <memory>
+
 #include <sstream>
 #include <vector>
 #include "contactsurfacebody.hpp"

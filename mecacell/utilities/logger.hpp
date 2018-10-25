@@ -10,11 +10,11 @@
 #include <sstream>
 #include <utility>
 
+using std::cerr;
+using std::cout;
+using std::endl;
 using std::ostream;
 using std::string;
-using std::cout;
-using std::cerr;
-using std::endl;
 
 namespace MecaCell {
 // the following are LINUX ONLY terminal color codes.
@@ -56,17 +56,17 @@ const constexpr static char BOLDCYAN[] = "";
 const constexpr static char BOLDWHITE[] = "";
 #endif
 
-// maybe needed 
-//constexpr decltype(WARN::tag) WARN::tag;
-//constexpr decltype(ERR::tag) ERR::tag;
-//constexpr decltype(INF::tag) INF::tag;
-//constexpr decltype(DBG::tag) DBG::tag;
-//constexpr decltype(SUC::tag) SUC::tag;
-//constexpr decltype(WARN::color) WARN::color;
-//constexpr decltype(ERR::color) ERR::color;
-//constexpr decltype(INF::color) INF::color;
-//constexpr decltype(DBG::color) DBG::color;
-//constexpr decltype(SUC::color) SUC::color;
+// maybe needed
+// constexpr decltype(WARN::tag) WARN::tag;
+// constexpr decltype(ERR::tag) ERR::tag;
+// constexpr decltype(INF::tag) INF::tag;
+// constexpr decltype(DBG::tag) DBG::tag;
+// constexpr decltype(SUC::tag) SUC::tag;
+// constexpr decltype(WARN::color) WARN::color;
+// constexpr decltype(ERR::color) ERR::color;
+// constexpr decltype(INF::color) INF::color;
+// constexpr decltype(DBG::color) DBG::color;
+// constexpr decltype(SUC::color) SUC::color;
 
 template <typename T> std::string sublogger(T&& t) {
 	std::ostringstream os;
@@ -141,5 +141,5 @@ template <typename Type, typename... Args> void logger(Args&&... args) {
 		std::cerr << os.str();
 	}
 }
-}
+}  // namespace MecaCell
 #endif

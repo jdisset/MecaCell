@@ -24,15 +24,17 @@ template <typename O> class Grid {
 	using AABB_t = std::pair<ivec_t, ivec_t>;
 
  private:
+	// template <typename K, typename V> using umap = ska::flat_hash_map<K, V>;
+	template <typename K, typename V> using umap = std::unordered_map<K, V>;
 	num_t cellSize;  // actually it's 1/cellSize, just so we can multiply instead of divide
-	std::unordered_map<ivec_t, size_t> um;  // position -> orderedVec index
+	umap<ivec_t, size_t> um;  // position -> orderedVec index
 	std::vector<std::pair<ivec_t, std::vector<O>>> orderedVec;  // for determinism
 
  public:
 	Grid(num_t cs) : cellSize(1.0 / cs) {}
 	size_t size() { return um.size(); };
 	std::vector<std::pair<ivec_t, std::vector<O>>> &getOrderedVec() { return orderedVec; }
-	std::unordered_map<ivec_t, size_t> &getUnorderedMap() { return um; }
+	umap<ivec_t, size_t> &getUnorderedMap() { return um; }
 
 	num_t getCellSize() const { return 1.0 / cellSize; }
 
@@ -91,7 +93,12 @@ template <typename O> class Grid {
 		insert(getIndexFromPosition(ptr(obj)->getPosition()), obj);
 	}
 
-	bool AABBCollision(const O &o1, const O &o2) {
+	bool AABBCollision(const AABB_t &a, const AABB_t &b) const {
+		return (a.first[0] <= b.second[0] && a.second[0] >= b.first[0]) &&
+		       (a.first[1] <= b.second[1] && a.second[1] >= b.first[1]) &&
+		       (a.first[2] <= b.second[2] && a.second[2] >= b.first[2]);
+	}
+	bool AABBCollision(const O &o1, const O &o2) const {
 		auto a = getAABBVec(o1);
 		auto b = getAABBVec(o2);
 		return (a.first.x() <= b.second.x() && a.second.x() >= b.first.x()) &&
@@ -99,34 +106,54 @@ template <typename O> class Grid {
 		       (a.first.z() <= b.second.z() && a.second.z() >= b.first.z());
 	}
 
-	int fastFloor(const num_t &n) { return (int)floor(n); }
+	static int fastFloor(const num_t &n) { return (int)floor(n); }
 
-	std::pair<Vec, Vec> getAABBVec(const O &obj) {
+	static inline std::pair<Vec, Vec> getAABBVec(const O &obj) {
 		const Vec &center = ptr(obj)->getPosition();
 		const Vec R{ptr(obj)->getBoundingBoxRadius()};
 		return std::make_pair<Vec, Vec>(center - R, center + R);
 	}
 
-	AABB_t getAABB(const O &obj) {
-		const Vec &center = ptr(obj)->getPosition();
-		const Vec R{ptr(obj)->getBoundingBoxRadius()};
+	inline AABB_t getAABB(const Vec &center, const num_t &rad) const {
+		const Vec R{rad};
 		Vec minCorner = (center - R) * cellSize;
 		Vec maxCorner = (center + R) * cellSize;
 		return std::make_pair<ivec_t, ivec_t>(
 		    {{fastFloor(minCorner.x()), fastFloor(minCorner.y()), fastFloor(minCorner.z())}},
 		    {{fastFloor(maxCorner.x()), fastFloor(maxCorner.y()), fastFloor(maxCorner.z())}});
 	}
+	inline AABB_t getAABB(const O &obj) const {
+		const Vec &center = ptr(obj)->getPosition();
+		return getAABB(center, ptr(obj)->getBoundingBoxRadius());
+	}
 
 	void insert(const O &obj, const AABB_t &aabb) {
 		for (int i = aabb.first[0]; i <= aabb.second[0]; ++i) {
 			for (int j = aabb.first[1]; j <= aabb.second[1]; ++j) {
 				for (int k = aabb.first[2]; k <= aabb.second[2]; ++k) {
-					insert(ivec_t{i, j, k}, obj);
+					insert(ivec_t{{i, j, k}}, obj);
 				}
 			}
 		}
 	}
 	void insert(const O &obj) { insert(obj, getAABB(obj)); }
+
+	void remove(const O &obj, const AABB_t &aabb) {
+		for (int i = aabb.first[0]; i <= aabb.second[0]; ++i) {
+			for (int j = aabb.first[1]; j <= aabb.second[1]; ++j) {
+				for (int k = aabb.first[2]; k <= aabb.second[2]; ++k) {
+					ivec_t v{{i, j, k}};
+					auto &gridVec = orderedVec[um[v]].second;
+					gridVec.erase(std::remove(gridVec.begin(), gridVec.end(), obj), gridVec.end());
+					if (gridVec.size() == 0) {
+						// WARNING: slight memory leak because orderedVec[um[v]] is empty but not
+						// erased.
+						um.erase(v);
+					}
+				}
+			}
+		}
+	}
 
 	// num_t cx = i * cubeSize;
 	// if (abs(cx - center.x()) > abs(cx + cubeSize - center.x())) cx += cubeSize;
@@ -135,7 +162,7 @@ template <typename O> class Grid {
 	// num_t cz = k * cubeSize;
 	// if (abs(cz - center.z()) > abs(cz + cubeSize - center.z())) cz += cubeSize;
 
-	void insertPrecise(const O &obj) {
+	void insertPrecise(const O &) {
 		/* // good for gridSize << boundingboxRadius*/
 		// const Vec &center = ptr(obj)->getPosition();
 		// const num_t &radius = ptr(obj)->getBoundingBoxRadius();
@@ -175,22 +202,22 @@ template <typename O> class Grid {
 		/*}*/
 	}
 
-	void insert(const O &obj, const Vec &p0, const Vec &p1,
-	            const Vec &p2) {  // insert triangles
-		/* Vec blf(min(p0.x(), min(p1.x(), p2.x())), min(p0.y(), min(p1.y(), p2.y())),*/
-		// min(p0.z(), min(p1.z(), p2.z())));
-		// Vec trb(max(p0.x(), max(p1.x(), p2.x())), max(p0.y(), max(p1.y(), p2.y())),
-		// max(p0.z(), max(p1.z(), p2.z())));
-		// num_t cs = 1.0 / cellSize;
-		// getIndexFromPosition(blf).iterateTo(getIndexFromPosition(trb) + 1, [&](const Vec
-		// &v) { Vec center = cs * v; std::pair<bool, Vec> projec = projectionIntriangle(p0,
-		// p1, p2, center); if ((center - projec.second).squaredNorm() < 0.8 * cs * cs) { if
-		// (projec.first || closestDistToTriangleEdge(p0, p1, p2, center) < 0.87 * cs) {
-		// insert(v, obj);
-		//}
-		/*}*/
-		//});
-	}
+	// void insert(const O &obj, const Vec &p0, const Vec &p1,
+	// const Vec &p2) {  // insert triangles
+	/* Vec blf(min(p0.x(), min(p1.x(), p2.x())), min(p0.y(), min(p1.y(), p2.y())),*/
+	// min(p0.z(), min(p1.z(), p2.z())));
+	// Vec trb(max(p0.x(), max(p1.x(), p2.x())), max(p0.y(), max(p1.y(), p2.y())),
+	// max(p0.z(), max(p1.z(), p2.z())));
+	// num_t cs = 1.0 / cellSize;
+	// getIndexFromPosition(blf).iterateTo(getIndexFromPosition(trb) + 1, [&](const Vec
+	// &v) { Vec center = cs * v; std::pair<bool, Vec> projec = projectionIntriangle(p0,
+	// p1, p2, center); if ((center - projec.second).squaredNorm() < 0.8 * cs * cs) { if
+	// (projec.first || closestDistToTriangleEdge(p0, p1, p2, center) < 0.87 * cs) {
+	// insert(v, obj);
+	//}
+	/*}*/
+	//});
+	//}
 
 	Vec getIndexFromPosition(const Vec &v) const {
 		Vec res = v * cellSize;
@@ -199,12 +226,11 @@ template <typename O> class Grid {
 
 	vector<O> retrieve(const Vec &center, num_t radius) const {
 		unique_vector<O> res;
-		Vec minCorner = getIndexFromPosition(center - Vec(radius));
-		Vec maxCorner = getIndexFromPosition(center + Vec(radius));
-		for (num_t i = minCorner.x(); i <= maxCorner.x(); ++i) {
-			for (num_t j = minCorner.y(); j <= maxCorner.y(); ++j) {
-				for (num_t k = minCorner.z(); k <= maxCorner.z(); ++k) {
-					const Vector3D v(i, j, k);
+		auto aabb = getAABB(center, radius);
+		for (int i = aabb.first[0]; i <= aabb.second[0]; ++i) {
+			for (int j = aabb.first[1]; j <= aabb.second[1]; ++j) {
+				for (int k = aabb.first[2]; k <= aabb.second[2]; ++k) {
+					ivec_t v{{i, j, k}};
 					if (um.count(v))
 						res.insert(orderedVec[um.at(v)].second.begin(),
 						           orderedVec[um.at(v)].second.end());
@@ -230,9 +256,9 @@ template <typename O> class Grid {
 		return pow(1.0 / cellSize, 2) * static_cast<num_t>(um.size());
 	}
 
+	num_t getCellVolume() const { return pow(1.0 / cellSize, 3); }
 	num_t getVolume() const {
-		if (Vec::dimension == 3)
-			return pow(1.0 / cellSize, 3) * static_cast<num_t>(um.size());
+		if (Vec::dimension == 3) return getCellVolume() * static_cast<num_t>(um.size());
 		return 0.0;
 	}
 
@@ -242,15 +268,18 @@ template <typename O> class Grid {
 		return (cbrt(M_PI) * (pow(6.0 * getVolume(), (2.0 / 3.0)))) / s;
 	}
 
+	ivec_t vtoi(const Vec &vec) {
+		return ivec_t{{fastFloor(vec.x()), fastFloor(vec.y()), fastFloor(vec.z())}};
+	}
 	// nb of occupied neighbour grid cells
 	int getNbNeighbours(const Vec &cell) const {
 		int res = 0;
-		if (um.count(cell - Vec(0, 0, 1))) ++res;
-		if (um.count(cell - Vec(0, 1, 0))) ++res;
-		if (um.count(cell - Vec(1, 0, 0))) ++res;
-		if (um.count(cell + Vec(0, 0, 1))) ++res;
-		if (um.count(cell + Vec(0, 1, 0))) ++res;
-		if (um.count(cell + Vec(1, 0, 0))) ++res;
+		if (um.count(vtoi(cell - Vec(0, 0, 1)))) ++res;
+		if (um.count(vtoi(cell - Vec(0, 1, 0)))) ++res;
+		if (um.count(vtoi(cell - Vec(1, 0, 0)))) ++res;
+		if (um.count(vtoi(cell + Vec(0, 0, 1)))) ++res;
+		if (um.count(vtoi(cell + Vec(0, 1, 0)))) ++res;
+		if (um.count(vtoi(cell + Vec(1, 0, 0)))) ++res;
 		return res;
 	}
 

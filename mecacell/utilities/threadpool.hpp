@@ -77,9 +77,8 @@ class ThreadPool {
 		if (nthreads > 0) {
 			++currentTasks;
 			if (stop) throw std::runtime_error("enqueue on stopped ThreadPool");
-			auto taskPtr = new std::packaged_task<R()>([func = std::forward<F>(f)]()->R {
-				return std::move(func)();
-			});
+			auto taskPtr = new std::packaged_task<R()>(
+			    [func = std::forward<F>(f)]() -> R { return std::move(func)(); });
 			std::unique_lock<std::mutex> lock(queue_mutex);
 			tasks.emplace([taskPtr]() {
 				(*taskPtr)();
@@ -88,9 +87,8 @@ class ThreadPool {
 			condition.notify_one();
 			return taskPtr->get_future();
 		} else {
-			std::packaged_task<R()> task([func = std::forward<F>(f)]()->R {
-				return std::move(func)();
-			});
+			std::packaged_task<R()> task(
+			    [func = std::forward<F>(f)]() -> R { return std::move(func)(); });
 			task();
 			return task.get_future();
 		}
@@ -109,7 +107,7 @@ class ThreadPool {
 			do {
 				nextId = std::min(prevId + chunkSize, v.size());
 				nextIt = std::next(prevIt, static_cast<long>(nextId) - static_cast<long>(prevId));
-				enqueue([prevIt, nextIt, f, &v]() {
+				enqueue([prevIt, nextIt, f]() {
 					for (auto i = prevIt; i != nextIt; ++i) f(*i);
 				});
 				prevId = nextId;

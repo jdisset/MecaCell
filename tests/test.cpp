@@ -1,10 +1,12 @@
-#include "catch.hpp"
 #define protected public
 #define private public
-#include "../mecacell/mecacell.h"
 #undef protected
 #undef private
 #include <iostream>
+#include <list>
+#include "../mecacell/mecacell.h"
+#include "../mecacell/pbdbody.hpp"
+#include "catch.hpp"
 
 using namespace MecaCell;
 
@@ -84,40 +86,91 @@ TEST_CASE("World creation, cell additions & deletion") {
 	REQUIRE(w.cells[1]->getPosition() == secondCellPos);
 }
 
-// TEST_CASE("Cells update determinism") {
-// using Cell = VolCell;
-// using World = MecaCell::BasicWorld<Cell>;
-// for (int n = 0; n < 15; ++n) {
-// World w0, w1, w2;
-// const int nbC = 8;
-// for (int i = 0; i < nbC; ++i) {
-// auto pos = MecaCell::Vec::randomUnit() * 50.0;
-// w0.addCell(new Cell(pos));
-// w1.addCell(new Cell(pos));
-// w2.addCell(new Cell(pos));
-//}
-// REQUIRE(w0.cells.size() == nbC);
-// REQUIRE(w0.cells.size() == w1.cells.size());
-// REQUIRE(w1.cells.size() == w2.cells.size());
-// for (int l = 0; l < 300; ++l) {
-// w0.update();
-// w1.update();
-// w2.update();
-// checkThatCellsAreIdentical(w0, w1);
-// checkThatCellsAreIdentical(w1, w2);
-//}
-// w0.cells[1]->die();
-// w1.cells[1]->die();
-// w2.cells[1]->die();
-// for (int l = 0; l < 500; ++l) {
-// w0.update();
-// w1.update();
-// w2.update();
-// checkThatCellsAreIdentical(w0, w1);
-// checkThatCellsAreIdentical(w1, w2);
-//}
-// REQUIRE(w0.cells.size() == nbC - 1);
-// REQUIRE(w0.cells.size() == w1.cells.size());
-// REQUIRE(w1.cells.size() == w2.cells.size());
-//}
-//}
+TEST_CASE("GRID") {
+	const double RAD = 1;
+	struct Sphere {
+		MecaCell::Vec center;
+		double radius = 1;
+		MecaCell::Vec getPosition() { return center; }
+		double getBoundingBoxRadius() { return radius; }
+	};
+
+	const double GRIDSIZE = 200;
+	MecaCell::Grid<Sphere*> grid{GRIDSIZE};
+	std::list<Sphere> spheres;
+	for (double x = RAD; x < GRIDSIZE - RAD; x += RAD * 2.0) {
+		for (double y = RAD; y < GRIDSIZE - RAD; y += RAD * 2.0) {
+			spheres.emplace_back(Sphere{MecaCell::Vec(x, y, RAD)});
+		}
+	}
+	for (auto& s : spheres) grid.insert(&s);
+	REQUIRE(grid.getOrderedVec().size() == 1);
+	REQUIRE(grid.getUnorderedMap().size() == 1);
+	REQUIRE(grid.getOrderedVec()[0].second.size() == spheres.size());
+
+	const double eps = 1e-10;
+	grid.clear();
+	REQUIRE(grid.getOrderedVec().size() == 0);
+	REQUIRE(grid.getUnorderedMap().size() == 0);
+	Sphere s0{
+	    MecaCell::Vec(GRIDSIZE / 2.0 - eps, GRIDSIZE / 2.0 - eps, GRIDSIZE / 2.0 - eps),
+	    GRIDSIZE / 2.0 - eps};
+	Sphere s1{MecaCell::Vec(0, 0, 0), GRIDSIZE - eps};
+	Sphere s2{MecaCell::Vec(0, 0, 0), GRIDSIZE * 4 - eps};
+
+	grid.clear();
+	grid.insert(&s0);
+	REQUIRE(grid.getOrderedVec().size() == 1);
+	grid.insert(&s1);
+	REQUIRE(grid.getOrderedVec().size() == 2 * 2 * 2);
+	grid.insert(&s2);
+	REQUIRE(grid.getOrderedVec().size() == 8 * 8 * 8);
+}
+
+template <typename W> size_t getNbOverlaps(W& w) {
+	const double eps = 1e-5;
+	size_t nbOverlaps = 0;
+	for (size_t i = 0; i < w.cells.size(); ++i) {
+		for (size_t j = i + 1; j < w.cells.size(); ++j) {
+			if ((w.cells[i]->getPosition() - w.cells[j]->getPosition()).length() <
+			    w.cells[i]->getBody().getBoundingBoxRadius() +
+			        w.cells[j]->getBody().getBoundingBoxRadius() - eps)
+				++nbOverlaps;
+		}
+	}
+	return nbOverlaps;
+}
+TEST_CASE("PBD") {
+	struct Cell : public MecaCell::BaseCell<Cell, MecaCell::PBDBody_singleParticle> {
+		using Base = MecaCell::BaseCell<Cell, MecaCell::PBDBody_singleParticle>;
+		using Base::Base;  // constructor inheritance
+	};
+
+	const double GRIDSIZE = 10;
+	MecaCell::World<Cell> w;
+	const int n = 1500;
+	auto offset = MecaCell::Vec::randomUnit() * GRIDSIZE;
+	for (int i = 0; i < n; ++i) {
+		w.addCell(new Cell(0.1 * MecaCell::Vec::randomUnit() + offset));
+	}
+	REQUIRE(w.cells.size() == 0);
+	w.addNewCells();
+	REQUIRE(w.cells.size() == n);
+	REQUIRE(getNbOverlaps(w) == (n * (n - 1)) / 2);
+	w.cellPlugin.setGridSize(GRIDSIZE);
+	w.cellPlugin.reinsertCellsInGrid = true;
+	w.cellPlugin.reinsertAllCellsInGrid(&w);
+	// REQUIRE(w.cellPlugin.grid.getOrderedVec().size() <= 8);
+	// REQUIRE(w.cellPlugin.grid.getOrderedVec()[0].second.size() == n);
+	w.cellPlugin.refreshConstraints(&w);
+	REQUIRE(w.cellPlugin.constraints.size<0>() == ((n * (n - 1)) / 2));
+	w.cellPlugin.iterations = 20;
+	for (int i = 0; i < 10; ++i) {
+		w.cellPlugin.solveConstraints(&w);
+		w.cellPlugin.updateParticles(&w);
+		for (auto& c : w.cells) c->getBody().setVelocity(MecaCell::Vec::zero());
+		// w.cellPlugin.reinsertAllCellsInGrid(&w);
+		w.cellPlugin.updateGrid(&w);
+	}
+	REQUIRE(getNbOverlaps(w) == 0);
+}
