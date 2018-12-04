@@ -59,8 +59,8 @@ template <typename Cell, typename Integrator = Euler> class World {
 	                                                  // plugin type
 	                                                  // defined by Cell (if existing)
  protected:
-	size_t frame = 0;         /// +1 at each update. cf getNbUpdates()
-	size_t nbAddedCells = 0;  /// +1 on cell add. Used for cell's unique ids
+	unsigned long long int frame = 0;         /// +1 at each update. cf getNbUpdates()
+	unsigned long long int nbAddedCells = 0;  /// +1 on cell add. Used for cell's unique ids
 	size_t updtBhvPeriod =
 	    1;  /// period at which the world should call the cells updateBehavior method.
 	bool parallelUpdateBehavior = false;
@@ -80,17 +80,17 @@ template <typename Cell, typename Integrator = Euler> class World {
 		}
 	}
 
+	/* HOOKS
+	 */
+	DECLARE_HOOK(onAddCell, beginUpdate, preBehaviorUpdate, preDeleteDeadCellsUpdate,
+	             postBehaviorUpdate, endUpdate, allForcesAppliedToCells, destructor)
+
  public:
 	double dt = 1.0 / 100.0;  /// The amount by which time is increased every update
 	cellPlugin_t cellPlugin;  // instance of the embedded cell plugin type
 	                          // (cellPlugin_t default to a dumb char if not specified)
 
 	vector<Cell *> newCells;  /// cells that are registered to be added
-
-	/* HOOKS
-	 */
-	DECLARE_HOOK(onAddCell, beginUpdate, preBehaviorUpdate, preDeleteDeadCellsUpdate,
-	             postBehaviorUpdate, endUpdate, allForcesAppliedToCells, destructor)
 
 	/* CELLS */
 	std::vector<Cell *> cells;  /// all the cells are in this container

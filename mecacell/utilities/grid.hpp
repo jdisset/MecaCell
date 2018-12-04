@@ -98,9 +98,10 @@ template <typename O> class Grid {
 		       (a.first[1] <= b.second[1] && a.second[1] >= b.first[1]) &&
 		       (a.first[2] <= b.second[2] && a.second[2] >= b.first[2]);
 	}
-	bool AABBCollision(const O &o1, const O &o2) const {
-		auto a = getAABBVec(o1);
-		auto b = getAABBVec(o2);
+
+	bool AABBCollision(const O &o1, const O &o2, const num_t radFactor = 1.0) const {
+		auto a = getAABBVec(o1, radFactor);
+		auto b = getAABBVec(o2, radFactor);
 		return (a.first.x() <= b.second.x() && a.second.x() >= b.first.x()) &&
 		       (a.first.y() <= b.second.y() && a.second.y() >= b.first.y()) &&
 		       (a.first.z() <= b.second.z() && a.second.z() >= b.first.z());
@@ -108,9 +109,9 @@ template <typename O> class Grid {
 
 	static int fastFloor(const num_t &n) { return (int)floor(n); }
 
-	static inline std::pair<Vec, Vec> getAABBVec(const O &obj) {
+	static inline std::pair<Vec, Vec> getAABBVec(const O &obj, const num_t radFactor = 1.0) {
 		const Vec &center = ptr(obj)->getPosition();
-		const Vec R{ptr(obj)->getBoundingBoxRadius()};
+		const Vec R{ptr(obj)->getBoundingBoxRadius() * radFactor};
 		return std::make_pair<Vec, Vec>(center - R, center + R);
 	}
 
@@ -122,9 +123,9 @@ template <typename O> class Grid {
 		    {{fastFloor(minCorner.x()), fastFloor(minCorner.y()), fastFloor(minCorner.z())}},
 		    {{fastFloor(maxCorner.x()), fastFloor(maxCorner.y()), fastFloor(maxCorner.z())}});
 	}
-	inline AABB_t getAABB(const O &obj) const {
+	inline AABB_t getAABB(const O &obj, const num_t radFactor = 1.0) const {
 		const Vec &center = ptr(obj)->getPosition();
-		return getAABB(center, ptr(obj)->getBoundingBoxRadius());
+		return getAABB(center, radFactor * ptr(obj)->getBoundingBoxRadius());
 	}
 
 	void insert(const O &obj, const AABB_t &aabb) {
@@ -136,7 +137,9 @@ template <typename O> class Grid {
 			}
 		}
 	}
-	void insert(const O &obj) { insert(obj, getAABB(obj)); }
+	void insert(const O &obj, const num_t radFactor = 1.0) {
+		insert(obj, getAABB(obj, radFactor));
+	}
 
 	void remove(const O &obj, const AABB_t &aabb) {
 		for (int i = aabb.first[0]; i <= aabb.second[0]; ++i) {
@@ -154,13 +157,6 @@ template <typename O> class Grid {
 			}
 		}
 	}
-
-	// num_t cx = i * cubeSize;
-	// if (abs(cx - center.x()) > abs(cx + cubeSize - center.x())) cx += cubeSize;
-	// num_t cy = j * cubeSize;
-	// if (abs(cy - center.y()) > abs(cy + cubeSize - center.y())) cy += cubeSize;
-	// num_t cz = k * cubeSize;
-	// if (abs(cz - center.z()) > abs(cz + cubeSize - center.z())) cz += cubeSize;
 
 	void insertPrecise(const O &) {
 		/* // good for gridSize << boundingboxRadius*/
@@ -271,6 +267,7 @@ template <typename O> class Grid {
 	ivec_t vtoi(const Vec &vec) {
 		return ivec_t{{fastFloor(vec.x()), fastFloor(vec.y()), fastFloor(vec.z())}};
 	}
+
 	// nb of occupied neighbour grid cells
 	int getNbNeighbours(const Vec &cell) const {
 		int res = 0;
