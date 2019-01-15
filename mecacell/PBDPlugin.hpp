@@ -20,7 +20,6 @@ template <typename Cell> struct PBDPlugin {
 	Grid<Cell *> grid{gridSize};
 
 	PBD::ConstraintContainer<PBD::CollisionConstraint<Vec>> constraints;
-	std::unordered_set<ordered_pair<Cell *>> constraintsMap;
 	size_t prevCollConstraintsSize = 0;
 
 	std::vector<std::function<void(void)>> constraintSolveHook;
@@ -57,17 +56,14 @@ template <typename Cell> struct PBDPlugin {
 		for (const auto &c : w->cells) grid.insert(c, radiusFactor);
 	}
 
-	template <typename W> void refreshConstraints(W *w) {
-		// constraintsMap.clear();
+	template <typename W> void refreshConstraints(W *) {
 		constraints.clear();
 		constraints.reserve<PBD::CollisionConstraint<Vec>>(
 		    static_cast<size_t>(static_cast<double>(prevCollConstraintsSize) * 1.1));
-
 		auto &orderedVec = grid.getOrderedVec();
 		for (auto &gridCellPair : orderedVec) {
 			const auto &gridCell = gridCellPair.second;
 			for (size_t i = 0; i < gridCell.size(); ++i) {
-				gridCell[i]->nbGridCells++;
 				for (size_t j = i + 1; j < gridCell.size(); ++j) {
 					if (!AABBCollisionEnabled ||
 					    (AABBCollisionEnabled &&
@@ -85,11 +81,6 @@ template <typename Cell> struct PBDPlugin {
 				}
 			}
 		}
-
-		for (auto &c : w->cells) {
-			c->currentPressure /= (static_cast<double>(c->nbGridCells) * grid.getCellVolume());
-		}
-
 		prevCollConstraintsSize = constraints.size<PBD::CollisionConstraint<Vec>>();
 	}
 
