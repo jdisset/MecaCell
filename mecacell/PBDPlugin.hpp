@@ -16,7 +16,6 @@ template <typename Cell> struct PBDPlugin {
 	size_t iterations = 3;
 	size_t constraintGenerationFreq = 1;
 	double gridSize = 150;
-	double radiusFactor = 1.0;
 	Grid<Cell *> grid{gridSize};
 
 	PBD::ConstraintContainer<PBD::CollisionConstraint<Vec>> constraints;
@@ -31,21 +30,26 @@ template <typename Cell> struct PBDPlugin {
 		grid = Grid<Cell *>(gridSize);
 	}
 
+	// helper to get the grid discretized Axis Aligned Bounding Box of a cell
+	typename Grid<Cell *>::AABB_t inline AABB(Cell *c) {
+		return grid.getAABB(c->getBody().getAABB());
+	}
+
 	template <typename W> void updateGrid(W *w) {
 		// update the grid without clearing it
 		for (const auto &c : w->cells) {
 			if (!BBMap.count(c)) {  // new cell
-				auto AABB = grid.getAABB(c, radiusFactor);
-				BBMap[c] = AABB;
-				grid.insert(c, AABB);
+				auto AABBox = AABB(c);
+				BBMap[c] = AABBox;
+				grid.insert(c, AABBox);
 			} else {  // cell is already in the grid
-				auto AABB = grid.getAABB(c, radiusFactor);
-				auto prevAABB = BBMap[c];
-				if (prevAABB != AABB) {
+				auto AABBox = AABB(c);
+				auto prevAABBox = BBMap[c];
+				if (prevAABBox != AABBox) {
 					// cell moved significantly
-					grid.remove(c, prevAABB);
-					grid.insert(c, AABB);
-					BBMap[c] = AABB;
+					grid.remove(c, prevAABBox);
+					grid.insert(c, AABBox);
+					BBMap[c] = AABBox;
 				}
 			}
 		}
@@ -53,7 +57,7 @@ template <typename Cell> struct PBDPlugin {
 
 	template <typename W> void reinsertAllCellsInGrid(W *w) {
 		grid.clear();
-		for (const auto &c : w->cells) grid.insert(c, radiusFactor);
+		for (const auto &c : w->cells) grid.insert(c, AABB(c));
 	}
 
 	template <typename W> void reinsertAllCellsInGrid_withSample(W *w) {
@@ -62,7 +66,7 @@ template <typename Cell> struct PBDPlugin {
 		std::uniform_real_distribution<double> d(0.0, 1.0);
 		for (const auto &c : w->cells) {
 			double diceRoll = d(Config::globalRand());
-			if (diceRoll < std::max(0.1, c->activityLevel)) grid.insert(c, radiusFactor);
+			if (diceRoll < std::max(0.1, c->activityLevel)) grid.insert(c, AABB(c));
 		}
 	}
 
@@ -77,7 +81,7 @@ template <typename Cell> struct PBDPlugin {
 				for (size_t j = i + 1; j < gridCell.size(); ++j) {
 					if (!AABBCollisionEnabled ||
 					    (AABBCollisionEnabled &&
-					     grid.AABBCollision(gridCell[i], gridCell[j], radiusFactor))) {
+					     grid.AABBCollision(AABB(gridCell[i]), AABB(gridCell[j])))) {
 						for (auto &p0 : gridCell[i]->getBody().particles) {
 							for (auto &p1 : gridCell[j]->getBody().particles) {
 								constraints.addConstraint(PBD::CollisionConstraint<Vec>(

@@ -43,6 +43,7 @@ template <size_t N, typename Cell> struct PBDBody_particles {
 		}
 	}
 
+
 	PBDBody_particles(Cell* c) : cell(c) { generateConstraints(); }
 
 	PBDBody_particles(Cell* c, const Vec& p) : cell(c) {
@@ -64,6 +65,28 @@ template <size_t N, typename Cell> struct PBDBody_particles {
 			for (const auto& p : particles) sum += p.velocity;
 			return sum / static_cast<num_t>(N);
 		}
+	}
+
+	std::pair<Vec, Vec> getAABB() {
+		// returns an axis aligned bounding box
+		const constexpr num_t LOWEST = std::numeric_limits<num_t>::lowest();
+		const constexpr num_t HIGHEST = std::numeric_limits<num_t>::max();
+		Vec A{HIGHEST, HIGHEST, HIGHEST};
+		Vec B{LOWEST, LOWEST, LOWEST};
+		for (const auto& p : particles) {
+			const auto& x = p.position.x();
+			if (x < A.x()) A.xRef() = x;
+			if (x > B.x()) B.xRef() = x;
+
+			const auto& y = p.position.y();
+			if (y < A.y()) A.yRef() = y;
+			if (y > B.y()) B.yRef() = y;
+
+			const auto& z = p.position.z();
+			if (z < A.z()) A.zRef() = z;
+			if (z > B.z()) B.zRef() = z;
+		}
+		return std::make_pair(A,B);
 	}
 
 	void setPosition(const Vec& c, const Vec& n = Vec(1, 0, 0)) {

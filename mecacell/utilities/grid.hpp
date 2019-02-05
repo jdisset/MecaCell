@@ -109,10 +109,19 @@ template <typename O> class Grid {
 
 	static int fastFloor(const num_t &n) { return (int)floor(n); }
 
-	static inline std::pair<Vec, Vec> getAABBVec(const O &obj, const num_t radFactor = 1.0) {
+	static inline std::pair<Vec, Vec> getAABBVec(const O &obj,
+	                                             const num_t radFactor = 1.0) {
 		const Vec &center = ptr(obj)->getPosition();
 		const Vec R{ptr(obj)->getBoundingBoxRadius() * radFactor};
 		return std::make_pair<Vec, Vec>(center - R, center + R);
+	}
+
+	inline AABB_t getAABB(const std::pair<Vec, Vec> &realAABB) {
+		Vec minCorner = realAABB.first * cellSize;
+		Vec maxCorner = realAABB.second * cellSize;
+		return std::make_pair<ivec_t, ivec_t>(
+		    {{fastFloor(minCorner.x()), fastFloor(minCorner.y()), fastFloor(minCorner.z())}},
+		    {{fastFloor(maxCorner.x()), fastFloor(maxCorner.y()), fastFloor(maxCorner.z())}});
 	}
 
 	inline AABB_t getAABB(const Vec &center, const num_t &rad) const {
@@ -137,6 +146,7 @@ template <typename O> class Grid {
 			}
 		}
 	}
+
 	void insert(const O &obj, const num_t radFactor = 1.0) {
 		insert(obj, getAABB(obj, radFactor));
 	}
@@ -284,6 +294,6 @@ template <typename O> class Grid {
 		um.clear();
 		orderedVec = decltype(orderedVec)();
 	}
-};  // namespace MecaCell
+};
 }  // namespace MecaCell
 #endif
