@@ -5,24 +5,75 @@
 #include "mecacell.h"
 
 namespace MecaCell {
-template <typename Cell> struct PBDBody_singleParticle {
+
+template <size_t N, typename Cell> struct PBDBody_particles {
+	static_assert(N > 0);
+
 	Cell* cell = nullptr;
 
 	using embedded_plugin_t = PBDPlugin<Cell>;
-	num_t constraintStiffness = 1.0;
-	std::array<PBD::Particle<Vec>, 1> particles;
+	num_t distanceStiffness = 1.0;
+	num_t bendingStiffness = 1.0;
 
-	void solveInnerConstraints(...) {}  // no inner constraints for a 1 particle body
+	PBD::ConstraintContainer<PBD::DistanceConstraint<Vec>, PBD::AlignmentConstraint<Vec>>
+	    constraints;
 
-	PBDBody_singleParticle(Cell* c) : cell(c) {}
-	PBDBody_singleParticle(Cell* c, const Vec& p) : cell(c) { setPosition(p); }
+	num_t length;
+	std::array<PBD::Particle<Vec>, N> particles;
 
-	Vec getPosition() { return particles[0].position; }
-	Vec getVelocity() { return particles[0].velocity; }
+	void solveInnerConstraints() { PBD::projectConstraints(constraints); }
 
-	void setPosition(const Vec& c) {
+	void generateConstraints() {
+		constraints.clear();
+		num_t l = length / static_cast<num_t>(N);
+
+		// distance constraints between each particles
+		for (size_t i = 0; i < N - 1; ++i) {
+			constraints.addConstraint(PBD::DistanceConstraint<Vec>(
+			    {{&particles[i].predicted, &particles[i + 1].predicted}},
+			    {{particles[i].w, particles[i + 1].w}}, l, distanceStiffness));
+		}
+
+		// alignment constraints
+		for (size_t i = 0; i < N - 2; ++i) {
+			constraints.addConstraint(PBD::AlignmentConstraint<Vec>(
+			    {{&particles[i].predicted, &particles[i + 1].predicted,
+			      &particles[i + 2].predicted}},
+			    {{particles[i].w, particles[i + 1].w, particles[i + 2].w}}, bendingStiffness));
+		}
+	}
+
+	PBDBody_particles(Cell* c) : cell(c) { generateConstraints(); }
+
+	PBDBody_particles(Cell* c, const Vec& p) : cell(c) {
+		setPosition(p);
+		generateConstraints();
+	}
+
+	Vec getPosition() {
+		// returns the position of the first particle
+		return particles[0].position;
+	}
+
+	Vec getVelocity() {
+		// returns the average velocity
+		if constexpr (N == 0)
+			return particles[0].velocity;
+		else {
+			Vec sum = Vec::zero();
+			for (const auto& p : particles) sum += p.velocity;
+			return sum / static_cast<num_t>(N);
+		}
+	}
+
+	void setPosition(const Vec& c, const Vec& n = Vec(1, 0, 0)) {
+		num_t l = length / static_cast<num_t>(N);
 		particles[0].position = c;
 		particles[0].predicted = c;
+		for (size_t i = 1; i < N; ++i) {
+			particles[i].position = particles[i - 1].position + n * l;
+			particles[i].predicted = particles[i].position;
+		}
 	}
 
 	void receiveForce(const Vec& f) { particles[0].forces += f; }
@@ -32,11 +83,14 @@ template <typename Cell> struct PBDBody_singleParticle {
 	num_t getBoundingBoxRadius() const { return particles[0].radius; }
 
 	// serialization
-	ExportableAlias<PBDBody_singleParticle, num_t> radius{
+	ExportableAlias<PBDBody_particles, num_t> radius{
 	    [](const auto& a) { return a.getBoundingBoxRadius(); }};
-	EXPORTABLE(PBDBody_singleParticle, (radius, particles[0].radius),
+	EXPORTABLE(PBDBody_particles, (radius, particles[0].radius),
 	           (position, particles[0].position), (velocity, particles[0].velocity));
 };
+
+template <typename C> using PBDBody_singleParticle = MecaCell::PBDBody_particles<1, C>;
+
 }  // namespace MecaCell
 
 #endif

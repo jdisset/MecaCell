@@ -56,6 +56,16 @@ template <typename Cell> struct PBDPlugin {
 		for (const auto &c : w->cells) grid.insert(c, radiusFactor);
 	}
 
+	template <typename W> void reinsertAllCellsInGrid_withSample(W *w) {
+		// TODO
+		grid.clear();
+		std::uniform_real_distribution<double> d(0.0, 1.0);
+		for (const auto &c : w->cells) {
+			double diceRoll = d(Config::globalRand());
+			if (diceRoll < std::max(0.1, c->activityLevel)) grid.insert(c, radiusFactor);
+		}
+	}
+
 	template <typename W> void refreshConstraints(W *) {
 		constraints.clear();
 		constraints.reserve<PBD::CollisionConstraint<Vec>>(
@@ -73,8 +83,8 @@ template <typename Cell> struct PBDPlugin {
 								constraints.addConstraint(PBD::CollisionConstraint<Vec>(
 								    {{&p0.predicted, &p1.predicted}}, {{p0.w, p1.w}},
 								    p0.radius + p1.radius,
-								    std::min(gridCell[i]->getBody().constraintStiffness,
-								             gridCell[j]->getBody().constraintStiffness)));
+								    std::min(gridCell[i]->getBody().distanceStiffness,
+								             gridCell[j]->getBody().distanceStiffness)));
 							}
 						}
 					}
@@ -105,11 +115,12 @@ template <typename Cell> struct PBDPlugin {
 	template <typename W> void endUpdate(W *w) {
 		if (w->getNbUpdates() % constraintGenerationFreq == 0) {
 			if (reinsertCellsInGrid)
-				reinsertAllCellsInGrid(w);
+				reinsertAllCellsInGrid_withSample(w);
 			else
 				updateGrid(w);
+
+			refreshConstraints(w);
 		}
-		refreshConstraints(w);
 		solveConstraints(w);
 		updateParticles(w);
 	}

@@ -1,5 +1,6 @@
 #pragma once
 #include <array>
+#include <cmath>
 #include <tuple>
 #include <utility>
 #include <vector>
@@ -190,7 +191,7 @@ template <typename Vec_t, bool mustBeEqual = true> struct DistanceConstraint {
 		num_t l = v.squaredNorm();
 		num_t constraintValue = l - d * d;
 		if (mustBeEqual || constraintValue < 0) {
-			l = sqrt(l);
+			l = std::sqrt(l);
 			constraintValue = l - d;
 			Vec_t n;  // n = normal. (default to {1,0,...} if l == 1)
 			if (l > 0)
@@ -205,6 +206,21 @@ template <typename Vec_t, bool mustBeEqual = true> struct DistanceConstraint {
 			auto dx = PBD::computeDX(constraintValue, gradient, W);
 			for (size_t i = 0; i < X.size(); ++i) *(X[i]) = *(X[i]) + k * dx[i];
 		}
+	}
+};
+
+// Constraint for 3 points to be aligned
+template <typename Vec_t> struct AlignmentConstraint {
+	const std::array<Vec_t *, 3> X{nullptr,
+	                               nullptr};  // pointers to the particles positions
+	const std::array<num_t, 3> W;             // inverse of mass
+	const num_t k;                            // stiffness of the constraint
+	AlignmentConstraint(const std::array<Vec_t *, 3> &x, const std::array<num_t, 3> &w,
+	                    num_t stiffness = 1.0f)
+	    : X(x), W(w), k(stiffness) {}
+
+	void solve() const {
+		// TODO
 	}
 };
 
