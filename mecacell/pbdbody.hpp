@@ -15,34 +15,48 @@ template <size_t N, typename Cell> struct PBDBody_particles {
 	num_t distanceStiffness = 1.0;
 	num_t bendingStiffness = 1.0;
 
-	PBD::ConstraintContainer<PBD::DistanceConstraint<Vec>, PBD::AlignmentConstraint<Vec>>
+	PBD::ConstraintContainer<PBD::DistanceConstraint_REF<Vec>,
+	                         PBD::AlignmentConstraint<Vec>>
 	    constraints;
 
-	num_t length;
+	num_t length = 1.0;
+	num_t individualChainLength = 0.0;
+
 	std::array<PBD::Particle<Vec>, N> particles;
 
 	void solveInnerConstraints() { PBD::projectConstraints(constraints); }
 
 	void generateConstraints() {
 		constraints.clear();
-		num_t l = length / static_cast<num_t>(N);
+		constraints.reserve<PBD::DistanceConstraint_REF<Vec>>(N - 1);
+		setLength(length);
 
 		// distance constraints between each particles
 		for (size_t i = 0; i < N - 1; ++i) {
-			constraints.addConstraint(PBD::DistanceConstraint<Vec>(
+			constraints.addConstraint(PBD::DistanceConstraint_REF<Vec>(
 			    {{&particles[i].predicted, &particles[i + 1].predicted}},
-			    {{particles[i].w, particles[i + 1].w}}, l, distanceStiffness));
+			    {{particles[i].w, particles[i + 1].w}}, individualChainLength,
+			    distanceStiffness));
 		}
 
 		// alignment constraints
-		for (size_t i = 0; i < N - 2; ++i) {
-			constraints.addConstraint(PBD::AlignmentConstraint<Vec>(
-			    {{&particles[i].predicted, &particles[i + 1].predicted,
-			      &particles[i + 2].predicted}},
-			    {{particles[i].w, particles[i + 1].w, particles[i + 2].w}}, bendingStiffness));
+		if constexpr (N > 2) {
+			for (size_t i = 0; i < N - 2; ++i) {
+				constraints.addConstraint(PBD::AlignmentConstraint<Vec>(
+				    {{&particles[i].predicted, &particles[i + 1].predicted,
+				      &particles[i + 2].predicted}},
+				    {{particles[i].w, particles[i + 1].w, particles[i + 2].w}},
+				    bendingStiffness));
+			}
 		}
 	}
 
+	void setLength(num_t l) {
+		length = l;
+		if constexpr (N > 1)
+			individualChainLength = (length - particles[0].radius - particles[N - 1].radius) /
+			                        static_cast<num_t>(N - 1);
+	}
 
 	PBDBody_particles(Cell* c) : cell(c) { generateConstraints(); }
 
@@ -75,18 +89,18 @@ template <size_t N, typename Cell> struct PBDBody_particles {
 		Vec B{LOWEST, LOWEST, LOWEST};
 		for (const auto& p : particles) {
 			const auto& x = p.position.x();
-			if (x < A.x()) A.xRef() = x;
-			if (x > B.x()) B.xRef() = x;
+			if (x - p.radius < A.x()) A.xRef() = x - p.radius;
+			if (x + p.radius > B.x()) B.xRef() = x + p.radius;
 
 			const auto& y = p.position.y();
-			if (y < A.y()) A.yRef() = y;
-			if (y > B.y()) B.yRef() = y;
+			if (y - p.radius < A.y()) A.yRef() = y - p.radius;
+			if (y + p.radius > B.y()) B.yRef() = y + p.radius;
 
 			const auto& z = p.position.z();
-			if (z < A.z()) A.zRef() = z;
-			if (z > B.z()) B.zRef() = z;
+			if (z - p.radius < A.z()) A.zRef() = z - p.radius;
+			if (z + p.radius > B.z()) B.zRef() = z + p.radius;
 		}
-		return std::make_pair(A,B);
+		return std::make_pair(A, B);
 	}
 
 	void setPosition(const Vec& c, const Vec& n = Vec(1, 0, 0)) {
@@ -99,17 +113,35 @@ template <size_t N, typename Cell> struct PBDBody_particles {
 		}
 	}
 
-	void receiveForce(const Vec& f) { particles[0].forces += f; }
-	void resetForces() { particles[0].forces = Vec::zero(); }
-	void setVelocity(const Vec& v) { particles[0].velocity = v; }
-	void setRadius(const num_t& r) { particles[0].radius = r; }
+	void resetProjections() {
+		for (auto& p : particles) p.predicted = p.position;
+	}
+
+	void receiveForce(const Vec& f) {
+		for (auto& p : particles) p.forces += f;
+	}
+	void resetForces() {
+		for (auto& p : particles) p.forces = Vec::zero();
+	}
+	void setVelocity(const Vec& v) {
+		for (auto& p : particles) p.velocity = v;
+	}
+	void setRadius(const num_t& r) {
+		for (auto& p : particles) p.radius = r;
+		generateConstraints();
+	}
+
 	num_t getBoundingBoxRadius() const { return particles[0].radius; }
 
-	// serialization
-	ExportableAlias<PBDBody_particles, num_t> radius{
-	    [](const auto& a) { return a.getBoundingBoxRadius(); }};
-	EXPORTABLE(PBDBody_particles, (radius, particles[0].radius),
-	           (position, particles[0].position), (velocity, particles[0].velocity));
+	/*// serialization*/
+	// ExportableAlias<PBDBody_particles, std::vector<Vec>> particlesPos{[](const auto& a) {
+	// std::vector<Vec> v;
+	// v.reserve(a.particles.size());
+	// for (const auto& p : a.particles) v.push_back(p.position);
+	// return v;
+	//}};
+
+	EXPORTABLE(PBDBody_particles, KV(particles));
 };
 
 template <typename C> using PBDBody_singleParticle = MecaCell::PBDBody_particles<1, C>;

@@ -137,6 +137,7 @@ template <typename O> class Grid {
 		return getAABB(center, radFactor * ptr(obj)->getBoundingBoxRadius());
 	}
 
+	// insert when the aabb is already computed
 	void insert(const O &obj, const AABB_t &aabb) {
 		for (int i = aabb.first[0]; i <= aabb.second[0]; ++i) {
 			for (int j = aabb.first[1]; j <= aabb.second[1]; ++j) {

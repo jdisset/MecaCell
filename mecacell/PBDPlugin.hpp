@@ -82,6 +82,7 @@ template <typename Cell> struct PBDPlugin {
 					if (!AABBCollisionEnabled ||
 					    (AABBCollisionEnabled &&
 					     grid.AABBCollision(AABB(gridCell[i]), AABB(gridCell[j])))) {
+						//TODO: finer AABB by using particles AABB
 						for (auto &p0 : gridCell[i]->getBody().particles) {
 							for (auto &p1 : gridCell[j]->getBody().particles) {
 								constraints.addConstraint(PBD::CollisionConstraint<Vec>(
@@ -128,7 +129,6 @@ template <typename Cell> struct PBDPlugin {
 		solveConstraints(w);
 		updateParticles(w);
 	}
-
 	// TODO : remove dead cells from grid if REINSERT is enabled
 };
 }  // namespace MecaCell

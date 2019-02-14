@@ -4,6 +4,7 @@
 #include <tuple>
 #include <utility>
 #include <vector>
+#include "utilities/exportable.hpp"
 
 namespace PBD {
 using num_t = double;
@@ -73,6 +74,8 @@ template <typename Vec_t> struct Particle {
 	Vec_t forces;
 	num_t radius = 1.0f;
 	num_t w = 1.0;  // w = 1 / mass
+
+	EXPORTABLE(Particle, KV(position), KV(velocity), KV(radius));
 };
 
 //   --- Core Procedures ---
@@ -206,6 +209,25 @@ template <typename Vec_t, bool mustBeEqual = true> struct DistanceConstraint {
 			auto dx = PBD::computeDX(constraintValue, gradient, W);
 			for (size_t i = 0; i < X.size(); ++i) *(X[i]) = *(X[i]) + k * dx[i];
 		}
+	}
+};
+
+// distance and stiffness can change
+template <typename Vec_t, bool mustBeEqual = true> struct DistanceConstraint_REF {
+	static const constexpr unsigned int N = 2;  // nb of particles
+	const std::array<Vec_t *, N> X{nullptr,
+	                               nullptr};  // pointers to the particles positions
+	const std::array<num_t, N> W;             // inverse of mass
+	const num_t &d;                           // target distance between the 2 points
+	const num_t &k;                           // stiffness of the constraint
+
+	DistanceConstraint_REF(const std::array<Vec_t *, N> &x, const std::array<num_t, N> &w,
+	                       const num_t &dist, const num_t &stiffness)
+	    : X(x), W(w), d(dist), k(stiffness) {}
+
+	void solve() const {
+		DistanceConstraint c{X, W, d, k};
+		c.solve();
 	}
 };
 

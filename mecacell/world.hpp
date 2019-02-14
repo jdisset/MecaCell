@@ -90,7 +90,7 @@ template <typename Cell, typename Integrator = Euler> class World {
 	cellPlugin_t cellPlugin;  // instance of the embedded cell plugin type
 	                          // (cellPlugin_t default to a dumb char if not specified)
 
-	vector<Cell *> newCells;  /// cells that are registered to be added
+	std::vector<Cell *> newCells;  /// cells that are registered to be added
 
 	/* CELLS */
 	std::vector<Cell *> cells;  /// all the cells are in this container
