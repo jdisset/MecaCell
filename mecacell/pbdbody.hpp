@@ -65,6 +65,12 @@ template <size_t N, typename Cell> struct PBDBody_particles {
 		generateConstraints();
 	}
 
+	num_t getActualLength() {
+		num_t l = 0;
+		for (size_t i = 0; i < N - 1; ++i) l += (particles[i + 1].position - particles[i].position).norm();
+		return l;
+	}
+
 	Vec getPosition() {
 		// returns the position of the first particle
 		return particles[0].position;
@@ -120,26 +126,21 @@ template <size_t N, typename Cell> struct PBDBody_particles {
 	void receiveForce(const Vec& f) {
 		for (auto& p : particles) p.forces += f;
 	}
+
 	void resetForces() {
 		for (auto& p : particles) p.forces = Vec::zero();
 	}
+
 	void setVelocity(const Vec& v) {
 		for (auto& p : particles) p.velocity = v;
 	}
+
 	void setRadius(const num_t& r) {
 		for (auto& p : particles) p.radius = r;
 		generateConstraints();
 	}
 
 	num_t getBoundingBoxRadius() const { return particles[0].radius; }
-
-	/*// serialization*/
-	// ExportableAlias<PBDBody_particles, std::vector<Vec>> particlesPos{[](const auto& a) {
-	// std::vector<Vec> v;
-	// v.reserve(a.particles.size());
-	// for (const auto& p : a.particles) v.push_back(p.position);
-	// return v;
-	//}};
 
 	EXPORTABLE(PBDBody_particles, KV(particles));
 };
