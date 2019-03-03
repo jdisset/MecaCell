@@ -125,6 +125,20 @@ TEST_CASE("GRID") {
 	REQUIRE(grid.getOrderedVec().size() == 2 * 2 * 2);
 	grid.insert(&s2);
 	REQUIRE(grid.getOrderedVec().size() == 8 * 8 * 8);
+
+	grid.clear();
+	auto bb = grid.getAABB(&s1);
+	std::pair<MecaCell::Vec, MecaCell::Vec> manualBB = {
+	    {-(GRIDSIZE - eps), -(GRIDSIZE - eps), -(GRIDSIZE - eps)},
+	    {GRIDSIZE - eps, GRIDSIZE - eps, GRIDSIZE - eps}};
+
+	REQUIRE(grid.getAABBVec(&s1).first == manualBB.first);
+	REQUIRE(grid.getAABBVec(&s1).second == manualBB.second);
+	REQUIRE(grid.getAABBVec(&s0).first != manualBB.first);
+	REQUIRE(grid.getAABBVec(&s0).second != manualBB.second);
+	REQUIRE(bb == grid.getAABB(manualBB));
+	REQUIRE(grid.getAABB(&s0) == grid.getAABB(grid.getAABBVec(&s0)));
+	REQUIRE(grid.getAABB(&s0) != grid.getAABB(grid.getAABBVec(&s1)));
 }
 
 template <typename W> size_t getNbOverlaps(W& w) {
@@ -140,37 +154,128 @@ template <typename W> size_t getNbOverlaps(W& w) {
 	}
 	return nbOverlaps;
 }
+
+struct Cell : public MecaCell::BaseCell<Cell, MecaCell::PBDBody_singleParticle> {
+	using Base = MecaCell::BaseCell<Cell, MecaCell::PBDBody_singleParticle>;
+	using Base::Base;  // constructor inheritance
+	double activityLevel = 1.0;
+	template <typename W> void updateBehavior(W&) {}
+};
+
 TEST_CASE("PBD") {
-	struct Cell : public MecaCell::BaseCell<Cell, MecaCell::PBDBody_singleParticle> {
-		using Base = MecaCell::BaseCell<Cell, MecaCell::PBDBody_singleParticle>;
-		using Base::Base;  // constructor inheritance
-	};
+	const double rad = 0.5;
+	Cell bbCell(MecaCell::Vec::zero());
+	bbCell.getBody().setRadius(rad);
+	REQUIRE(bbCell.getBody().getBoundingBoxRadius() == rad);
+	auto bbox = bbCell.getBody().getAABB();
+	REQUIRE(bbox.first == MecaCell::Vec(-rad, -rad, -rad));
+	REQUIRE(bbox.second == MecaCell::Vec(rad, rad, rad));
 
 	const double GRIDSIZE = 10;
 	MecaCell::World<Cell> w;
-	const int n = 1500;
-	auto offset = MecaCell::Vec::randomUnit() * GRIDSIZE;
+	const int n = 100;
+	auto offset = MecaCell::Vec(0.5, 0.5, 0.5).normalized() * GRIDSIZE;
 	for (int i = 0; i < n; ++i) {
 		w.addCell(new Cell(0.1 * MecaCell::Vec::randomUnit() + offset));
 	}
+
 	REQUIRE(w.cells.size() == 0);
 	w.addNewCells();
 	REQUIRE(w.cells.size() == n);
 	REQUIRE(getNbOverlaps(w) == (n * (n - 1)) / 2);
 	w.cellPlugin.setGridSize(GRIDSIZE);
 	w.cellPlugin.reinsertCellsInGrid = true;
+	w.cellPlugin.AABBCollisionEnabled = false;
 	w.cellPlugin.reinsertAllCellsInGrid(&w);
-	// REQUIRE(w.cellPlugin.grid.getOrderedVec().size() <= 8);
-	// REQUIRE(w.cellPlugin.grid.getOrderedVec()[0].second.size() == n);
+	REQUIRE(w.cellPlugin.grid.getOrderedVec().size() == 1);
+	REQUIRE(w.cellPlugin.grid.getOrderedVec()[0].second.size() == n);
 	w.cellPlugin.refreshConstraints(&w);
-	REQUIRE(w.cellPlugin.constraints.size<0>() == ((n * (n - 1)) / 2));
+	REQUIRE(w.cellPlugin.collisionConstraints.size<0>() == ((n * (n - 1)) / 2));
 	w.cellPlugin.iterations = 20;
 	for (int i = 0; i < 10; ++i) {
-		w.cellPlugin.solveConstraints(&w);
-		w.cellPlugin.updateParticles(&w);
+		w.cellPlugin.pbdUpdateRoutine(&w);
 		for (auto& c : w.cells) c->getBody().setVelocity(MecaCell::Vec::zero());
-		// w.cellPlugin.reinsertAllCellsInGrid(&w);
-		w.cellPlugin.updateGrid(&w);
 	}
 	REQUIRE(getNbOverlaps(w) == 0);
+}
+
+struct PetriDish {
+	PBD::ConstraintContainer<PBD::GroundConstraint<MecaCell::Vec>> constraints;
+	template <typename W> void onRegister(W* w) {
+		w->cellPlugin.constraintSolveHook.push_back(
+		    [&]() { PBD::projectConstraints(constraints); });
+	}
+	template <typename W> void onAddCell(W* w) {
+		for (const auto& c : w->newCells) {
+			for (auto& p : c->getBody().particles) {
+				constraints.addConstraint(PBD::GroundConstraint<MecaCell::Vec>(
+				    MecaCell::Vec(0, 0, 0), MecaCell::Vec(0, 1, 0), &(p.predicted), p.w, p.radius,
+				    1.0));
+			}
+		}
+	}
+};
+
+TEST_CASE("PBD_FRICTION") {
+	auto simu = [](double staticF, double kineticF) {
+		PetriDish pd;
+		MecaCell::World<Cell> w;
+		w.registerPlugins(pd);
+		w.cellPlugin.kineticFrictionCoef = kineticF;
+		w.cellPlugin.staticFrictionCoef = staticF;
+		int N = 1000;
+		int X = 3;
+		int Y = 80;
+		int Z = 3;
+		double H = 5.0;
+		double velocityPreservation = 0.98;
+		MecaCell::Vec G(0, -100, 0);
+
+		std::cerr << "frame, cellId, x, y, z" << std::endl;
+		std::ostringstream dump;
+
+		double spacing = 2.1;
+		for (int x = 0; x < X; ++x) {
+			for (int y = 0; y < Y; ++y) {
+				for (int z = 0; z < Z; ++z) {
+					double rx = x * spacing - spacing * (double)X * 0.5;
+					double ry = H + y * spacing;
+					double rz = z * spacing - spacing * (double)Z * 0.5;
+					auto* nc =
+					    new Cell(MecaCell::Vec(rx, ry, rz) + MecaCell::Vec::randomUnit() * 0.05);
+					nc->getBody().setRadius(1.0);
+					w.addCell(nc);
+				}
+			}
+		}
+
+		for (int i = 0; i < N; ++i) {
+			w.update();
+			for (auto& c : w.cells) {
+				for (auto& p : c->getBody().particles) p.velocity *= velocityPreservation;
+				c->getBody().receiveForce(G);
+			}
+			for (auto& c : w.cells) {
+				dump << i << "," << c->getId() << "," << c->getPosition().x() << ","
+				     << c->getPosition().y() << "," << c->getPosition().z() << std::endl;
+			}
+		}
+		std::cerr << dump.str();
+
+		double maxH = -1;
+		for (auto& c : w.cells) {
+			for (auto& p : c->getBody().particles) {
+				REQUIRE(p.position.y() > 0);
+				if (p.position.y() > maxH) maxH = p.position.y();
+			}
+		}
+		return maxH;
+	};
+
+	 //auto maxH = simu(0, 0);
+	 //REQUIRE(maxH < 1.2);
+
+	// std::cerr << "With friction : " << std::endl;
+	auto maxHWithFriction = simu(1.0, 1.0);
+	REQUIRE(maxHWithFriction > 1.2);
 }

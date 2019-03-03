@@ -12,7 +12,8 @@ template <size_t N, typename Cell> struct PBDBody_particles {
 	Cell* cell = nullptr;
 
 	using embedded_plugin_t = PBDPlugin<Cell>;
-	num_t distanceStiffness = 1.0;
+	num_t distanceStiffness = 0.8;  // for collisions with other cells
+	num_t innerDistanceStiffness = 1.0;
 	num_t bendingStiffness = 1.0;
 
 	PBD::ConstraintContainer<PBD::DistanceConstraint_REF<Vec>,
@@ -36,7 +37,7 @@ template <size_t N, typename Cell> struct PBDBody_particles {
 			constraints.addConstraint(PBD::DistanceConstraint_REF<Vec>(
 			    {{&particles[i].predicted, &particles[i + 1].predicted}},
 			    {{particles[i].w, particles[i + 1].w}}, individualChainLength,
-			    distanceStiffness));
+			    innerDistanceStiffness));
 		}
 
 		// alignment constraints
@@ -67,7 +68,8 @@ template <size_t N, typename Cell> struct PBDBody_particles {
 
 	num_t getActualLength() {
 		num_t l = 0;
-		for (size_t i = 0; i < N - 1; ++i) l += (particles[i + 1].position - particles[i].position).norm();
+		for (size_t i = 0; i < N - 1; ++i)
+			l += (particles[i + 1].position - particles[i].position).norm();
 		return l;
 	}
 
