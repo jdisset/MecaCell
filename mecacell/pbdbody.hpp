@@ -9,21 +9,29 @@ namespace MecaCell {
 template <size_t N, typename Cell> struct PBDBody_particles {
 	static_assert(N > 0);
 
+	static const constexpr size_t N_PARTICLES = N;
+
 	Cell* cell = nullptr;
 
 	using embedded_plugin_t = PBDPlugin<Cell>;
 	num_t distanceStiffness = 0.8;  // for collisions with other cells
 	num_t innerDistanceStiffness = 1.0;
-	num_t bendingStiffness = 1.0;
+	num_t bendingStiffness = 0.0;
 
 	PBD::ConstraintContainer<PBD::DistanceConstraint_REF<Vec>,
-	                         PBD::AlignmentConstraint<Vec>>
+	                         PBD::CollisionConstraint<Vec>, PBD::AlignmentConstraint<Vec>>
 	    constraints;
 
 	num_t length = 1.0;
 	num_t individualChainLength = 0.0;
 
 	std::array<PBD::Particle<Vec>, N> particles;
+
+	Vec getCOM() {
+		Vec COM = Vec::zero();
+		for (size_t i = 0; i < N; ++i) COM += particles[i].predicted;
+		return COM / static_cast<double>(N);
+	}
 
 	void solveInnerConstraints() { PBD::projectConstraints(constraints); }
 
@@ -40,23 +48,34 @@ template <size_t N, typename Cell> struct PBDBody_particles {
 			    innerDistanceStiffness));
 		}
 
-		// alignment constraints
-		if constexpr (N > 2) {
-			for (size_t i = 0; i < N - 2; ++i) {
-				constraints.addConstraint(PBD::AlignmentConstraint<Vec>(
-				    {{&particles[i].predicted, &particles[i + 1].predicted,
-				      &particles[i + 2].predicted}},
-				    {{particles[i].w, particles[i + 1].w, particles[i + 2].w}},
-				    bendingStiffness));
-			}
-		}
+		//// self-collision
+		// for (size_t i = 0; i < N - 1; ++i) {
+		// for (size_t j = i + 1; j < N; ++j) {
+		// constraints.addConstraint(PBD::CollisionConstraint<Vec>(
+		//{{&particles[i].predicted, &particles[j].predicted}},
+		//{{particles[i].w, particles[j].w}}, particles[i].radius + particles[j].radius,
+		// distanceStiffness));
+		//}
+		//}
+
+		//// alignment constraints
+		// if constexpr (N > 2) {
+		// for (size_t i = 0; i < N - 2; ++i) {
+		// constraints.addConstraint(PBD::AlignmentConstraint<Vec>(
+		//{{&particles[i].predicted, &particles[i + 1].predicted,
+		//&particles[i + 2].predicted}},
+		//{{particles[i].w, particles[i + 1].w, particles[i + 2].w}},
+		// bendingStiffness));
+		//}
+		//}
 	}
 
 	void setLength(num_t l) {
 		length = l;
-		if constexpr (N > 1)
+		if constexpr (N > 1) {
 			individualChainLength = (length - particles[0].radius - particles[N - 1].radius) /
 			                        static_cast<num_t>(N - 1);
+		}
 	}
 
 	PBDBody_particles(Cell* c) : cell(c) { generateConstraints(); }

@@ -217,6 +217,22 @@ template <typename Vec_t, bool mustBeEqual = true> struct DistanceConstraint {
 	}
 };
 
+// Generalistic distance constraint between 1 paricle and 1 fixed point
+template <typename P> struct FixedToPointConstraint {
+	using V = decltype(P::predicted);
+	P &p;
+	V fixedP;
+	num_t k;
+
+	FixedToPointConstraint(P &particle, const V &fixedPoint, num_t stiffness)
+	    : p(particle), fixedP(fixedPoint), k(stiffness) {}
+
+	void solve() const {
+		auto dx = p.predicted - fixedP;
+		p.predicted += dx * k;
+	}
+};  // namespace PBD
+
 template <typename vec_t>
 vec_t computeDeltaPerp(const std::array<vec_t *, 2> &X, const std::array<vec_t *, 2> &pX,
                        const vec_t &n) {
@@ -233,7 +249,7 @@ template <typename P> struct FrictionConstraint {
 	    : p0(a), p1(b), fs(staticFriction), fk(kineticFriction) {}
 
 	void solve() const {
-		auto p0p1 = p1.position - p0.position;
+		auto p0p1 = p1.predicted - p0.predicted;
 		num_t l = p0p1.squaredNorm();
 		num_t penetration = std::pow(p0.radius + p1.radius, 2) - l;
 		if (penetration > 0) {
@@ -395,7 +411,7 @@ struct GroundFrictionConstraint {
 	void solve() const {
 		num_t penetration1 = -(p.position - O).dot(N) + p.radius;
 		num_t penetration2 = -(p.predicted - O).dot(N) + p.radius;
-		num_t penetration = max(penetration1, penetration2);
+		num_t penetration = std::max(penetration1, penetration2);
 		if (penetration > 0) {
 			auto dx = p.predicted - p.position;
 			auto T = dx - (dx.dot(N) * N);  // tangential component

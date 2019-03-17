@@ -10,22 +10,27 @@ namespace MecaCell {
 template <typename Cell> struct PBDPlugin {
 	// supposed to work with a PBDBody
 
+	bool cohesionEnabled = true;
+	bool frictionEnabled = true;
 	bool reinsertCellsInGrid = true;
 	bool AABBCollisionEnabled = true;
 	bool precisePreCollisionCheck = false;
 	using AABB_t = typename Grid<Cell *>::AABB_t;
 	size_t iterations = 1;
 	size_t constraintGenerationFreq = 1;
-	double sleepingEpsilon = 1e-6;
+	double sleepingEpsilon = 1e-5;
 	double gridSize = 150;
 	double minSampleSize = 0.1;
 	double kineticFrictionCoef = 0.0;
 	double staticFrictionCoef = 0.0;
+	double cohesionStiffness = 0.0;
 	Grid<Cell *> grid{gridSize};
 
 	using collision_c = PBD::CollisionConstraint<Vec>;
+	using fixed_c = PBD::FixedToPointConstraint<PBD::Particle<Vec>>;
 	using friction_c = PBD::FrictionConstraint<PBD::Particle<Vec>>;
 	PBD::ConstraintContainer<collision_c> collisionConstraints;
+	PBD::ConstraintContainer<fixed_c> cohesionConstraints;
 	PBD::ConstraintContainer<friction_c> frictionConstraints;
 
 	size_t prevCollConstraintsSize = 0;
@@ -72,6 +77,7 @@ template <typename Cell> struct PBDPlugin {
 		o << "]";
 		return o.str();
 	}
+
 	template <typename W> void reinsertAllCellsInGrid(W *w) {
 		grid.clear();
 		for (const auto &c : w->cells) {
@@ -99,7 +105,20 @@ template <typename Cell> struct PBDPlugin {
 		auto &orderedVec = grid.getOrderedVec();
 		for (auto &gridCellPair : orderedVec) {
 			const auto &gridCell = gridCellPair.second;
+
+			// compute COM for cohesion
+			Vec COM = Vec::zero();
+			if (cohesionEnabled) {
+				for (auto &c : gridCell) COM += c->getBody().getCOM();
+				if (gridCell.size() > 0) COM = COM / static_cast<double>(gridCell.size());
+			}
+
 			for (size_t i = 0; i < gridCell.size(); ++i) {
+				if (cohesionEnabled) {
+					for (auto &p : gridCell[i]->getBody().particles)
+						cohesionConstraints.addConstraint(fixed_c(p, COM, cohesionStiffness));
+				}
+
 				for (size_t j = i + 1; j < gridCell.size(); ++j) {
 					if (!AABBCollisionEnabled ||
 					    (AABBCollisionEnabled &&
@@ -116,10 +135,10 @@ template <typename Cell> struct PBDPlugin {
 									                std::min(gridCell[i]->getBody().distanceStiffness,
 									                         gridCell[j]->getBody().distanceStiffness)));
 
-									// TODO: Merge collision and friction so that there is no need to
-									// recompute the collision distance ?
-									frictionConstraints.addConstraint(
-									    friction_c(p0, p1, staticFrictionCoef, kineticFrictionCoef));
+									// friction
+									if (frictionEnabled)
+										frictionConstraints.addConstraint(
+										    friction_c(p0, p1, staticFrictionCoef, kineticFrictionCoef));
 								}
 							}
 						}
@@ -160,15 +179,15 @@ template <typename Cell> struct PBDPlugin {
 		for (unsigned int i = 0; i < iterations; ++i) {
 			for (auto &c : w->cells) c->body.solveInnerConstraints();
 			for (auto &con : constraintSolveHook) con();
+			if (cohesionEnabled) PBD::projectConstraints(cohesionConstraints);
 			PBD::projectConstraints(collisionConstraints);
 		}
 		for (auto &con : frictionSolveHook) con();
-		PBD::projectConstraints(frictionConstraints);
-
+		if (frictionEnabled) PBD::projectConstraints(frictionConstraints);
 		updateParticles(w);
 	}
 
-	template <typename W> void beginUpdate(W *w) { pbdUpdateRoutine(w); }
+	template <typename W> void endUpdate(W *w) { pbdUpdateRoutine(w); }
 	// TODO : remove dead cells from grid if REINSERT is enabled
 };
 }  // namespace MecaCell
