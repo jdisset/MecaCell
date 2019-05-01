@@ -3448,41 +3448,42 @@ struct BaseExportable {
 
 // TODO : generalize to any std container
 
-template <typename T> void from_json(const nlohmann::json& j, T& e) { e.from_json(j); }
-template <typename T> void from_json(const nlohmann::json& j, std::vector<T>& e) {
-	e = std::vector<T>();
-	for (const auto& i : j) {
-		T t;
-		from_json(i, t);
-		e.push_back(t);
+#define EXPORTABLE_NAMESPACE_DEFINITIONS\
+template                                                \
+	<typename T> void from_json(const nlohmann::json& j, T& e) { e.from_json(j); }         \
+	template <typename T> void from_json(const nlohmann::json& j, std::vector<T>& e) {     \
+		e = std::vector<T>();                                                                \
+		for (const auto& i : j) {                                                            \
+			T t;                                                                               \
+			from_json(i, t);                                                                   \
+			e.push_back(t);                                                                    \
+		}                                                                                    \
+	}                                                                                      \
+	template <typename T, size_t N>                                                        \
+	void from_json(const nlohmann::json& j, std::array<T, N>& e) {                         \
+		for (size_t i = 0; i < N; ++i) {                                                     \
+			T t;                                                                               \
+			from_json(j[i], t);                                                                \
+			e[i] = t;                                                                          \
+		}                                                                                    \
+	}                                                                                      \
+	template <typename T> void to_json(nlohmann::json& j, const T& e) { j = e.to_json(); } \
+	template <typename T> void to_json(nlohmann::json& j, const std::vector<T>& e) {       \
+		j = nlohmann::json::array();                                                         \
+		for (const auto& i : e) {                                                            \
+			nlohmann::json o;                                                                  \
+			to_json(o, i);                                                                     \
+			j.push_back(o);                                                                    \
+		}                                                                                    \
+	}                                                                                      \
+	template <typename T, size_t N>                                                        \
+	void to_json(nlohmann::json& j, const std::array<T, N>& e) {                           \
+		j = nlohmann::json::array();                                                         \
+		for (const auto& i : e) {                                                            \
+			nlohmann::json o;                                                                  \
+			to_json(o, i);                                                                     \
+			j.push_back(o);                                                                    \
+		}                                                                                    \
 	}
-}
-template <typename T, size_t N>
-void from_json(const nlohmann::json& j, std::array<T, N>& e) {
-	for (size_t i = 0; i < N; ++i) {
-		T t;
-		from_json(j[i], t);
-		e[i] = t;
-	}
-}
-
-template <typename T> void to_json(nlohmann::json& j, const T& e) { j = e.to_json(); }
-template <typename T> void to_json(nlohmann::json& j, const std::vector<T>& e) {
-	j = nlohmann::json::array();
-	for (const auto& i : e) {
-		nlohmann::json o;
-		to_json(o, i);
-		j.push_back(o);
-	}
-}
-template <typename T, size_t N>
-void to_json(nlohmann::json& j, const std::array<T, N>& e) {
-	j = nlohmann::json::array();
-	for (const auto& i : e) {
-		nlohmann::json o;
-		to_json(o, i);
-		j.push_back(o);
-	}
-}
 
 #endif
