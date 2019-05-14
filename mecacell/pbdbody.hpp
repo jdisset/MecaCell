@@ -3,6 +3,7 @@
 #include <vector>
 #include "PBDPlugin.hpp"
 #include "mecacell.h"
+#include "utilities/exportable.hpp"
 
 namespace MecaCell {
 

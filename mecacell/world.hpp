@@ -324,7 +324,8 @@ template <typename Cell, typename Integrator = Euler> class World {
 		while (!newCells.empty()) delete newCells.back(), newCells.pop_back();
 	}
 
-	EXPORTABLE(World, KV(frame), KV(dt), KV(cells));
+	//EXPORTABLE(World, KV(frame), KV(dt), KV(cells));
+	EXPORTABLE(World, KV(frame), KV(dt));
 };
 }  // namespace MecaCell
 #endif

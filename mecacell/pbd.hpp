@@ -7,6 +7,8 @@
 #include "utilities/exportable.hpp"
 
 namespace PBD {
+EXPORTABLE_NAMESPACE_DEFINITIONS
+
 using num_t = double;
 /*
   _______ _               _____  ____  _____

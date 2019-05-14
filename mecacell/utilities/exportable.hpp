@@ -3448,9 +3448,10 @@ struct BaseExportable {
 
 // TODO : generalize to any std container
 
-#define EXPORTABLE_NAMESPACE_DEFINITIONS\
-template                                                \
-	<typename T> void from_json(const nlohmann::json& j, T& e) { e.from_json(j); }         \
+#define EXPORTABLE_NAMESPACE_DEFINITIONS                                                 \
+	template <typename T> void from_json(const nlohmann::json& j, T& e) {                  \
+		e.from_json(j);                                                                      \
+	}                                                                                      \
 	template <typename T> void from_json(const nlohmann::json& j, std::vector<T>& e) {     \
 		e = std::vector<T>();                                                                \
 		for (const auto& i : j) {                                                            \
@@ -3485,5 +3486,4 @@ template                                                \
 			j.push_back(o);                                                                    \
 		}                                                                                    \
 	}
-
 #endif
