@@ -104,7 +104,10 @@ template <typename O> class Grid {
 		       (a.first.z() <= b.second.z() && a.second.z() >= b.first.z());
 	}
 
-	static int fastFloor(const num_t &n) { return (int)floor(n); }
+	static int fastFloor(const num_t &n) { return static_cast<int>(std::floor(n)); }
+
+	// static inline int fastFloor(const num_t &n) { return static_cast<int>(n + 10000000) -
+	// 10000000; } // faster but dangerous
 
 	static inline std::pair<Vec, Vec> getAABBVec(const O &obj,
 	                                             const num_t radFactor = 1.0) {
