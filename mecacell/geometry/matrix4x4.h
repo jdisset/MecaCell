@@ -7,10 +7,10 @@
 namespace MecaCell {
 
 struct Matrix4x4 {
-	std::array<std::array<double, 4>, 4> m = {
+	std::array<std::array<num_t, 4>, 4> m = {
 	    {{{1, 0, 0, 0}}, {{0, 1, 0, 0}}, {{0, 0, 1, 0}}, {{0, 0, 0, 1}}}};
 	Matrix4x4() {}
-	Matrix4x4(std::array<std::array<double, 4>, 4> a) : m(a) {}
+	Matrix4x4(std::array<std::array<num_t, 4>, 4> a) : m(a) {}
 
 	/**
 	 * @brief Multiplies this matrix by another that scales coordinates by the components of
@@ -46,14 +46,14 @@ struct Matrix4x4 {
 	 * @param r the rotation
 	 */
 	template <typename R> void rotate(const R &r) {
-		double squ = r.n.x() * r.n.x();
-		double sqv = r.n.y() * r.n.y();
-		double sqw = r.n.z() * r.n.z();
-		double uv = r.n.x() * r.n.y();
-		double uw = r.n.x() * r.n.z();
-		double vw = r.n.y() * r.n.z();
-		double costeta = cos(r.teta);
-		double sinteta = sin(r.teta);
+		num_t squ = r.n.x() * r.n.x();
+		num_t sqv = r.n.y() * r.n.y();
+		num_t sqw = r.n.z() * r.n.z();
+		num_t uv = r.n.x() * r.n.y();
+		num_t uw = r.n.x() * r.n.z();
+		num_t vw = r.n.y() * r.n.z();
+		num_t costeta = cos(r.teta);
+		num_t sinteta = sin(r.teta);
 
 		Matrix4x4 rm(
 		    {{{{squ + (1.0f - squ) * costeta, uv * (1.0f - costeta) - r.n.z() * sinteta,
@@ -106,8 +106,8 @@ struct Matrix4x4 {
 		           m[2][0] * v.x() + m[2][1] * v.y() + m[2][2] * v.z() + m[2][3]);
 	}
 
-	inline std::array<double, 4> &operator[](const size_t index) { return m[index]; }
-	inline const std::array<double, 4> &operator[](const size_t index) const {
+	inline std::array<num_t, 4> &operator[](const size_t index) { return m[index]; }
+	inline const std::array<num_t, 4> &operator[](const size_t index) const {
 		return m[index];
 	}
 	friend ostream &operator<<(ostream &, const Matrix4x4 &);

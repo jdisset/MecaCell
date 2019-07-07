@@ -18,32 +18,32 @@ template <typename Cell> struct ContactSurface {
 	bool unbreakable = false;  // is this adhesion unbreakable ?
 
 	/////////////// adhesion ///////////////
-	double adhCoef = 0.5;    // adhesion Coef [0;1]
-	double ADH_DAMPING_RATIO= 0.1;   // damping [0;1]
-	double bondMaxL = 5.0;   // max length a surface bond can reach before breaking
-	double bondReach = 1.0;  // when are new connection created [0;bondMaxL[
-	double fixedDamping = 0.0;
-	double baseBondStrength = 0.05;
-	double MIN_ADH_DIST = 8.0;
+	num_t adhCoef = 0.5;    // adhesion Coef [0;1]
+	num_t ADH_DAMPING_RATIO= 0.1;   // damping [0;1]
+	num_t bondMaxL = 5.0;   // max length a surface bond can reach before breaking
+	num_t bondReach = 1.0;  // when are new connection created [0;bondMaxL[
+	num_t fixedDamping = 0.0;
+	num_t baseBondStrength = 0.05;
+	num_t MIN_ADH_DIST = 8.0;
 
 	/*********************************************************
 	 * 				     	INTERNALS
 	 ********************************************************/
 	Vec direction;  // direction of the actual contact surface (from cell 0 to cell 1)
-	std::pair<double, double> midpoint;  // distance to center (viewed from each cell)
-	double sqradius = 0;                 // squared radius of the contact disk
-	double area = 0, adhArea = 0;        // area of the contact disk
-	double centersDist = 0, prevCentersDist = 0;  // distance of the two cells centers
-	double prevLinAdhElongation = 0, linAdhElongation = 0;    // the elongation of the
+	std::pair<num_t, num_t> midpoint;  // distance to center (viewed from each cell)
+	num_t sqradius = 0;                 // squared radius of the contact disk
+	num_t area = 0, adhArea = 0;        // area of the contact disk
+	num_t centersDist = 0, prevCentersDist = 0;  // distance of the two cells centers
+	num_t prevLinAdhElongation = 0, linAdhElongation = 0;    // the elongation of the
 	                                                          // connections caused by the
 	                                                          // cells separation
-	double prevFlexAdhElongation = 0, flexAdhElongation = 0;  // the elongation of the
+	num_t prevFlexAdhElongation = 0, flexAdhElongation = 0;  // the elongation of the
 	                                                          // connections caused by the
 	                                                          // cells relative flexure
 	//////////////// friction ////////////////
 	// TODO: implement friction...
 	bool atRest = false;  // are the cells at rest, relatively to each other ?
-	static constexpr double REST_EPSILON =
+	static constexpr num_t REST_EPSILON =
 	    1e-10;  // minimal speed to consider the connected Cells not to be at rest
 
 	////////////// adhesion //////////////////
@@ -51,7 +51,7 @@ template <typename Cell> struct ContactSurface {
 		Basis<Vec> b;  // X is the direction of the surface, Y is the up vector
 		// b is expressed in the cell's basis, thus if we want to compute b in world basis :
 		// Bw = b.rotated(cell->getOrientationRotation());
-		double d;  // distance to center of cell
+		num_t d;  // distance to center of cell
 	};
 
 	std::pair<TargetSurface, TargetSurface> targets;
@@ -80,7 +80,7 @@ template <typename Cell> struct ContactSurface {
 	/*********************************************************
 	 * 				        MAIN UPDATE
 	 ********************************************************/
-	void update(double dt) {
+	void update(num_t dt) {
 		// first we update all the internals
 		updateInternals();
 		// then we apply all the forces
@@ -111,7 +111,7 @@ template <typename Cell> struct ContactSurface {
 		            .rotated(cells.second->getBody().getOrientationRotation().inverted())));
 	}
 
-	std::pair<double, double> computeMidpoints(double distanceBtwnCenters) {
+	std::pair<num_t, num_t> computeMidpoints(num_t distanceBtwnCenters) {
 		// return the current contact disk's center distance to each cells centers
 		if (distanceBtwnCenters <= Config::DOUBLE_EPSILON) return {0, 0};
 
@@ -121,12 +121,12 @@ template <typename Cell> struct ContactSurface {
 		                       cells.second;
 		auto smallestCell = biggestCell == cells.first ? cells.second : cells.first;
 
-		double biggestCellMidpoint =
+		num_t biggestCellMidpoint =
 		    0.5 *
 		    (distanceBtwnCenters + (std::pow(biggestCell->getBody().getDynamicRadius(), 2) -
 		                            std::pow(smallestCell->getBody().getDynamicRadius(), 2)) /
 		                               distanceBtwnCenters);
-		double smallestCellMidpoint = distanceBtwnCenters - biggestCellMidpoint;
+		num_t smallestCellMidpoint = distanceBtwnCenters - biggestCellMidpoint;
 		if (biggestCell == cells.first)
 			return {biggestCellMidpoint, smallestCellMidpoint};
 		else
@@ -140,10 +140,10 @@ template <typename Cell> struct ContactSurface {
 	// correctly been updated before
 
 	// from internal pressure
-	void applyPressureForces(double) {
+	void applyPressureForces(num_t) {
 		// force from pressure is direction to the actual contact surface
 		// and proportional to its surface
-		// double adhSpeed = (centersDist - prevCentersDist) / dt;
+		// num_t adhSpeed = (centersDist - prevCentersDist) / dt;
 		auto F = 0.5 *
 		         (area * (max(0.0, cells.first->getBody().getPressure()) +
 		                  max(0.0, cells.second->getBody().getPressure()))) *
@@ -152,11 +152,11 @@ template <typename Cell> struct ContactSurface {
 		cells.second->getBody().receiveForce(F);
 	}
 
-	void applyAdhesiveForces(double dt) {
+	void applyAdhesiveForces(num_t dt) {
 		// two main spring like forces :
 		// torsion + linear = targets points trying to meet.
 		// flexure = midpoint trying to align with the targets points.
-		std::pair<double, double> computedTargetsDistances = {
+		std::pair<num_t, num_t> computedTargetsDistances = {
 		    targets.first.d * cells.first->getBody().getDynamicRadius(),
 		    targets.second.d * cells.second->getBody().getDynamicRadius()};
 		// first we express our targets basis into world basis
@@ -169,7 +169,7 @@ template <typename Cell> struct ContactSurface {
 		    cells.first->getPosition() +
 		    direction * midpoint.first;  // we need the actual midpoint position;
 
-		// std::pair<double, double> projDist = {
+		// std::pair<num_t, num_t> projDist = {
 		// Vec::rayCast(midpointPos, direction, cells.first->getPosition(),
 		// targetsBw.first.X),
 		// Vec::rayCast(midpointPos, direction, cells.second->getPosition(),
@@ -229,7 +229,7 @@ template <typename Cell> struct ContactSurface {
 			o0o1 /= linAdhElongation;
 			if (linAdhElongation > bondMaxL && !unbreakable) {
 				// some bonds are going to break
-				double halfD = 0.5 * (linAdhElongation - bondMaxL);
+				num_t halfD = 0.5 * (linAdhElongation - bondMaxL);
 				o.first += halfD * o0o1;
 				o.second -= halfD * o0o1;
 				auto newX = (o.first - cells.first->getPosition());
@@ -252,9 +252,9 @@ template <typename Cell> struct ContactSurface {
 				targets.second.d = newD / cells.second->getBody().getDynamicRadius();
 				linAdhElongation = bondMaxL;
 			}
-			double springSpeed = (linAdhElongation - prevLinAdhElongation) / dt;
-			double k = adhArea * adhCoef * baseBondStrength;
-			double ratioDamping = dampingFromRatio(
+			num_t springSpeed = (linAdhElongation - prevLinAdhElongation) / dt;
+			num_t k = adhArea * adhCoef * baseBondStrength;
+			num_t ratioDamping = dampingFromRatio(
 			    ADH_DAMPING_RATIO, cells.first->getBody().getMass() + cells.second->getBody().getMass(),
 			    k);
 
@@ -271,9 +271,9 @@ template <typename Cell> struct ContactSurface {
 		}
 		// midpoints alignment forces
 		// if (flexAdhElongation > DIST_EPSILON) {
-		// double springSpeed = (flexAdhElongation - prevFlexAdhElongation) / dt;
-		// double k = adhArea * adhCoef * baseBondStrength;
-		// double ratioDamping =
+		// num_t springSpeed = (flexAdhElongation - prevFlexAdhElongation) / dt;
+		// num_t k = adhArea * adhCoef * baseBondStrength;
+		// num_t ratioDamping =
 		// dampingFromRatio(ADH_DAMPING_RATIO, cells.first->getMass() + cells.second->getMass(), k);
 		// Vec F = 0.5 *
 		//(k * flexAdhElongation + (fixedDamping + ratioDamping) * springSpeed) *

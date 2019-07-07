@@ -18,12 +18,12 @@ template <typename Cell> struct PBDPlugin {
 	using AABB_t = typename Grid<Cell *>::AABB_t;
 	size_t iterations = 1;
 	size_t constraintGenerationFreq = 1;
-	double sleepingEpsilon = 1e-5;
-	double gridSize = 150;
-	double minSampleSize = 0.1;
-	double kineticFrictionCoef = 0.0;
-	double staticFrictionCoef = 0.0;
-	double cohesionStiffness = 0.0;
+	num_t sleepingEpsilon = 1e-5;
+	num_t gridSize = 150;
+	num_t minSampleSize = 0.1;
+	num_t kineticFrictionCoef = 0.0;
+	num_t staticFrictionCoef = 0.0;
+	num_t cohesionStiffness = 0.0;
 	Grid<Cell *> grid{gridSize};
 
 	using collision_c = PBD::CollisionConstraint<Vec>;
@@ -40,7 +40,7 @@ template <typename Cell> struct PBDPlugin {
 
 	std::unordered_map<Cell *, AABB_t> BBMap;
 
-	void setGridSize(double g) {
+	void setGridSize(num_t g) {
 		gridSize = g;
 		grid = Grid<Cell *>(gridSize);
 	}
@@ -88,9 +88,9 @@ template <typename Cell> struct PBDPlugin {
 
 	template <typename W> void reinsertAllCellsInGrid_withSample(W *w) {
 		grid.clear();
-		std::uniform_real_distribution<double> d(0.0, 1.0);
+		std::uniform_real_distribution<num_t> d(0.0, 1.0);
 		for (const auto &c : w->cells) {
-			double diceRoll = d(Config::globalRand());
+			num_t diceRoll = d(Config::globalRand());
 			if (diceRoll < std::max(minSampleSize, c->activityLevel)) grid.insert(c, AABB(c));
 		}
 	}
@@ -99,9 +99,9 @@ template <typename Cell> struct PBDPlugin {
 		collisionConstraints.clear();
 		frictionConstraints.clear();
 		collisionConstraints.reserve<collision_c>(
-		    static_cast<size_t>(static_cast<double>(prevCollConstraintsSize) * 1.1));
+		    static_cast<size_t>(static_cast<num_t>(prevCollConstraintsSize) * 1.1));
 		frictionConstraints.reserve<friction_c>(
-		    static_cast<size_t>(static_cast<double>(prevCollConstraintsSize) * 1.1));
+		    static_cast<size_t>(static_cast<num_t>(prevCollConstraintsSize) * 1.1));
 		auto &orderedVec = grid.getOrderedVec();
 		for (auto &gridCellPair : orderedVec) {
 			const auto &gridCell = gridCellPair.second;
@@ -110,7 +110,7 @@ template <typename Cell> struct PBDPlugin {
 			Vec COM = Vec::zero();
 			if (cohesionEnabled) {
 				for (auto &c : gridCell) COM += c->getBody().getCOM();
-				if (gridCell.size() > 0) COM = COM / static_cast<double>(gridCell.size());
+				if (gridCell.size() > 0) COM = COM / static_cast<num_t>(gridCell.size());
 			}
 
 			for (size_t i = 0; i < gridCell.size(); ++i) {

@@ -1,16 +1,17 @@
 #ifndef MECACELL_ROTATION_H
 #define MECACELL_ROTATION_H
 #include <cmath>
+#include "../utilities/utils.hpp"
 using namespace std;
 namespace MecaCell {
 
 template <typename V> struct Rotation {
 	V n = V(0, 1, 0);
-	double teta = 0;
+	num_t teta = 0;
 
 	Rotation() {}
 
-	Rotation(const V& v, const double& f) : n(v), teta(f) {}
+	Rotation(const V& v, const num_t& f) : n(v), teta(f) {}
 
 	void randomize() {
 		n.random();

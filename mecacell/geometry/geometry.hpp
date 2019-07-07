@@ -18,18 +18,18 @@ namespace MecaCell {
  */
 std::pair<bool, Vec> inline rayInTriangle(const Vec &v0, const Vec &v1, const Vec &v2,
                                           const Vec &o, const Vec &r,
-                                          const double tolerance = 0) {
+                                          const num_t tolerance = 0) {
 	Vec u = v1 - v0;
 	Vec v = v2 - v0;
 	Vec n = u.cross(v);
-	double l = Vec::rayCast(v0, n, o, r);
+	num_t l = Vec::rayCast(v0, n, o, r);
 	if (l > 0) {
 		Vec p = o + l * r;
 		Vec w = p - v0;
-		double nsq = n.squaredNorm();
+		num_t nsq = n.squaredNorm();
 		l = u.cross(w).dot(n) / nsq;
-		double b = w.cross(v).dot(n) / nsq;
-		double a = 1.0 - l - b;
+		num_t b = w.cross(v).dot(n) / nsq;
+		num_t a = 1.0 - l - b;
 		return {0 - tolerance <= a && a <= 1.0 + tolerance && 0 - tolerance <= b &&
 		            b <= 1.0 + tolerance && 0 - tolerance <= l && l <= 1.0 + tolerance,
 		        a * v0 + b * v1 + l * v2};
@@ -52,15 +52,15 @@ std::pair<bool, Vec> inline rayInTriangle(const Vec &v0, const Vec &v1, const Ve
  */
 std::pair<bool, Vec> inline projectionIntriangle(const Vec &v0, const Vec &v1,
                                                  const Vec &v2, const Vec &p,
-                                                 const double tolerance = 0) {
+                                                 const num_t tolerance = 0) {
 	Vec u = v1 - v0;
 	Vec v = v2 - v0;
 	Vec n = u.cross(v);
 	Vec w = p - v0;
-	double nsq = n.squaredNorm();
-	double l = u.cross(w).dot(n) / nsq;
-	double b = w.cross(v).dot(n) / nsq;
-	double a = 1.0 - l - b;
+	num_t nsq = n.squaredNorm();
+	num_t l = u.cross(w).dot(n) / nsq;
+	num_t b = w.cross(v).dot(n) / nsq;
+	num_t a = 1.0 - l - b;
 	return {0 - tolerance <= a && a <= 1.0 + tolerance && 0 - tolerance <= b &&
 	            b <= 1.0 + tolerance && 0 - tolerance <= l && l <= 1.0 + tolerance,
 	        a * v0 + b * v1 + l * v2};
@@ -76,7 +76,7 @@ std::pair<bool, Vec> inline projectionIntriangle(const Vec &v0, const Vec &v1,
  *
  * @return the smallest distance to an edge
  */
-double inline closestDistToTriangleEdge(const Vec &v0, const Vec &v1, const Vec &v2,
+num_t inline closestDistToTriangleEdge(const Vec &v0, const Vec &v1, const Vec &v2,
                                         const Vec &p) {
 	Vec a = v1 - v0;
 	Vec b = v2 - v0;
@@ -85,11 +85,11 @@ double inline closestDistToTriangleEdge(const Vec &v0, const Vec &v1, const Vec 
 	Vec v0p = p - v0;
 	Vec v1p = p - v1;
 	Vec v2p = p - v2;
-	double sqV0pa = v0p.dot(a);
-	double sqV0pb = v0p.dot(b);
-	double sqV1pc = v1p.dot(c);
-	double adist, bdist, cdist;
-	double v0dist, v1dist, v2dist;
+	num_t sqV0pa = v0p.dot(a);
+	num_t sqV0pb = v0p.dot(b);
+	num_t sqV1pc = v1p.dot(c);
+	num_t adist, bdist, cdist;
+	num_t v0dist, v1dist, v2dist;
 	v0dist = v0p.squaredNorm();
 	v1dist = v1p.squaredNorm();
 	v2dist = v2p.squaredNorm();

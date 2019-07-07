@@ -156,7 +156,7 @@ void velocitiesAndPositionsUpdate(M &positions, M &velocities, const M &predicte
 
 // particle struct version:
 template <typename... T, typename P>
-void step(P &particles, const ConstraintContainer<T...> &constraints, double dt,
+void step(P &particles, const ConstraintContainer<T...> &constraints, num_t dt,
           unsigned int iterations = 1) {
 	eulerIntegration(particles, dt);
 	for (unsigned int i = 0; i < iterations; ++i) PBD::projectConstraints(constraints);

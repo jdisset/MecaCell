@@ -9,6 +9,7 @@
 #include "utilities/hooktools.hpp"
 #include "utilities/threadpool.hpp"
 #include "utilities/utils.hpp"
+#include <mutex>
 
 namespace MecaCell {
 
@@ -64,6 +65,8 @@ template <typename Cell, typename Integrator = Euler> class World {
 	size_t updtBhvPeriod =
 	    1;  /// period at which the world should call the cells updateBehavior method.
 	bool parallelUpdateBehavior = false;
+
+	std::mutex cellLock;  // for concurrent addCells;
 
 	/**
 	 * @brief removes all cells marked dead
@@ -215,8 +218,10 @@ template <typename Cell, typename Integrator = Euler> class World {
 	 */
 	void addCell(Cell *c) {
 		if (c) {
+			cellLock.lock();
 			newCells.push_back(c);
 			c->id = nbAddedCells++;
+			cellLock.unlock();
 		}
 	}
 
@@ -281,8 +286,8 @@ template <typename Cell, typename Integrator = Euler> class World {
 	 * (see parallelUpdateBehavior and nbThreads)
 	 */
 	void callUpdateBehavior() {
-		const size_t MIN_CHUNK_SIZE = 2;
-		const double AVG_TASKS_PER_THREAD = 3.0;
+		const size_t MIN_CHUNK_SIZE = 500;
+		const double AVG_TASKS_PER_THREAD = 2000.0;
 		if (parallelUpdateBehavior && nbThreads > 0) {
 			threadpool.autoChunks(cells, MIN_CHUNK_SIZE, AVG_TASKS_PER_THREAD,
 			                      [this](auto *c) { c->updateBehavior(*this); });
@@ -324,7 +329,7 @@ template <typename Cell, typename Integrator = Euler> class World {
 		while (!newCells.empty()) delete newCells.back(), newCells.pop_back();
 	}
 
-	//EXPORTABLE(World, KV(frame), KV(dt), KV(cells));
+	// EXPORTABLE(World, KV(frame), KV(dt), KV(cells));
 	EXPORTABLE(World, KV(frame), KV(dt));
 };
 }  // namespace MecaCell

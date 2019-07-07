@@ -48,7 +48,7 @@ class ConnectableCell {
 	// toconvey information in headless mode
 	bool isVisible = true;  // should we display this cell? (cosmetic only - cell is still
 	                        // present and active -)
-	array<double, 3> color = {
+	array<num_t, 3> color = {
 	    {0.75, 0.12, 0.07}};  // cell's color (interpreted as RGB by viewer)
 
 	unique_vector<Derived *> connectedCells;  // list of currently connected cells
@@ -105,13 +105,13 @@ class ConnectableCell {
 	Vector3D getPosition() const { return body.getPosition(); }
 
 	void setColorRGB(size_t r, size_t g, size_t b) {
-		color = {{static_cast<double>(r) / 255.0, static_cast<double>(g) / 255.0,
-		          static_cast<double>(b) / 255.0}};
+		color = {{static_cast<num_t>(r) / 255.0, static_cast<num_t>(g) / 255.0,
+		          static_cast<num_t>(b) / 255.0}};
 	}
 	void setColorRGB(std::array<int, 3> rgb) { setColorRGB(rgb[0], rgb[1], rgb[2]); }
-	void setColorRGB(std::array<double, 3> rgb) { color = rgb; }
-	void setColorHSV(double H, double S, double V) { color = hsvToRgb(H, S, V); }
-	void setColorHSV(std::array<double, 3> hsv) { setColorHSV(hsv[0], hsv[1], hsv[2]); }
+	void setColorRGB(std::array<num_t, 3> rgb) { color = rgb; }
+	void setColorHSV(num_t H, num_t S, num_t V) { color = hsvToRgb(H, S, V); }
+	void setColorHSV(std::array<num_t, 3> hsv) { setColorHSV(hsv[0], hsv[1], hsv[2]); }
 
 	/**
 	 * @brief should a viewer displpay this cell ?
@@ -136,8 +136,8 @@ class ConnectableCell {
 	/************** GET ******************/
 	body_t &getBody() { return body; }
 	const body_t &getConstBody() const { return body; }
-	double getBoundingBoxRadius() const { return body.getBoundingBoxRadius(); }
-	double getColor(unsigned int i) const {
+	num_t getBoundingBoxRadius() const { return body.getBoundingBoxRadius(); }
+	num_t getColor(unsigned int i) const {
 		if (i < 3) return color[i];
 		return 0;
 	}

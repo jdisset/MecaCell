@@ -50,11 +50,11 @@ template <typename T> inline T *ptr(T *obj) { return obj; }
  *
  * @return
  */
-template <typename T> constexpr T lerp(const T &a, const T &b, const double &c) {
+template <typename T> constexpr T lerp(const T &a, const T &b, const num_t &c) {
 	return a * (1.0 - c) + c * b;
 }
 
-template <typename T> inline bool fuzzyEqual(const T &a, const T &b, double eps = 1e-6) {
+template <typename T> inline bool fuzzyEqual(const T &a, const T &b, num_t eps = 1e-6) {
 	return (fabs(a - b) < eps * fabs(a));
 }
 
@@ -94,15 +94,15 @@ inline std::vector<std::string> splitStr(const std::string &s, char delim) {
  *
  * @return
  */
-inline std::array<double, 3> hsvToRgb(double h, double s, double v) {
+inline std::array<num_t, 3> hsvToRgb(num_t h, num_t s, num_t v) {
 	if (s <= 0.0) return {{v, v, v}};
-	double hh = fmod(h, 1.0);
+	num_t hh = fmod(h, 1.0);
 	hh *= 6.0;
 	unsigned int i = static_cast<unsigned int>(hh);
-	double ff = hh - static_cast<double>(i);
-	double p = v * (1.0 - s);
-	double q = v * (1.0 - (s * ff));
-	double t = v * (1.0 - (s * (1.0 - ff)));
+	num_t ff = hh - static_cast<num_t>(i);
+	num_t p = v * (1.0 - s);
+	num_t q = v * (1.0 - (s * ff));
+	num_t t = v * (1.0 - (s * (1.0 - ff)));
 	switch (i) {
 		case 0:
 			return {{v, t, p}};
@@ -130,7 +130,7 @@ template <typename T> constexpr size_t eToUI(const T &t) {
 	return static_cast<size_t>(t);
 }
 
-inline double dampingFromRatio(const double r, const double m, const double k) {
+inline num_t dampingFromRatio(const num_t r, const num_t m, const num_t k) {
 	return r * 2.0 * sqrt(m * k);  // for angular springs m is the moment of inertia
 }
 

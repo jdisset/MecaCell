@@ -14,15 +14,15 @@ namespace MecaCell {
 
 template <typename Cell> struct ElasticConnection {
 	ordered_pair<Cell *> cells;
-	double area = 0;     // area of the contact disk
-	double adhArea = 0;  // connected area
-	double overlap = 0, adhOverlap = 0;
-	double bondBreakDist = 2.0;
-	std::pair<double, double>
+	num_t area = 0;     // area of the contact disk
+	num_t adhArea = 0;  // connected area
+	num_t overlap = 0, adhOverlap = 0;
+	num_t bondBreakDist = 2.0;
+	std::pair<num_t, num_t>
 	    midpoint;        // contact disk's distance to center (viewed from each cell)
 	Vector3D direction;  // normalized direction from cell 0 to cell 1
-	double prevDist;     // distance btwn the two cells
-	double dist;         // distance btwn the two cells
+	num_t prevDist;     // distance btwn the two cells
+	num_t dist;         // distance btwn the two cells
 	std::pair<Joint, Joint> flex, tors;
 	bool adhesionEnabled = false;
 	bool fixedAdhesion = false;  // is this connection indestructible ?
@@ -38,7 +38,7 @@ template <typename Cell> struct ElasticConnection {
 		midpoint = computeMidpoints();
 	}
 
-	std::pair<double, double> computeMidpoints() {
+	std::pair<num_t, num_t> computeMidpoints() {
 		// return the current contact disk's center distance to each cells centers
 		if (dist <= Config::DOUBLE_EPSILON) return {0, 0};
 
@@ -48,12 +48,12 @@ template <typename Cell> struct ElasticConnection {
 		                       cells.second;
 		auto smallestCell = biggestCell == cells.first ? cells.second : cells.first;
 
-		double biggestCellMidpoint =
+		num_t biggestCellMidpoint =
 		    0.5 * (dist +
 		           (std::pow(biggestCell->getBody().getBoundingBoxRadius(), 2) -
 		            std::pow(smallestCell->getBody().getBoundingBoxRadius(), 2)) /
 		               dist);
-		double smallestCellMidpoint = dist - biggestCellMidpoint;
+		num_t smallestCellMidpoint = dist - biggestCellMidpoint;
 		if (biggestCell == cells.first)
 			return {biggestCellMidpoint, smallestCellMidpoint};
 		else
@@ -66,19 +66,19 @@ template <typename Cell> struct ElasticConnection {
 		                       dist);
 		const auto &c0 = cells.first->getBody();
 		const auto &c1 = cells.first->getBody();
-		double invertRadii = 1.0 / (1.0 / cells.first->getBoundingBoxRadius() +
+		num_t invertRadii = 1.0 / (1.0 / cells.first->getBoundingBoxRadius() +
 		                            1.0 / cells.second->getBoundingBoxRadius());
-		double invertYoung =
+		num_t invertYoung =
 		    1.0 / (((1.0 - pow(c0.getPoissonCoef(), 2)) / c0.getYoungModulus()) +
 		           ((1.0 - pow(c1.getPoissonCoef(), 2)) / c1.getYoungModulus()));
-		double tempterm = sqrt(invertRadii) * pow(overlap, 3.0 / 2.0);
+		num_t tempterm = sqrt(invertRadii) * pow(overlap, 3.0 / 2.0);
 		area = pow(cbrt(invertRadii * tempterm), 2) * M_PI;
 		auto F = direction * ((2.0 / 3.0) * invertYoung * tempterm);
 		cells.first->getBody().receiveForce(-F);
 		cells.second->getBody().receiveForce(F);
 	}
 
-	void updateAdhesionForces(double) {
+	void updateAdhesionForces(num_t) {
 		/*
 		           dir
 		          x---->
@@ -93,16 +93,16 @@ template <typename Cell> struct ElasticConnection {
 
 		 */
 
-		//const double adhCoef = 0.1;
-		//double resistiveForce = area * adhCoef;
+		//const num_t adhCoef = 0.1;
+		//num_t resistiveForce = area * adhCoef;
 
 		// first we compute the force's component parrallel to the collision axis
 		// and only the forces trying to separate the cells
-		double parallelForce1to2 =
+		num_t parallelForce1to2 =
 		    std::max(-cells.first->getBody().getForce().dot(direction), 0.0);
-		double parallelForce2to1 =
+		num_t parallelForce2to1 =
 		    std::max(cells.second->getBody().getForce().dot(direction), 0.0);
-		double sum = parallelForce2to1 + parallelForce1to2;
+		num_t sum = parallelForce2to1 + parallelForce1to2;
 		logger<DBG>("pf2t1 = ", parallelForce2to1);
 		logger<DBG>("pf1t2 = ", parallelForce1to2);
 		cells.first->getBody().receiveForce(parallelForce2to1 * direction);
@@ -114,7 +114,7 @@ template <typename Cell> struct ElasticConnection {
 		updateDirection();
 		prevDist = dist;
 	}
-	void update(double dt) {
+	void update(num_t dt) {
 		updateDirection();
 		updateCollisionForces();
 		if (adhesionEnabled) {

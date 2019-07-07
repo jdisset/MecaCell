@@ -8,16 +8,16 @@
 namespace MecaCell {
 template <typename V> struct Quaternion {
 	V v;
-	double w;
-	Quaternion(const double& angle, const V& n) {
-		double halfangle = angle * 0.5;
+	num_t w;
+	Quaternion(const num_t& angle, const V& n) {
+		num_t halfangle = angle * 0.5;
 		w = cos(halfangle);
 		v = n * sin(halfangle);
 	}
 	Quaternion(const V& v0, const V& v1) {
 		V v2 = v0.normalized();
 		V v3 = v1.normalized();
-		double sc = min<double>(1.0, max<double>(-1.0, v2.dot(v3)));
+		num_t sc = min<num_t>(1.0, max<num_t>(-1.0, v2.dot(v3)));
 		if (sc < -0.9999) {
 			*this = Quaternion(M_PI, v2.ortho());
 		} else {
@@ -27,7 +27,7 @@ template <typename V> struct Quaternion {
 		}
 	}
 	Quaternion(const Quaternion& q) : v(q.v), w(q.w) {}
-	Quaternion(const double& x, const double& y, const double& z, const double& ww)
+	Quaternion(const num_t& x, const num_t& y, const num_t& z, const num_t& ww)
 	    : v(x, y, z), w(ww) {}
 	Quaternion() : v(0, 1, 0), w(0) {}
 	Quaternion operator*(const Quaternion& q2) const {
@@ -43,29 +43,29 @@ template <typename V> struct Quaternion {
 
 	V getAxis() const {
 		assert(w <= 1.0);
-		double s = sqrt(1.0 - w * w);
+		num_t s = sqrt(1.0 - w * w);
 		if (s == 0) return V(1, 0, 0);
 		return v / s;
 	}
-	double getAngle() const {
+	num_t getAngle() const {
 		assert(w <= 1.0);
 		return 2.0 * acos(w);
 	}
 
 	Quaternion normalized() const {
-		double magnitude = sqrt(w * w + v.x() * v.x() + v.y() * v.y() + v.z() * v.z());
+		num_t magnitude = sqrt(w * w + v.x() * v.x() + v.y() * v.y() + v.z() * v.z());
 		return Quaternion(v.x() / magnitude, v.y() / magnitude, v.z() / magnitude,
 		                  w / magnitude);
 	}
 	void normalize() {
-		double magnitude = sqrt(w * w + v.x() * v.x() + v.y() * v.y() + v.z() * v.z());
-		w = min<double>(w / magnitude, 1.0);
+		num_t magnitude = sqrt(w * w + v.x() * v.x() + v.y() * v.y() + v.z() * v.z());
+		w = min<num_t>(w / magnitude, 1.0);
 		v = v / magnitude;
 	}
 
 	Rotation<V> toAxisAngle() {
 		normalize();
-		double s = sqrt(1.0 - w * w);
+		num_t s = sqrt(1.0 - w * w);
 		if (s == 0) return Rotation<V>(V(1, 0, 0), acos(w) * 2.0);
 		return Rotation<V>(v / s, acos(w) * 2.0);
 	}

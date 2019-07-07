@@ -4,25 +4,25 @@
 
 namespace MecaCell {
 
-using num_t = double;
+using num_t = float;
 
 struct Config {
 	// TYPES
 	using random_engine_t = std::mt19937;  // used for random vectors
 
 	// CONST
-	static constexpr double DEFAULT_CELL_DAMP_RATIO = 1.0;
-	static constexpr double DEFAULT_CELL_RADIUS = 40;
-	static constexpr double DEFAULT_CELL_MASS = DEFAULT_CELL_RADIUS / 1000.0;
-	static constexpr double DEFAULT_CELL_STIFFNESS = 4.0;
-	static constexpr double DEFAULT_CELL_YOUNGMOD = 1.0;
-	static constexpr double DEFAULT_CELL_POISSONCOEF = 0.3;
+	static constexpr num_t DEFAULT_CELL_DAMP_RATIO = 1.0;
+	static constexpr num_t DEFAULT_CELL_RADIUS = 40;
+	static constexpr num_t DEFAULT_CELL_MASS = DEFAULT_CELL_RADIUS / 1000.0;
+	static constexpr num_t DEFAULT_CELL_STIFFNESS = 4.0;
+	static constexpr num_t DEFAULT_CELL_YOUNGMOD = 1.0;
+	static constexpr num_t DEFAULT_CELL_POISSONCOEF = 0.3;
 
 	/**
-	 * @brief max distance for two doubles to be considered equals (only used for some
+	 * @brief max distance for two num_t to be considered equals (only used for some
 	 * geometric operations)
 	 */
-	static constexpr double DOUBLE_EPSILON = 1e-20;
+	static constexpr num_t DOUBLE_EPSILON = 1e-12;
 
 	/**
 	 * @brief access to the static global random engine.This pseudo -

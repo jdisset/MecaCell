@@ -19,31 +19,31 @@ template <typename Cell> class VolumeMembrane {
 	CREATE_METHOD_CHECKS(getAdhesionWith);
 	template <typename C> struct SFINAE {
 		static constexpr bool hasPreciseAdhesion = has_getAdhesionWith_signatures<
-		    C, double(C *, double, double), float(C *, float, float),
-		    double(const C *, double, double), float(const C *, float, float)>::value;
+		    C, num_t(C *, num_t, num_t), float(C *, float, float),
+		    num_t(const C *, num_t, num_t), float(const C *, float, float)>::value;
 		static constexpr bool hasAdhesion =
-		    has_getAdhesionWith_signatures<C, double(C *), float(C *), double(const C *),
+		    has_getAdhesionWith_signatures<C, num_t(C *), float(C *), num_t(const C *),
 		                                   float(const C *)>::value;
 
 		// different precision level for getAdhesionWith
 		// precise : takes a pointer to the other cell + the orientation of the connection
-		template <typename T = double>
+		template <typename T = num_t>
 		static inline typename enable_if<hasPreciseAdhesion, T>::type getAdhesion(
 		    const Cell *a, const Cell *b, const Vec &ABnorm) {
 			const auto B = a->getOrientation();
 			bool zNeg = ABnorm.dot(B.X.cross(B.Y)) < 0;
-			double phi = acos(ABnorm.dot(B.Y));
-			double teta = zNeg ? acos(ABnorm.dot(B.X)) : M_PI * 2.0 - acos(ABnorm.dot(B.X));
+			num_t phi = acos(ABnorm.dot(B.Y));
+			num_t teta = zNeg ? acos(ABnorm.dot(B.X)) : M_PI * 2.0 - acos(ABnorm.dot(B.X));
 			return a->getAdhesionWith(b, teta, phi);
 		}
 		// not precise: takes a pointer to the other cell
-		template <typename T = double, typename... Whatever>
+		template <typename T = num_t, typename... Whatever>
 		static inline typename enable_if<!hasPreciseAdhesion && hasAdhesion, T>::type
 		    getAdhesion(const Cell *a, const Cell *b, Whatever...) {
 			return a->getAdhesionWith(b);
 		}
 		// not even declared: always 0
-		template <typename T = double, typename... Whatever>
+		template <typename T = num_t, typename... Whatever>
 		static inline
 		    typename enable_if<!hasPreciseAdhesion && !hasAdhesion, T>::type getAdhesion(
 		        Whatever...) {
@@ -65,22 +65,22 @@ template <typename Cell> class VolumeMembrane {
 	CCCM cccm;
 
 	// params
-	double incompressibility = 0.003;
-	double membraneStiffness = 3;
+	num_t incompressibility = 0.003;
+	num_t membraneStiffness = 3;
 
 	// internal stuff
-	double baseRadius = Config::DEFAULT_CELL_RADIUS;
-	double restRadius = Config::DEFAULT_CELL_RADIUS;
+	num_t baseRadius = Config::DEFAULT_CELL_RADIUS;
+	num_t restRadius = Config::DEFAULT_CELL_RADIUS;
 	// dynamic target radius:
-	double dynamicRadius = Config::DEFAULT_CELL_RADIUS;
-	double prevDynamicRadius = Config::DEFAULT_CELL_RADIUS;
-	static constexpr double MAX_DYN_RADIUS_RATIO = 2.0;
+	num_t dynamicRadius = Config::DEFAULT_CELL_RADIUS;
+	num_t prevDynamicRadius = Config::DEFAULT_CELL_RADIUS;
+	static constexpr num_t MAX_DYN_RADIUS_RATIO = 2.0;
 	// this is the effective Radius, the one we deduce from the membrane area:
-	double deducedRadius = restRadius;
-	double currentArea = 4.0 * M_PI * restRadius * restRadius;
-	double restVolume = FOUR_THIRD_PI * restRadius * restRadius;
-	double currentVolume = restVolume;
-	double pressure = 0;
+	num_t deducedRadius = restRadius;
+	num_t currentArea = 4.0 * M_PI * restRadius * restRadius;
+	num_t restVolume = FOUR_THIRD_PI * restRadius * restRadius;
+	num_t currentVolume = restVolume;
+	num_t pressure = 0;
 
  public:
 	VolumeMembrane(Cell *c) : cell(c) { updateStats(); };
@@ -103,17 +103,17 @@ template <typename Cell> class VolumeMembrane {
 	/************************ basics **************************/
 	inline Cell *getCell() { return cell; }
 	inline CCCM &getCellCellConnectionManager() { return cccm; }
-	inline double getStiffness() const { return membraneStiffness; }
-	inline double getRestRadius() const { return restRadius; }
-	inline double getBaseRadius() const { return baseRadius; }
-	inline double getDeducedRadius() const { return deducedRadius; }
-	inline double getDynamicRadius() const { return dynamicRadius; }
-	inline double getBoundingBoxRadius() const { return dynamicRadius; };
-	inline double getPressure() const { return pressure; }
-	inline double getSqRestRadius() const { return restRadius * restRadius; }
-	inline double getCurrentVolume() const { return currentVolume; }
-	inline double getRestVolume() const { return restVolume; }
-	inline double getCurrentArea() const { return currentArea; }
+	inline num_t getStiffness() const { return membraneStiffness; }
+	inline num_t getRestRadius() const { return restRadius; }
+	inline num_t getBaseRadius() const { return baseRadius; }
+	inline num_t getDeducedRadius() const { return deducedRadius; }
+	inline num_t getDynamicRadius() const { return dynamicRadius; }
+	inline num_t getBoundingBoxRadius() const { return dynamicRadius; };
+	inline num_t getPressure() const { return pressure; }
+	inline num_t getSqRestRadius() const { return restRadius * restRadius; }
+	inline num_t getCurrentVolume() const { return currentVolume; }
+	inline num_t getRestVolume() const { return restVolume; }
+	inline num_t getCurrentArea() const { return currentArea; }
 
 	/************************ computed **************************/
 	void division() {
@@ -121,18 +121,18 @@ template <typename Cell> class VolumeMembrane {
 		dynamicRadius = getBaseRadius();
 	}
 
-	pair<Cell *, double> getConnectedCellAndMembraneDistance(const Vec &d) const {
+	pair<Cell *, num_t> getConnectedCellAndMembraneDistance(const Vec &d) const {
 		// /!\ assumes that d is normalized
 		Cell *closestCell = nullptr;
-		double closestDist = dynamicRadius;
+		num_t closestDist = dynamicRadius;
 		for (auto &cc : cccm.cellConnections) {
 			auto con = CCCM::getConnection(cc);
 			auto normal = cell == con->cells.first ? -con->normal : con->normal;
-			double dot = normal.dot(d);
+			num_t dot = normal.dot(d);
 			if (dot < 0) {
 				const auto &midpoint =
 				    cell == con->cells.first ? con->midpoint.first : con->midpoint.second;
-				double l = -midpoint / dot;
+				num_t l = -midpoint / dot;
 				if (l < closestDist) {
 					closestDist = l;
 					closestCell = con->cells.first == cell ? con->cells.second : con->cells.first;
@@ -145,24 +145,24 @@ template <typename Cell> class VolumeMembrane {
 	inline Cell *getConnectedCell(const Vec &d) const {
 		return get<0>(getConnectedCellAndMembraneDistance(d));
 	}
-	inline double getPreciseMembraneDistance(const Vec &d) const {
+	inline num_t getPreciseMembraneDistance(const Vec &d) const {
 		return get<1>(getConnectedCellAndMembraneDistance(d));
 	}
-	inline double getRestArea() const { return (4.0 * M_PI * restRadius * restRadius); }
+	inline num_t getRestArea() const { return (4.0 * M_PI * restRadius * restRadius); }
 	inline void computeRestVolume() {
 		restVolume = FOUR_THIRD_PI * restRadius * restRadius * restRadius;
 	}
-	inline double getBaseVolume() const {
+	inline num_t getBaseVolume() const {
 		return FOUR_THIRD_PI * baseRadius * baseRadius * baseRadius;
 	}
-	inline double getRestMomentOfInertia() const {
+	inline num_t getRestMomentOfInertia() const {
 		return 0.4 * cell->mass * restRadius * restRadius;
 	}
-	inline double getMomentOfInertia() const { return getRestMomentOfInertia(); }
-	inline double getVolumeVariation() const { return restVolume - currentVolume; }
+	inline num_t getMomentOfInertia() const { return getRestMomentOfInertia(); }
+	inline num_t getVolumeVariation() const { return restVolume - currentVolume; }
 
 	void computeCurrentVolume() {
-		double volumeLoss = 0;
+		num_t volumeLoss = 0;
 		// cell connections
 		for (auto &cc : cccm.cellConnections) {
 			auto con = CCCM::getConnection(cc);
@@ -172,26 +172,26 @@ template <typename Cell> class VolumeMembrane {
 			volumeLoss += (M_PI * h / 6.0) * (3.0 * con->sqradius + h * h);
 		}
 		// TODO : soustraire les overlapps
-		double baseVol = FOUR_THIRD_PI * dynamicRadius * dynamicRadius * dynamicRadius;
+		num_t baseVol = FOUR_THIRD_PI * dynamicRadius * dynamicRadius * dynamicRadius;
 		currentVolume = baseVol - volumeLoss;
-		const double minVol = 0.1 * getRestVolume();
+		const num_t minVol = 0.1 * getRestVolume();
 		if (currentVolume < minVol) currentVolume = minVol;
 	}
 
-	double getVolume() const { return restVolume; }
+	num_t getVolume() const { return restVolume; }
 
 	void computeAreaAndDeduceRadius() {
-		double surfaceLoss = 0;
+		num_t surfaceLoss = 0;
 		for (auto &cc : cccm.cellConnections) {
 			auto con = CCCM::getConnection(cc);
 			auto &midpoint =
 			    cell == con->cells.first ? con->midpoint.first : con->midpoint.second;
 			surfaceLoss += 2.0 * M_PI * dynamicRadius * (dynamicRadius - midpoint) - con->area;
 		}
-		double baseArea = 4.0 * M_PI * dynamicRadius * dynamicRadius;
+		num_t baseArea = 4.0 * M_PI * dynamicRadius * dynamicRadius;
 		currentArea = baseArea - surfaceLoss;
 		// TODO : soustraire les overlapps, avoir une meilleure précision
-		const double minArea =
+		const num_t minArea =
 		    0.1 * getRestArea();  // garde fou en attendant de soustraire les overlaps
 		if (currentArea < minArea) currentArea = minArea;
 		deducedRadius = sqrt(currentArea / 4.0 * M_PI);
@@ -200,26 +200,26 @@ template <typename Cell> class VolumeMembrane {
 	/**********************************************************
 	                             SET
 	***********************************************************/
-	void setIncompressibility(double i) { incompressibility = i; }
-	void setStiffness(double k) { membraneStiffness = k; }
-	void setRadius(double r) { restRadius = r; }
-	void setBaseRadius(double r) { baseRadius = r; }
-	void setRadiusRatio(double r) { restRadius = r * baseRadius; }
-	void setVolume(double v) { setRadius(cbrt(v / (4.0 * M_PI / 3.0))); }
+	void setIncompressibility(num_t i) { incompressibility = i; }
+	void setStiffness(num_t k) { membraneStiffness = k; }
+	void setRadius(num_t r) { restRadius = r; }
+	void setBaseRadius(num_t r) { baseRadius = r; }
+	void setRadiusRatio(num_t r) { restRadius = r * baseRadius; }
+	void setVolume(num_t v) { setRadius(cbrt(v / (4.0 * M_PI / 3.0))); }
 
 	/**********************************************************
 	                           UPDATE
 	***********************************************************/
-	template <typename Integrator> void updatePositionsAndOrientations(double dt) {
+	template <typename Integrator> void updatePositionsAndOrientations(num_t dt) {
 		// Before updating positions and orientations we compute the cureent pressure
 		computeCurrentVolume();
-		double dA = currentArea - getRestArea();
-		double dV = getRestVolume() - currentVolume;
+		num_t dA = currentArea - getRestArea();
+		num_t dV = getRestVolume() - currentVolume;
 		auto Fv = incompressibility * dV;
 		auto Fa = membraneStiffness * dA;
 		pressure = Fv / currentArea;
-		double dynSpeed = (dynamicRadius - prevDynamicRadius) / dt;
-		double c = 5.0;
+		num_t dynSpeed = (dynamicRadius - prevDynamicRadius) / dt;
+		num_t c = 5.0;
 		dynamicRadius += dt * dt * (Fv - Fa - dynSpeed * c);
 		if (dynamicRadius > restRadius * MAX_DYN_RADIUS_RATIO)
 			dynamicRadius = restRadius * MAX_DYN_RADIUS_RATIO;
@@ -247,7 +247,7 @@ template <typename Cell> class VolumeMembrane {
 	***********************************************************/
 	/******************** between cells ***********************/
 	template <typename C = Cell, typename... T>
-	static inline double getAdhesion(T &&... t) {
+	static inline num_t getAdhesion(T &&... t) {
 		return SFINAE<C>::getAdhesion(std::forward<T>(t)...);
 	}
 
@@ -265,13 +265,13 @@ template <typename Cell> class VolumeMembrane {
 					for (size_t k = j + 1; k < batch[i].size(); ++k) {
 						auto op = make_ordered_cell_pair(batch[i][j], batch[i][k]);
 						Vec AB = op.second->position - op.first->position;
-						double sqDistance = AB.sqlength();
+						num_t sqDistance = AB.sqlength();
 						if (sqDistance < pow(op.first->getConstMembrane().dynamicRadius +
 						                         op.second->getConstMembrane().dynamicRadius,
 						                     2)) {
 							if (!CCCM::areConnected(op.first, op.second) &&
 							    !isInVector(op, newConnections) && op.first != op.second) {
-								double dist = sqrt(sqDistance);
+								num_t dist = sqrt(sqDistance);
 								Vec dir = AB / dist;
 								auto d0 = op.first->getConstMembrane().getPreciseMembraneDistance(dir);
 								auto d1 = op.second->getConstMembrane().getPreciseMembraneDistance(-dir);
@@ -290,7 +290,7 @@ template <typename Cell> class VolumeMembrane {
 		}
 	}
 
-	static void updateCellCellConnections(CellCellConnectionContainer &concon, double dt) {
+	static void updateCellCellConnections(CellCellConnectionContainer &concon, num_t dt) {
 		// we update forces & delete impossible connections (cells not in contact
 		// anymore...)
 		vector<CellCellConnectionType *> toDisconnect;

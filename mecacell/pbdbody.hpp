@@ -31,7 +31,7 @@ template <size_t N, typename Cell> struct PBDBody_particles {
 	Vec getCOM() {
 		Vec COM = Vec::zero();
 		for (size_t i = 0; i < N; ++i) COM += particles[i].predicted;
-		return COM / static_cast<double>(N);
+		return COM / static_cast<num_t>(N);
 	}
 
 	void solveInnerConstraints() { PBD::projectConstraints(constraints); }
