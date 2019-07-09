@@ -2,6 +2,7 @@
 #define MECACELL_WORLD_H
 #include <array>
 #include <functional>
+#include <mutex>
 #include <unordered_set>
 #include <utility>
 #include <vector>
@@ -9,7 +10,6 @@
 #include "utilities/hooktools.hpp"
 #include "utilities/threadpool.hpp"
 #include "utilities/utils.hpp"
-#include <mutex>
 
 namespace MecaCell {
 
@@ -218,10 +218,10 @@ template <typename Cell, typename Integrator = Euler> class World {
 	 */
 	void addCell(Cell *c) {
 		if (c) {
-			cellLock.lock();
+			// cellLock.lock();
 			newCells.push_back(c);
 			c->id = nbAddedCells++;
-			cellLock.unlock();
+			// cellLock.unlock();
 		}
 	}
 
@@ -286,9 +286,9 @@ template <typename Cell, typename Integrator = Euler> class World {
 	 * (see parallelUpdateBehavior and nbThreads)
 	 */
 	void callUpdateBehavior() {
-		const size_t MIN_CHUNK_SIZE = 500;
-		const double AVG_TASKS_PER_THREAD = 2000.0;
 		if (parallelUpdateBehavior && nbThreads > 0) {
+			const size_t MIN_CHUNK_SIZE = 500;
+			const double AVG_TASKS_PER_THREAD = 2000.0;
 			threadpool.autoChunks(cells, MIN_CHUNK_SIZE, AVG_TASKS_PER_THREAD,
 			                      [this](auto *c) { c->updateBehavior(*this); });
 			threadpool.waitUntilLast();

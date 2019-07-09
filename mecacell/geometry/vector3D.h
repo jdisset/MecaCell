@@ -52,6 +52,7 @@ class Vector3D {
 	 * @return  coords[i]
 	 */
 	num_t &operator[](const size_t &i) { return coords[i]; }
+	const num_t &operator[](const size_t &i) const { return coords[i]; };
 
 	/**
 	 * @brief dot product calculation

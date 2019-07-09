@@ -4,7 +4,7 @@
 
 namespace MecaCell {
 
-using num_t = float;
+using num_t = double;
 
 struct Config {
 	// TYPES

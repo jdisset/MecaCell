@@ -20,8 +20,10 @@ namespace MecaCell {
  */
 template <typename O> class Grid {
  public:
-	using ivec_t = std::array<int, 3>;
-	using AABB_t = std::pair<ivec_t, ivec_t>;
+	// using ivec_t = std::array<int, 3>;
+	// using AABB_t = std::pair<ivec_t, ivec_t>;
+	using ivec_t = Vec;
+	using AABB_t = std::pair<Vec, Vec>;
 
  private:
 	// template <typename K, typename V> using umap = ska::flat_hash_map<K, V>;
@@ -75,7 +77,8 @@ template <typename O> class Grid {
 	}
 
 	inline size_t vecToColor(const ivec_t &v) const {
-		return (abs(v[0]) % 2) + (abs(v[1]) % 2) * 2 + (abs(v[2]) % 2) * 4;
+		decltype(v[0]) M = 2;
+		return static_cast<size_t>(fmod(abs(v[0]), M) + fmod(abs(v[1]), M) * 2 + fmod(abs(v[2]), M) * 4);
 	}
 
 	template <typename V> void insert(V &&k, const O &o) {
@@ -104,7 +107,8 @@ template <typename O> class Grid {
 		       (a.first.z() <= b.second.z() && a.second.z() >= b.first.z());
 	}
 
-	static int fastFloor(const num_t &n) { return static_cast<int>(std::floor(n)); }
+	// static int fastFloor(const num_t &n) { return static_cast<int>(std::floor(n)); }
+	static auto fastFloor(const num_t &n) { return std::floor(n); }
 
 	// static inline int fastFloor(const num_t &n) { return static_cast<int>(n + 10000000) -
 	// 10000000; } // faster but dangerous
@@ -120,8 +124,8 @@ template <typename O> class Grid {
 		Vec minCorner = realAABB.first * cellSize;
 		Vec maxCorner = realAABB.second * cellSize;
 		return std::make_pair<ivec_t, ivec_t>(
-		    {{fastFloor(minCorner.x()), fastFloor(minCorner.y()), fastFloor(minCorner.z())}},
-		    {{fastFloor(maxCorner.x()), fastFloor(maxCorner.y()), fastFloor(maxCorner.z())}});
+		    ivec_t{fastFloor(minCorner.x()), fastFloor(minCorner.y()), fastFloor(minCorner.z())},
+		    ivec_t{fastFloor(maxCorner.x()), fastFloor(maxCorner.y()), fastFloor(maxCorner.z())});
 	}
 
 	inline AABB_t getAABB(const Vec &center, const num_t &rad) const {
@@ -139,10 +143,10 @@ template <typename O> class Grid {
 
 	// insert when the aabb is already computed
 	void insert(const O &obj, const AABB_t &aabb) {
-		for (int i = aabb.first[0]; i <= aabb.second[0]; ++i) {
-			for (int j = aabb.first[1]; j <= aabb.second[1]; ++j) {
-				for (int k = aabb.first[2]; k <= aabb.second[2]; ++k) {
-					insert(ivec_t{{i, j, k}}, obj);
+		for (auto i = aabb.first[0]; i <= aabb.second[0]; ++i) {
+			for (auto j = aabb.first[1]; j <= aabb.second[1]; ++j) {
+				for (auto k = aabb.first[2]; k <= aabb.second[2]; ++k) {
+					insert(ivec_t{i, j, k}, obj);
 				}
 			}
 		}
@@ -153,9 +157,9 @@ template <typename O> class Grid {
 	}
 
 	void remove(const O &obj, const AABB_t &aabb) {
-		for (int i = aabb.first[0]; i <= aabb.second[0]; ++i) {
-			for (int j = aabb.first[1]; j <= aabb.second[1]; ++j) {
-				for (int k = aabb.first[2]; k <= aabb.second[2]; ++k) {
+		for (auto i = aabb.first[0]; i <= aabb.second[0]; ++i) {
+			for (auto j = aabb.first[1]; j <= aabb.second[1]; ++j) {
+				for (auto k = aabb.first[2]; k <= aabb.second[2]; ++k) {
 					ivec_t v{{i, j, k}};
 					auto &gridVec = orderedVec[um[v]].second;
 					gridVec.erase(std::remove(gridVec.begin(), gridVec.end(), obj), gridVec.end());
@@ -177,9 +181,9 @@ template <typename O> class Grid {
 	vector<O> retrieve(const Vec &center, num_t radius) const {
 		unique_vector<O> res;
 		auto aabb = getAABB(center, radius);
-		for (int i = aabb.first[0]; i <= aabb.second[0]; ++i) {
-			for (int j = aabb.first[1]; j <= aabb.second[1]; ++j) {
-				for (int k = aabb.first[2]; k <= aabb.second[2]; ++k) {
+		for (auto i = aabb.first[0]; i <= aabb.second[0]; ++i) {
+			for (auto j = aabb.first[1]; j <= aabb.second[1]; ++j) {
+				for (auto k = aabb.first[2]; k <= aabb.second[2]; ++k) {
 					ivec_t v{{i, j, k}};
 					if (um.count(v))
 						res.insert(orderedVec[um.at(v)].second.begin(),
