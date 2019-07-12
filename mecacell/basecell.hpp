@@ -32,15 +32,14 @@ template <class Derived, template <class> class Body> class BaseCell {
 	friend embedded_plugin_t;
 
  protected:
-	body_t body;        // body contains cell physics implementation
+	body_t& body;       // body contains cell physics implementation
 	bool dead = false;  // when a cell is dead it is flagged for destruction
 
  public:
 	/*----------------------------------------------------------------------------*\
 	|   	 			 		  	 CONSTRUCTORS								   |
 	\*----------------------------------------------------------------------------*/
-	BaseCell(const Derived &) : body(static_cast<Derived *>(this)) {}
-	BaseCell(const vec_t &pos) : body(static_cast<Derived *>(this), pos) {}
+	BaseCell() {}
 
 	/*----------------------------------------------------------------------------*\
 	|   	 			   				 ID										   |
@@ -56,7 +55,7 @@ template <class Derived, template <class> class Body> class BaseCell {
 	void die() { dead = true; }     // flag the cell for destruction
 	bool isDead() { return dead; }  // simple getter
 	auto getPosition() { return body.getPosition(); }
-	body_t &getBody() { return body; }
+	body_t& getBody() { return body; }
 	num_t getColor(unsigned int) { return 0.7; }
 	bool getVisible() { return true; }
 	num_t getBoundingBoxRadius() { return body.getBoundingBoxRadius(); }

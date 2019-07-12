@@ -184,19 +184,10 @@ void step(M &positions, M &velocities, const M &forces, M &predicted, const W &w
 */
 
 // Generalistic distance constraint between 2 points
-template <typename Vec_t, bool mustBeEqual = true> struct DistanceConstraint {
-	static const constexpr unsigned int N = 2;  // nb of particles
-	const std::array<Vec_t *, N> X{nullptr,
-	                               nullptr};  // pointers to the particles positions
-	const std::array<num_t, N> W;             // inverse of mass
-	const num_t d;                            // target distance between the 2 points
-	const num_t k;                            // stiffness of the constraint
-
-	DistanceConstraint(const std::array<Vec_t *, N> &x, const std::array<num_t, N> &w,
-	                   num_t dist, num_t stiffness = 1.0f)
-	    : X(x), W(w), d(dist), k(stiffness) {}
-
-	void solve() const {
+template <bool mustBeEqual = true> struct DistanceConstraint {
+	template <typename Vec_t>
+	static inline void solve(const std::array<Vec_t *, 2> &X, const std::array<num_t, 2> &W,
+	                         const num_t &d, num_t k = 1.0f) {
 		auto v = *(X[1]) - *(X[0]);  // v = X1 -> X2
 		num_t l = v.squaredNorm();
 		num_t constraintValue = l - d * d;
@@ -218,6 +209,10 @@ template <typename Vec_t, bool mustBeEqual = true> struct DistanceConstraint {
 		}
 	}
 };
+// Elastic constraint between 2 particles
+using ElasticConstraint = DistanceConstraint<true>;
+// Collision constraint between 2 particles
+using CollisionConstraint = DistanceConstraint<false>;
 
 // Generalistic distance constraint between 1 paricle and 1 fixed point
 template <typename P> struct FixedToPointConstraint {
@@ -242,15 +237,10 @@ vec_t computeDeltaPerp(const std::array<vec_t *, 2> &X, const std::array<vec_t *
 	return A - (n * A.dot(n));
 }
 
-template <typename P> struct FrictionConstraint {
-	P &p0;
-	P &p1;
-	num_t fs;
-	num_t fk;
-	FrictionConstraint(P &a, P &b, num_t staticFriction, num_t kineticFriction)
-	    : p0(a), p1(b), fs(staticFriction), fk(kineticFriction) {}
-
-	void solve() const {
+struct FrictionConstraint {
+	template <typename P>
+	static inline void solve(P &p0, P &p1, const num_t &staticFriction,
+	                         const num_t &kineticFriction) {
 		auto p0p1 = p1.predicted - p0.predicted;
 		num_t l = p0p1.squaredNorm();
 		num_t penetration = std::pow(p0.radius + p1.radius, 2) - l;
@@ -267,8 +257,8 @@ template <typename P> struct FrictionConstraint {
 			auto w0 = (p0.w / (p0.w + p1.w));
 
 			auto dx0 = tengential * w0;
-			if (tengentialNorm > (fs * penetration))
-				dx0 *= std::min(fk * penetration / tengentialNorm, 1.0);
+			if (tengentialNorm > (staticFriction * penetration))
+				dx0 *= std::min(kineticFriction * penetration / tengentialNorm, 1.0);
 
 			auto dx1 = -(p1.w / (p0.w + p1.w)) * dx0;
 
@@ -278,139 +268,24 @@ template <typename P> struct FrictionConstraint {
 	}
 };
 
-// Collision between 2 particles with static and kinetic friction
-template <typename Vec_t> struct CollisionFrictionConstraint {
-	static const constexpr unsigned int N = 2;  // nb of particles
-	const std::array<Vec_t *, N> X{
-	    nullptr, nullptr};  // pointers to the particles new projected positions
-	const std::array<Vec_t *, N> prevX{nullptr,
-	                                   nullptr};  // pointers to the particles positions
-	const std::array<num_t, N> W;                 // inverse of mass
-	const num_t d;                                // target distance between the 2 points
-	const num_t fs;                               // static friction coef
-	const num_t fk;                               // kinetic friction coef
-	const num_t k;                                // stiffness of the constraint
-
-	CollisionFrictionConstraint(const std::array<Vec_t *, N> &x,
-	                            const std::array<Vec_t *, N> &prevx,
-	                            const std::array<num_t, N> &w, num_t dist,
-	                            num_t staticFriction, num_t kineticFriction,
-	                            num_t stiffness)
-	    : X(x),
-	      prevX(prevx),
-	      W(w),
-	      d(dist),
-	      fs(staticFriction),
-	      fk(kineticFriction),
-	      k(stiffness) {}
-
-	void solve() const {
-		auto v = *(X[1]) - *(X[0]);  // v = X1 -> X2
-		num_t l = v.squaredNorm();
-		num_t constraintValue = l - d * d;
-		if (constraintValue < 0) {  // collision
-			l = std::sqrt(l);
-			constraintValue = l - d;
-			Vec_t n;  // n = normal. (default to {1,0,...} if l == 1)
-			if (l > 0)
-				n = v / l;
-			else
-				n[0] = 1;
-
-			// definition of the gradient, stored  in a RowVector form:
-			std::array<Vec_t, 2> gradient{{n, -n}};
-
-			// compute dx and update the positions
-			auto dx = PBD::computeDX(constraintValue, gradient, W);
-			for (size_t i = 0; i < X.size(); ++i) *(X[i]) = *(X[i]) + k * dx[i];
-			// apply friction correction
-			auto newN = (*(X[1]) - *(X[0])).normalized();
-			auto dPerp = computeDeltaPerp(X, prevX, newN);
-			auto dPNorm = dPerp.norm();
-			auto w = W[0] / (W[0] + W[1]);
-			auto penetration = -constraintValue;
-			Vec_t dx0;
-			if (dPNorm < fs * penetration)
-				dx0 = w * dPerp;
-			else
-				dx0 = w * dPerp * (std::min(fk * penetration / dPNorm, 1.0));
-
-			auto dx1 = -(W[1] / (W[1] + W[0])) * dx0;
-
-			//*(X[0]) = *(X[0]) + dx0;
-			//*(X[1]) = *(X[1]) + dx1;
-		}
-	}
-};
-
-// distance and stiffness can change
-template <typename Vec_t, bool mustBeEqual = true> struct DistanceConstraint_REF {
-	static const constexpr unsigned int N = 2;  // nb of particles
-	const std::array<Vec_t *, N> X{nullptr,
-	                               nullptr};  // pointers to the particles positions
-	const std::array<num_t, N> W;             // inverse of mass
-	const num_t &d;                           // target distance between the 2 points
-	const num_t &k;                           // stiffness of the constraint
-
-	DistanceConstraint_REF(const std::array<Vec_t *, N> &x, const std::array<num_t, N> &w,
-	                       const num_t &dist, const num_t &stiffness)
-	    : X(x), W(w), d(dist), k(stiffness) {}
-
-	void solve() const {
-		DistanceConstraint c{X, W, d, k};
-		c.solve();
-	}
-};
-
-// Constraint for 3 points to be aligned
-template <typename Vec_t> struct AlignmentConstraint {
-	const std::array<Vec_t *, 3> X{nullptr,
-	                               nullptr};  // pointers to the particles positions
-	const std::array<num_t, 3> W;             // inverse of mass
-	const num_t k;                            // stiffness of the constraint
-	AlignmentConstraint(const std::array<Vec_t *, 3> &x, const std::array<num_t, 3> &w,
-	                    num_t stiffness = 1.0f)
-	    : X(x), W(w), k(stiffness) {}
-
-	void solve() const {
-		// TODO
-	}
-};
-
-template <typename Vec_t> struct GroundConstraint {
-	const Vec_t P;  // point on the plane
-	const Vec_t N;  // normal of the ground (particles should be above)
-	Vec_t *X;       // pointer to the particle position
-	const num_t W;  // inverse of mass
-	const num_t d;  // target distance between the plane and the particle
-	const num_t k;  // constraint stiffness
-
-	GroundConstraint(const Vec_t &p, const Vec_t &n, Vec_t *x, num_t w, num_t dist,
-	                 num_t stiffness)
-	    : P(p), N(n), X(x), W(w), d(dist), k(stiffness) {}
-
-	void solve() const {
-		num_t constraintValue = (*X - P).dot(N) - d;
+struct GroundConstraint {
+	template <typename Vec_t>
+	static inline void solve(const Vec_t &O, const Vec_t &N, Vec_t *X, num_t W, num_t d,
+	                         num_t k) {
+		//std::cerr << " .... groundConstraint 0" << std::endl;
+		num_t constraintValue = (*X - O).dot(N) - d;
 		if (constraintValue < 0) {
 			auto dx = k * PBD::computeDX(constraintValue, -N, W);
 			(*X) += dx;
 		}
+		//std::cerr << " .... groundConstraint 1" << std::endl;
 	}
 };
 
-template <typename Vec_t, typename Part = Particle<Vec_t>>
 struct GroundFrictionConstraint {
-	Part &p;
-	const Vec_t O;   // point on the plane
-	const Vec_t N;   // normal of the ground (particles should be above)
-	const num_t sF;  // static friction
-	const num_t kF;  // kinetic friction
-
-	GroundFrictionConstraint(Part &p, const Vec_t &o, const Vec_t &n,
-	                         num_t staticFriction = 0.0, num_t kineticFriction = 0.0)
-	    : p(p), O(o), N(n), sF(staticFriction), kF(kineticFriction) {}
-
-	void solve() const {
+	template <typename Part, typename Vec_t>
+	static inline void solve(Part &p, const Vec_t &O, const Vec_t &N, num_t sF = 0.0,
+	                         num_t kF = 0.0) {
 		num_t penetration1 = -(p.position - O).dot(N) + p.radius;
 		num_t penetration2 = -(p.predicted - O).dot(N) + p.radius;
 		num_t penetration = std::max(penetration1, penetration2);
@@ -445,11 +320,5 @@ template <typename Vec_t> struct PlaneConstraint {
 		(*X) += dx;
 	}
 };
-
-// Elastic constraint between 2 particles
-template <typename Vec_t> using ElasticConstraint = DistanceConstraint<Vec_t, true>;
-
-// Collision constraint between 2 particles
-template <typename Vec_t> using CollisionConstraint = DistanceConstraint<Vec_t, false>;
 
 }  // namespace PBD

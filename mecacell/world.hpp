@@ -23,12 +23,13 @@ namespace MecaCell {
  * @tparam Cell the user's cell type
  * @tparam Integrator the type of integrator to use. Defaults to semi-explicit Euler
  */
-template <typename Cell, typename Integrator = Euler> class World {
+template <typename Cell, typename Body, typename Integrator = Euler> class World {
  private:
 	size_t nbThreads = 0;
 
  public:
 	using cell_t = Cell;
+	using body_t = Body;
 	using integrator_t = Integrator;
 	using hook_s = void(World *);  /// hook signature, as they should appear in
 	                               /// plugins classes. cf. hooks & plugins section
@@ -36,7 +37,7 @@ template <typename Cell, typename Integrator = Euler> class World {
 	ThreadPool threadpool;  // threadpool that can be used by plugins (and is also used to
 	                        // parallelize updateBehavior)
 
-	/// A cell type can define one embedded plugin class type which will be
+	/// A body type can define one embedded plugin class type which will be
 	/// instanciated in the world.
 	/// This can be useful, for example, to declare a collision system that stores
 	/// connections at world level. As this kind of things are common & tightly related to
@@ -55,10 +56,10 @@ template <typename Cell, typename Integrator = Euler> class World {
 	struct embedded_plugin_type<T, void_t<typename T::embedded_plugin_t>> {
 		using type = typename T::embedded_plugin_t;  // embedded plugin detected
 	};
-	using cellPlugin_t =
-	    typename embedded_plugin_type<cell_t>::type;  // either dumb empty struct or the
+	using bodyPlugin_t =
+	    typename embedded_plugin_type<body_t>::type;  // either dumb empty struct or the
 	                                                  // plugin type
-	                                                  // defined by Cell (if existing)
+	                                                  // defined by Body (if existing)
  protected:
 	unsigned long long int frame = 0;         /// +1 at each update. cf getNbUpdates()
 	unsigned long long int nbAddedCells = 0;  /// +1 on cell add. Used for cell's unique ids
@@ -72,14 +73,9 @@ template <typename Cell, typename Integrator = Euler> class World {
 	 * @brief removes all cells marked dead
 	 */
 	void deleteDeadCells() {
-		for (auto i = cells.begin(); i != cells.end();) {
-			if ((*i)->isDead()) {
-				auto tmp = *i;
-				i = cells.erase(i);
-				delete tmp;
-			} else {
-				++i;
-			}
+		// TODO
+		assert(bodies.size() == cells.size());
+		for (size_t i = 0; i < cells.size(); ++i) {
 		}
 	}
 
@@ -89,14 +85,16 @@ template <typename Cell, typename Integrator = Euler> class World {
 	             postBehaviorUpdate, endUpdate, allForcesAppliedToCells, destructor)
 
  public:
-	double dt = 1.0 / 100.0;  /// The amount by which time is increased every update
-	cellPlugin_t cellPlugin;  // instance of the embedded cell plugin type
-	                          // (cellPlugin_t default to a dumb char if not specified)
+	double dt = 1.0 / 100.0;  // The amount by which time is increased every update
+	bodyPlugin_t bodyPlugin;  // instance of the embedded cell plugin type
+	                          // (bodyPlugin_t default to a dumb char if not specified)
 
-	std::vector<Cell *> newCells;  /// cells that are registered to be added
+	std::vector<cell_t> newCells;   // cells that are registered to be added
+	std::vector<body_t> newBodies;  // all the bodies are in this container
 
 	/* CELLS */
-	std::vector<Cell *> cells;  /// all the cells are in this container
+	std::vector<cell_t> cells;   // all the cells are in this container
+	std::vector<body_t> bodies;  // all the bodies are in this container
 
 	/**
 	 * @brief World constructor, registers the (optional) cell type's embedded plugin
@@ -107,7 +105,7 @@ template <typename Cell, typename Integrator = Euler> class World {
 	 * that can take advantage of parallelism
 	 */
 	World(size_t nThreads = 0) : nbThreads(nThreads), threadpool(nThreads) {
-		registerPlugins(cellPlugin);
+		registerPlugins(bodyPlugin);
 	}
 
 	/**
@@ -193,36 +191,21 @@ template <typename Cell, typename Integrator = Euler> class World {
 	size_t getNbUpdates() const { return frame; }
 
 	/**
-	 * @brief Creates a new cell and adds it through addCell()
-	 *
-	 * @tparam Args
-	 * @param args Cell's constructor parameters
-	 *
-	 * @return a pointer to the new Cell
-	 */
-	template <typename... Args> Cell *createCell(Args &&... args) {
-		Cell *c = new Cell(std::forward<Args>(args)...);
-		addCell(c);
-		return c;
-	}
-
-	/**
 	 * @brief adds a cell to the new cells batch (which will be added to the main cells
 	 * container at the end of the update cycle - or can be forced manually)
+	 * Its body is assumed to be bodies.back();
 	 *
-	 * Construction can be done by the user but deletion is automatically handled by
-	 * the world (ex. ' addCell(new MyCell()); ' ). createCell(...) should probably be used
-	 * instead.
+	 * @param c a cell
+	 * @param b its body
 	 *
-	 * @param c a pointer to the cell
+	 * returns the cell id
 	 */
-	void addCell(Cell *c) {
-		if (c) {
-			// cellLock.lock();
-			newCells.push_back(c);
-			c->id = nbAddedCells++;
-			// cellLock.unlock();
-		}
+	size_t addCell(cell_t &&c, Body &&b) {
+		newCells.emplace_back(c);
+		newBodies.emplace_back(b);
+		newCells.back().id = nbAddedCells;
+		newBodies.back().id = nbAddedCells;
+		nbAddedCells++;
 	}
 
 	/**
@@ -232,8 +215,14 @@ template <typename Cell, typename Integrator = Euler> class World {
 	void addNewCells() {
 		if (newCells.size()) {
 			for (auto &f : hooks[eToUI(Hooks::onAddCell)]) f(this);
-			cells.insert(cells.end(), newCells.begin(), newCells.end());
+
+			cells.reserve(newCells.size());
+			for (auto &c : newCells) cells.emplace_back(std::move(c));
+			bodies.reserve(newBodies.size());
+			for (auto &b : newBodies) bodies.emplace_back(std::move(b));
+
 			newCells.clear();
+			newBodies.clear();
 		}
 	}
 
@@ -266,34 +255,18 @@ template <typename Cell, typename Integrator = Euler> class World {
 	void setUpdateBehaviorPeriod(size_t p) { updtBhvPeriod = p; }
 
 	/**
-	 * @brief returns a list of pair of connected cells
-	 *
-	 * @return
-	 */
-	std::vector<std::pair<cell_t *, cell_t *>> getConnectedCellsList() {
-		std::unordered_set<ordered_pair<cell_t *>> res;
-		for (auto &c : cells) {
-			for (auto &connected : c->getConnectedCells())
-				res.insert(make_ordered_cell_pair(c, connected));
-		}
-		std::vector<std::pair<cell_t *, cell_t *>> vecRes;
-		for (auto &r : res) vecRes.push_back(std::make_pair(r.first, r.second));
-		return vecRes;
-	}
-
-	/**
 	 * @brief calls the updateBehavior of each cell, potentially in parallel
 	 * (see parallelUpdateBehavior and nbThreads)
 	 */
 	void callUpdateBehavior() {
-		if (parallelUpdateBehavior && nbThreads > 0) {
-			const size_t MIN_CHUNK_SIZE = 500;
-			const double AVG_TASKS_PER_THREAD = 2000.0;
-			threadpool.autoChunks(cells, MIN_CHUNK_SIZE, AVG_TASKS_PER_THREAD,
-			                      [this](auto *c) { c->updateBehavior(*this); });
-			threadpool.waitUntilLast();
-		} else
-			for (auto &c : cells) c->updateBehavior(*this);
+		/*     if (parallelUpdateBehavior && nbThreads > 0) {*/
+		// const size_t MIN_CHUNK_SIZE = 500;
+		// const double AVG_TASKS_PER_THREAD = 2000.0;
+		// threadpool.autoChunks(cells, MIN_CHUNK_SIZE, AVG_TASKS_PER_THREAD,
+		//[this](auto *c) { c->updateBehavior(*this); });
+		// threadpool.waitUntilLast();
+		/*} else*/
+		for (size_t i = 0; i < cells.size(); ++i) cells[i].updateBehavior(*this, bodies[i]);
 	}
 
 	/**
@@ -309,14 +282,23 @@ template <typename Cell, typename Integrator = Euler> class World {
 	 * - endUpdate
 	 */
 	void update() {
+		// std::cerr<<"WORLD UPDATE 0"<<std::endl;
 		for (auto &f : hooks[eToUI(Hooks::beginUpdate)]) f(this);
+		// std::cerr<<"WORLD UPDATE 1"<<std::endl;
 		for (auto &f : hooks[eToUI(Hooks::preBehaviorUpdate)]) f(this);
+		// std::cerr<<"WORLD UPDATE 2"<<std::endl;
 		if (frame % updtBhvPeriod == 0) callUpdateBehavior();
+		// std::cerr<<"WORLD UPDATE 3"<<std::endl;
 		addNewCells();
+		// std::cerr<<"WORLD UPDATE 4"<<std::endl;
 		for (auto &f : hooks[eToUI(Hooks::preDeleteDeadCellsUpdate)]) f(this);
+		// std::cerr<<"WORLD UPDATE 5"<<std::endl;
 		deleteDeadCells();
+		// std::cerr<<"WORLD UPDATE 6"<<std::endl;
 		for (auto &f : hooks[eToUI(Hooks::postBehaviorUpdate)]) f(this);
+		// std::cerr<<"WORLD UPDATE 7"<<std::endl;
 		for (auto &f : hooks[eToUI(Hooks::endUpdate)]) f(this);
+		// std::cerr<<"WORLD UPDATE 8"<<std::endl;
 		++frame;
 	}
 
@@ -325,8 +307,6 @@ template <typename Cell, typename Integrator = Euler> class World {
 	 */
 	~World() {
 		for (auto &f : hooks[eToUI(Hooks::destructor)]) f(this);
-		while (!cells.empty()) delete cells.back(), cells.pop_back();
-		while (!newCells.empty()) delete newCells.back(), newCells.pop_back();
 	}
 
 	// EXPORTABLE(World, KV(frame), KV(dt), KV(cells));

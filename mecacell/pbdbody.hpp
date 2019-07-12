@@ -7,21 +7,18 @@
 
 namespace MecaCell {
 
-template <size_t N, typename Cell> struct PBDBody_particles {
+template <size_t N> struct PBDBody_particles {
 	static_assert(N > 0);
 
+	size_t id = 0;
+
 	static const constexpr size_t N_PARTICLES = N;
-
-	Cell* cell = nullptr;
-
-	using embedded_plugin_t = PBDPlugin<Cell>;
+	using embedded_plugin_t = PBDPlugin<PBDBody_particles<N>>;
 	num_t distanceStiffness = 0.8;  // for collisions with other cells
 	num_t innerDistanceStiffness = 1.0;
 	num_t bendingStiffness = 0.0;
 
-	PBD::ConstraintContainer<PBD::DistanceConstraint_REF<Vec>,
-	                         PBD::CollisionConstraint<Vec>, PBD::AlignmentConstraint<Vec>>
-	    constraints;
+	// PBD::ConstraintContainer<PBD::DistanceConstraint_REF<Vec>> constraints;
 
 	num_t length = 1.0;
 	num_t individualChainLength = 0.0;
@@ -34,41 +31,15 @@ template <size_t N, typename Cell> struct PBDBody_particles {
 		return COM / static_cast<num_t>(N);
 	}
 
-	void solveInnerConstraints() { PBD::projectConstraints(constraints); }
-
-	void generateConstraints() {
-		constraints.clear();
-		constraints.reserve<PBD::DistanceConstraint_REF<Vec>>(N - 1);
-		setLength(length);
-
-		// distance constraints between each particles
-		for (size_t i = 0; i < N - 1; ++i) {
-			constraints.addConstraint(PBD::DistanceConstraint_REF<Vec>(
-			    {{&particles[i].predicted, &particles[i + 1].predicted}},
-			    {{particles[i].w, particles[i + 1].w}}, individualChainLength,
-			    innerDistanceStiffness));
+	void solveInnerConstraints() {
+		if constexpr (N > 1) {
+			for (size_t i = 0; i < N - 1; ++i) {
+				PBD::ElasticConstraint::solve(
+				    {{&particles[i].predicted, &particles[i + 1].predicted}},
+				    {{particles[i].w, particles[i + 1].w}}, individualChainLength,
+				    innerDistanceStiffness);
+			}
 		}
-
-		//// self-collision
-		// for (size_t i = 0; i < N - 1; ++i) {
-		// for (size_t j = i + 1; j < N; ++j) {
-		// constraints.addConstraint(PBD::CollisionConstraint<Vec>(
-		//{{&particles[i].predicted, &particles[j].predicted}},
-		//{{particles[i].w, particles[j].w}}, particles[i].radius + particles[j].radius,
-		// distanceStiffness));
-		//}
-		//}
-
-		//// alignment constraints
-		// if constexpr (N > 2) {
-		// for (size_t i = 0; i < N - 2; ++i) {
-		// constraints.addConstraint(PBD::AlignmentConstraint<Vec>(
-		//{{&particles[i].predicted, &particles[i + 1].predicted,
-		//&particles[i + 2].predicted}},
-		//{{particles[i].w, particles[i + 1].w, particles[i + 2].w}},
-		// bendingStiffness));
-		//}
-		//}
 	}
 
 	void setLength(num_t l) {
@@ -79,12 +50,9 @@ template <size_t N, typename Cell> struct PBDBody_particles {
 		}
 	}
 
-	PBDBody_particles(Cell* c) : cell(c) { generateConstraints(); }
+	PBDBody_particles() {}
 
-	PBDBody_particles(Cell* c, const Vec& p) : cell(c) {
-		setPosition(p);
-		generateConstraints();
-	}
+	PBDBody_particles(const Vec& p) { setPosition(p); }
 
 	num_t getActualLength() {
 		num_t l = 0;
@@ -93,12 +61,12 @@ template <size_t N, typename Cell> struct PBDBody_particles {
 		return l;
 	}
 
-	Vec getPosition() {
+	Vec getPosition() const {
 		// returns the position of the first particle
 		return particles[0].position;
 	}
 
-	Vec getVelocity() {
+	Vec getVelocity() const {
 		// returns the average velocity
 		if constexpr (N == 0)
 			return particles[0].velocity;
@@ -109,7 +77,7 @@ template <size_t N, typename Cell> struct PBDBody_particles {
 		}
 	}
 
-	std::pair<Vec, Vec> getAABB() {
+	std::pair<Vec, Vec> getAABB() const {
 		// returns an axis aligned bounding box
 		const constexpr num_t LOWEST = std::numeric_limits<num_t>::lowest();
 		const constexpr num_t HIGHEST = std::numeric_limits<num_t>::max();
@@ -159,7 +127,6 @@ template <size_t N, typename Cell> struct PBDBody_particles {
 
 	void setRadius(const num_t& r) {
 		for (auto& p : particles) p.radius = r;
-		generateConstraints();
 	}
 
 	num_t getBoundingBoxRadius() const { return particles[0].radius; }
@@ -167,7 +134,7 @@ template <size_t N, typename Cell> struct PBDBody_particles {
 	EXPORTABLE(PBDBody_particles, KV(particles));
 };
 
-template <typename C> using PBDBody_singleParticle = MecaCell::PBDBody_particles<1, C>;
+using PBDBody_singleParticle = MecaCell::PBDBody_particles<1>;
 
 }  // namespace MecaCell
 

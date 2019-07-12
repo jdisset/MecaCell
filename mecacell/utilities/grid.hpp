@@ -114,13 +114,13 @@ template <typename O> class Grid {
 	// 10000000; } // faster but dangerous
 
 	static inline std::pair<Vec, Vec> getAABBVec(const O &obj,
-	                                             const num_t radFactor = 1.0) {
+	                                             const num_t radFactor = 1.0){
 		const Vec &center = ptr(obj)->getPosition();
 		const Vec R{ptr(obj)->getBoundingBoxRadius() * radFactor};
 		return std::make_pair<Vec, Vec>(center - R, center + R);
 	}
 
-	inline AABB_t getAABB(const std::pair<Vec, Vec> &realAABB) {
+	inline AABB_t getAABB(const std::pair<Vec, Vec> &realAABB) const {
 		Vec minCorner = realAABB.first * cellSize;
 		Vec maxCorner = realAABB.second * cellSize;
 		return std::make_pair<ivec_t, ivec_t>(
