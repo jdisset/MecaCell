@@ -3,8 +3,7 @@
 #include "integrators.hpp"
 #include "pbd.hpp"
 #include "utilities/grid.hpp"
-
-//#define REINSERT
+#include "utilities/simple2dgrid.hpp"
 
 namespace MecaCell {
 template <typename Body> struct PBDPlugin {
@@ -18,12 +17,17 @@ template <typename Body> struct PBDPlugin {
 	size_t iterations = 1;
 	size_t constraintGenerationFreq = 1;
 	num_t sleepingEpsilon = 1e-5;
-	num_t gridSize = 150;
+	num_t gridSize = 10;
 	num_t minSampleSize = 0.1;
 	num_t kineticFrictionCoef = 0.0;
 	num_t staticFrictionCoef = 0.0;
 
-	Grid<body_t *> grid{gridSize};
+	// using grid_t = Grid<body_t *>;
+	// grid_t grid{gridSize};
+
+	using grid_t = Simple2DGrid<body_t *>;
+
+	grid_t grid{-500, -500, 500, 500, gridSize};
 
 	std::vector<std::tuple<PBD::Particle<Vec> *, PBD::Particle<Vec> *, num_t>> constraints;
 
@@ -32,11 +36,12 @@ template <typename Body> struct PBDPlugin {
 
 	void setGridSize(num_t g) {
 		gridSize = g;
-		grid = Grid<body_t *>(gridSize);
+		// grid = grid_t(gridSize);
+		grid = grid_t(-500, -500, 500, 500, gridSize);
 	}
 
 	// helper to get the grid discretized Axis Aligned Bounding Box of a cell
-	typename Grid<body_t *>::AABB_t inline AABB(const body_t &b) const {
+	typename grid_t::AABB_t inline AABB(const body_t &b) const {
 		return grid.getAABB(b.getAABB());
 	}
 
@@ -60,7 +65,8 @@ template <typename Body> struct PBDPlugin {
 		assert(w->bodies.size() == c.bodies.size());
 		grid.clear();
 		std::uniform_real_distribution<num_t> d(0.0, 1.0);
-		for (size_t i = 0; i < w->bodies.size(); ++i) {
+		const size_t S = w->bodies.size();
+		for (size_t i = 0; i < S; ++i) {
 			num_t diceRoll = d(Config::globalRand());
 			if (diceRoll < std::max(minSampleSize, w->cells[i].activityLevel))
 				grid.insert(&w->bodies[i], AABB(w->bodies[i]));
@@ -75,9 +81,10 @@ template <typename Body> struct PBDPlugin {
 
 		auto &orderedVec = grid.getOrderedVec();
 		for (auto &gridCellPair : orderedVec) {
-			const auto &gridCell = gridCellPair.second;
-			for (size_t i = 0; i < gridCell.size(); ++i) {
-				for (size_t j = i + 1; j < gridCell.size(); ++j) {
+			const auto &gridCell = gridCellPair.second.get();
+			const size_t GRIDSIZE = gridCell.size();
+			for (size_t i = 0; i < GRIDSIZE; ++i) {
+				for (size_t j = i + 1; j < GRIDSIZE; ++j) {
 					if (!AABBCollisionEnabled ||
 					    (AABBCollisionEnabled &&
 					     grid.AABBCollision(AABB(*gridCell[i]), AABB(*gridCell[j])))) {
@@ -116,21 +123,21 @@ template <typename Body> struct PBDPlugin {
 			PBD::eulerIntegration(b.particles, dt);
 			b.resetForces();
 		}
-		//std::cerr << " --- PBDUPDATE 1" << std::endl;
+		// std::cerr << " --- PBDUPDATE 1" << std::endl;
 
 		// generate collisions
 		if (w->getNbUpdates() % constraintGenerationFreq == 0) {
 			reinsertAllCellsInGrid_withSample(w);
 			refreshConstraints(w);
 		}
-		//std::cerr << " --- PBDUPDATE 2" << std::endl;
+		// std::cerr << " --- PBDUPDATE 2" << std::endl;
 		// project constraints
 		for (unsigned int i = 0; i < iterations; ++i) {
-			//std::cerr << " ---  --- PBD_ITERATE 0" << std::endl;
+			// std::cerr << " ---  --- PBD_ITERATE 0" << std::endl;
 			for (auto &b : w->bodies) b.solveInnerConstraints();
-			//std::cerr << " ---  --- PBD_ITERATE 1" << std::endl;
+			// std::cerr << " ---  --- PBD_ITERATE 1" << std::endl;
 			for (auto &con : constraintSolveHook) con();
-			//std::cerr << " ---  --- PBD_ITERATE 2" << std::endl;
+			// std::cerr << " ---  --- PBD_ITERATE 2" << std::endl;
 			// collision constraints
 			for (auto &c : constraints) {
 				const auto &p0 = std::get<0>(c);
@@ -140,13 +147,13 @@ template <typename Body> struct PBDPlugin {
 				                                     {{p0->w, p1->w}}, p0->radius + p1->radius,
 				                                     distStiff);
 			}
-			//std::cerr << " ---  --- PBD_ITERATE 3" << std::endl;
+			// std::cerr << " ---  --- PBD_ITERATE 3" << std::endl;
 		}
-		//std::cerr << " --- PBDUPDATE 3" << std::endl;
+		// std::cerr << " --- PBDUPDATE 3" << std::endl;
 
 		for (auto &con : frictionSolveHook) con();
 
-		//std::cerr << " --- PBDUPDATE 4" << std::endl;
+		// std::cerr << " --- PBDUPDATE 4" << std::endl;
 		if (frictionEnabled) {
 			for (auto &c : constraints) {
 				const auto &p0 = std::get<0>(c);
@@ -154,9 +161,9 @@ template <typename Body> struct PBDPlugin {
 				PBD::FrictionConstraint::solve(*p0, *p1, staticFrictionCoef, kineticFrictionCoef);
 			}
 		}
-		//std::cerr << " --- PBDUPDATE 5" << std::endl;
+		// std::cerr << " --- PBDUPDATE 5" << std::endl;
 		updateParticles(w);
-		//std::cerr << " --- PBDUPDATE 6" << std::endl;
+		// std::cerr << " --- PBDUPDATE 6" << std::endl;
 	}
 
 	template <typename W> void endUpdate(W *w) { pbdUpdateRoutine(w); }

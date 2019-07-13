@@ -88,13 +88,13 @@ template <typename Vec_t, typename num_t, size_t N>
 std::array<Vec_t, N> computeDX(const num_t &con, const std::array<Vec_t, N> &gradient,
                                const std::array<num_t, N> &w) {
 	std::array<Vec_t, N> mdc;
-	for (size_t i = 0; i < mdc.size(); ++i) mdc[i] = w[i] * gradient[i];
+	for (size_t i = 0; i < N; ++i) mdc[i] = w[i] * gradient[i];
 
 	std::array<Vec_t, N> res;
 	auto gradientDotMdc = gradient[0].dot(mdc[0]);
-	for (size_t i = 1; i < res.size(); ++i) gradientDotMdc += gradient[i].dot(mdc[i]);
+	for (size_t i = 1; i < N; ++i) gradientDotMdc += gradient[i].dot(mdc[i]);
 	auto conOverG = con / gradientDotMdc;
-	for (size_t i = 0; i < res.size(); ++i) res[i] = conOverG * mdc[i];
+	for (size_t i = 0; i < N; ++i) res[i] = conOverG * mdc[i];
 	return res;
 }
 
@@ -205,7 +205,7 @@ template <bool mustBeEqual = true> struct DistanceConstraint {
 
 			// compute dx and update the positions
 			auto dx = PBD::computeDX(constraintValue, gradient, W);
-			for (size_t i = 0; i < X.size(); ++i) *(X[i]) = *(X[i]) + k * dx[i];
+			for (size_t i = 0; i < 2; ++i) *(X[i]) = *(X[i]) + k * dx[i];
 		}
 	}
 };
@@ -272,13 +272,13 @@ struct GroundConstraint {
 	template <typename Vec_t>
 	static inline void solve(const Vec_t &O, const Vec_t &N, Vec_t *X, num_t W, num_t d,
 	                         num_t k) {
-		//std::cerr << " .... groundConstraint 0" << std::endl;
+		// std::cerr << " .... groundConstraint 0" << std::endl;
 		num_t constraintValue = (*X - O).dot(N) - d;
 		if (constraintValue < 0) {
 			auto dx = k * PBD::computeDX(constraintValue, -N, W);
 			(*X) += dx;
 		}
-		//std::cerr << " .... groundConstraint 1" << std::endl;
+		// std::cerr << " .... groundConstraint 1" << std::endl;
 	}
 };
 

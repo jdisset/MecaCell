@@ -79,24 +79,29 @@ template <size_t N> struct PBDBody_particles {
 
 	std::pair<Vec, Vec> getAABB() const {
 		// returns an axis aligned bounding box
-		const constexpr num_t LOWEST = std::numeric_limits<num_t>::lowest();
-		const constexpr num_t HIGHEST = std::numeric_limits<num_t>::max();
-		Vec A{HIGHEST, HIGHEST, HIGHEST};
-		Vec B{LOWEST, LOWEST, LOWEST};
-		for (const auto& p : particles) {
-			const auto& x = p.position.x();
-			if (x - p.radius < A.x()) A.xRef() = x - p.radius;
-			if (x + p.radius > B.x()) B.xRef() = x + p.radius;
+		if constexpr (N == 1) {
+			const auto& p = particles[0];
+			return std::make_pair(p.position - p.radius, p.position + p.radius);
+		} else {
+			const constexpr num_t LOWEST = std::numeric_limits<num_t>::lowest();
+			const constexpr num_t HIGHEST = std::numeric_limits<num_t>::max();
+			Vec A{HIGHEST, HIGHEST, HIGHEST};
+			Vec B{LOWEST, LOWEST, LOWEST};
+			for (const auto& p : particles) {
+				const auto& x = p.position.x();
+				if (x - p.radius < A.x()) A.xRef() = x - p.radius;
+				if (x + p.radius > B.x()) B.xRef() = x + p.radius;
 
-			const auto& y = p.position.y();
-			if (y - p.radius < A.y()) A.yRef() = y - p.radius;
-			if (y + p.radius > B.y()) B.yRef() = y + p.radius;
+				const auto& y = p.position.y();
+				if (y - p.radius < A.y()) A.yRef() = y - p.radius;
+				if (y + p.radius > B.y()) B.yRef() = y + p.radius;
 
-			const auto& z = p.position.z();
-			if (z - p.radius < A.z()) A.zRef() = z - p.radius;
-			if (z + p.radius > B.z()) B.zRef() = z + p.radius;
+				const auto& z = p.position.z();
+				if (z - p.radius < A.z()) A.zRef() = z - p.radius;
+				if (z + p.radius > B.z()) B.zRef() = z + p.radius;
+			}
+			return std::make_pair(A, B);
 		}
-		return std::make_pair(A, B);
 	}
 
 	void setPosition(const Vec& c, const Vec& n = Vec(1, 0, 0)) {

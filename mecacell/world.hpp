@@ -214,6 +214,7 @@ template <typename Cell, typename Body, typename Integrator = Euler> class World
 	 */
 	void addNewCells() {
 		if (newCells.size()) {
+			auto prevSize = newCells.size();
 			for (auto &f : hooks[eToUI(Hooks::onAddCell)]) f(this);
 
 			cells.reserve(newCells.size());
@@ -223,6 +224,9 @@ template <typename Cell, typename Body, typename Integrator = Euler> class World
 
 			newCells.clear();
 			newBodies.clear();
+			// reserve for next round step (+10%)
+			newCells.reserve(prevSize + (prevSize / 10));
+			newBodies.reserve(prevSize + (prevSize / 10));
 		}
 	}
 
@@ -259,6 +263,7 @@ template <typename Cell, typename Body, typename Integrator = Euler> class World
 	 * (see parallelUpdateBehavior and nbThreads)
 	 */
 	void callUpdateBehavior() {
+		const size_t S = cells.size();
 		/*     if (parallelUpdateBehavior && nbThreads > 0) {*/
 		// const size_t MIN_CHUNK_SIZE = 500;
 		// const double AVG_TASKS_PER_THREAD = 2000.0;
@@ -266,7 +271,8 @@ template <typename Cell, typename Body, typename Integrator = Euler> class World
 		//[this](auto *c) { c->updateBehavior(*this); });
 		// threadpool.waitUntilLast();
 		/*} else*/
-		for (size_t i = 0; i < cells.size(); ++i) cells[i].updateBehavior(*this, bodies[i]);
+
+		for (size_t i = 0; i < S; ++i) cells[i].updateBehavior(*this, bodies[i]);
 	}
 
 	/**
