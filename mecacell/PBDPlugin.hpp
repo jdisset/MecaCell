@@ -5,11 +5,11 @@
 #include "utilities/grid.hpp"
 #include "utilities/simple2dgrid.hpp"
 
+#define USE_SIMPLE_GRID 0
+
 namespace MecaCell {
 template <typename Body> struct PBDPlugin {
 	using body_t = Body;  // meant to work with a PBDBody
-
-	using AABB_t = typename Grid<body_t *>::AABB_t;
 
 	bool frictionEnabled = true;
 	bool AABBCollisionEnabled = true;
@@ -22,12 +22,13 @@ template <typename Body> struct PBDPlugin {
 	num_t kineticFrictionCoef = 0.0;
 	num_t staticFrictionCoef = 0.0;
 
-	// using grid_t = Grid<body_t *>;
-	// grid_t grid{gridSize};
-
+#if USE_SIMPLE_GRID
 	using grid_t = Simple2DGrid<body_t *>;
-
 	grid_t grid{-500, -500, 500, 500, gridSize};
+#else
+	using grid_t = Grid<body_t *>;
+	grid_t grid{gridSize};
+#endif
 
 	std::vector<std::tuple<PBD::Particle<Vec> *, PBD::Particle<Vec> *, num_t>> constraints;
 
@@ -36,8 +37,11 @@ template <typename Body> struct PBDPlugin {
 
 	void setGridSize(num_t g) {
 		gridSize = g;
-		// grid = grid_t(gridSize);
+#if USE_SIMPLE_GRID
 		grid = grid_t(-500, -500, 500, 500, gridSize);
+#else
+		grid = grid_t(gridSize);
+#endif
 	}
 
 	// helper to get the grid discretized Axis Aligned Bounding Box of a cell
@@ -81,7 +85,11 @@ template <typename Body> struct PBDPlugin {
 
 		auto &orderedVec = grid.getOrderedVec();
 		for (auto &gridCellPair : orderedVec) {
+#if USE_SIMPLE_GRID
 			const auto &gridCell = gridCellPair.second.get();
+#else 
+			const auto &gridCell = gridCellPair.second;
+#endif
 			const size_t GRIDSIZE = gridCell.size();
 			for (size_t i = 0; i < GRIDSIZE; ++i) {
 				for (size_t j = i + 1; j < GRIDSIZE; ++j) {
