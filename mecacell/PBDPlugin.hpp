@@ -59,10 +59,7 @@ template <typename Body> struct PBDPlugin {
 
 	template <typename W> void reinsertAllCellsInGrid(W *w) {
 		grid.clear();
-		for (const auto &c : w->bodies) {
-			auto bb = AABB(c);
-			grid.insert(c, bb);
-		}
+		for (auto &b : w->bodies) grid.insert(&b, AABB(b));
 	}
 
 	template <typename W> void reinsertAllCellsInGrid_withSample(W *w) {
@@ -135,7 +132,8 @@ template <typename Body> struct PBDPlugin {
 
 		// generate collisions
 		if (w->getNbUpdates() % constraintGenerationFreq == 0) {
-			reinsertAllCellsInGrid_withSample(w);
+			//reinsertAllCellsInGrid_withSample(w);
+			reinsertAllCellsInGrid(w);
 			refreshConstraints(w);
 		}
 		// std::cerr << " --- PBDUPDATE 2" << std::endl;
