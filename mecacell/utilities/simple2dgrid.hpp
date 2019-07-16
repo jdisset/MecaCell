@@ -61,10 +61,7 @@ template <typename T> struct Simple2DGrid {
 
 	inline void clear() {
 		// TODO: reserve in grid. (use orderedVec to get an idea)
-		grid = std::vector<std::vector<T>>(w * h);
-		for (const auto& p : orderedVec) {
-			grid[p.first].reserve(30);
-		}
+		for (const auto& p : orderedVec) grid[p.first].clear();
 		const size_t prevS = orderedVec.size();
 		orderedVec.clear();
 		orderedVec.reserve(prevS);
@@ -80,7 +77,7 @@ template <typename T> struct Simple2DGrid {
 			for (auto j = aabb.first[1]; j <= aabb.second[1]; ++j) {
 				auto id = coordToId(i, j);
 				grid[id].push_back(t);
-				if (grid[id].size() == 2) {
+				if (grid[id].size() == 1) {
 					// just got interesting, should be added to orderedVec;
 					orderedVec.push_back(
 					    std::make_pair(id, std::reference_wrapper<std::vector<T>>(grid[id])));

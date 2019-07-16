@@ -5,7 +5,7 @@
 #include "utilities/grid.hpp"
 #include "utilities/simple2dgrid.hpp"
 
-#define USE_SIMPLE_GRID 0
+#define USE_SIMPLE_GRID 1
 
 namespace MecaCell {
 template <typename Body> struct PBDPlugin {
