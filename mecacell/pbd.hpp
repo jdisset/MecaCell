@@ -73,7 +73,7 @@ template <typename Vec_t> struct Particle {
 	Vec_t position;
 	Vec_t predicted;
 	Vec_t velocity;
-	Vec_t forces;
+	// Vec_t forces;
 	num_t radius = 1.0f;
 	num_t w = 1.0;  // w = 1 / mass
 
@@ -84,6 +84,11 @@ template <typename Vec_t> struct Particle {
 
 // computeDX returns the position corrections, given a constraint value, it's gradient
 // and the inverse weights of the particles. The gradient should be a row vector.
+template <typename Vec_t, typename num_t>
+inline Vec_t computeDX(const num_t &con, const Vec_t &gradient, const num_t w) {
+	auto mdc = w * gradient;
+	return (con / gradient.dot(mdc)) * mdc;
+}
 template <typename Vec_t, typename num_t, size_t N>
 std::array<Vec_t, N> computeDX(const num_t &con, const std::array<Vec_t, N> &gradient,
                                const std::array<num_t, N> &w) {
@@ -98,14 +103,6 @@ std::array<Vec_t, N> computeDX(const num_t &con, const std::array<Vec_t, N> &gra
 	return res;
 }
 
-template <typename Vec_t, typename num_t>
-Vec_t computeDX(const num_t &con, const Vec_t &gradient, const num_t w) {
-	auto mdc = w * gradient;
-	auto gradientDotMdc = gradient.dot(mdc);
-	auto conOverG = con / gradientDotMdc;
-	return conOverG * mdc;
-}
-
 // Simple iteration over each constraints stored in a ConstraintContainer
 template <typename... T>
 void projectConstraints(const ConstraintContainer<T...> &constraints) {
@@ -117,7 +114,6 @@ void projectConstraints(const ConstraintContainer<T...> &constraints) {
 // Euler integration for pbd::particles based objects
 template <typename P> void eulerIntegration(P &particles, num_t dt) {
 	for (auto &p : particles) {
-		p.velocity += dt * p.w * p.forces;
 		p.predicted = p.position + dt * p.velocity;
 	}
 }
@@ -185,27 +181,27 @@ void step(M &positions, M &velocities, const M &forces, M &predicted, const W &w
 
 // Generalistic distance constraint between 2 points
 template <bool mustBeEqual = true> struct DistanceConstraint {
-	template <typename Vec_t>
-	static inline void solve(const std::array<Vec_t *, 2> &X, const std::array<num_t, 2> &W,
-	                         const num_t &d, num_t k = 1.0f) {
-		auto v = *(X[1]) - *(X[0]);  // v = X1 -> X2
-		num_t l = v.squaredNorm();
-		num_t constraintValue = l - d * d;
-		if (mustBeEqual || constraintValue < 0) {
-			l = std::sqrt(l);
-			constraintValue = l - d;
-			Vec_t n;  // n = normal. (default to {1,0,...} if l == 1)
-			if (l > 0)
-				n = v / l;
-			else
-				n[0] = 1;
+	template <typename P>
+	static inline void solve(P &p0, P &p1, const num_t &d, num_t k = 1.0f) {
+		auto v = p1.predicted - p0.predicted;
 
-			// definition of the gradient, stored  in a RowVector form:
-			std::array<Vec_t, 2> gradient{{n, -n}};
+		const auto &resolve = [&](const num_t &l) {
+			num_t constraint = l - d;
+			decltype(P::predicted) n{1, 0, 0};  // n = normal. (default to {1,0,...} if l == 1)
+			if (l > 0) n = v / l;
+			auto tmp = (k * n * constraint) / (p0.w + p1.w);
+			p0.predicted += p0.w * tmp;
+			p1.predicted -= p1.w * tmp;
+		};
 
-			// compute dx and update the positions
-			auto dx = PBD::computeDX(constraintValue, gradient, W);
-			for (size_t i = 0; i < 2; ++i) *(X[i]) = *(X[i]) + k * dx[i];
+		if constexpr (mustBeEqual) {
+			resolve(v.norm());
+		} else {
+			num_t l = v.squaredNorm();
+			if (l - d * d < 0) {
+				l = std::sqrt(l);
+				resolve(l);
+			}
 		}
 	}
 };

@@ -118,14 +118,6 @@ template <size_t N> struct PBDBody_particles {
 		for (auto& p : particles) p.predicted = p.position;
 	}
 
-	void receiveForce(const Vec& f) {
-		for (auto& p : particles) p.forces += f;
-	}
-
-	void resetForces() {
-		for (auto& p : particles) p.forces = Vec::zero();
-	}
-
 	void setVelocity(const Vec& v) {
 		for (auto& p : particles) p.velocity = v;
 	}

@@ -200,7 +200,7 @@ template <typename Cell, typename Body, typename Integrator = Euler> class World
 	 *
 	 * returns the cell id
 	 */
-	size_t addCell(cell_t &&c, Body &&b) {
+	void addCell(cell_t &&c, Body &&b) {
 		newCells.emplace_back(c);
 		newBodies.emplace_back(b);
 		newCells.back().id = nbAddedCells;

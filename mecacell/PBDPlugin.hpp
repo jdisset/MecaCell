@@ -23,8 +23,12 @@ template <typename Body> struct PBDPlugin {
 	num_t staticFrictionCoef = 0.0;
 
 #if USE_SIMPLE_GRID
+	num_t bottomLeft_x = -400;
+	num_t bottomLeft_z = -400;
+	num_t topRight_x = 400;
+	num_t topRight_z = 400;
 	using grid_t = Simple2DGrid<size_t>;
-	grid_t grid{-500, -500, 500, 500, gridSize};
+	grid_t grid{bottomLeft_x, bottomLeft_z, topRight_x, topRight_z, gridSize};
 #else
 	using grid_t = Grid<size_t>;
 	grid_t grid{gridSize};
@@ -59,6 +63,15 @@ template <typename Body> struct PBDPlugin {
 		return o.str();
 	}
 
+	// more cache friendly than having to retrieve cells[i].activityLevel:
+	std::vector<num_t> actLvl;
+	template <typename W> void refreshActLvl(W *w) {
+		actLvl.clear();
+		const size_t S = w->bodies.size();
+		actLvl.reserve(S);
+		for (size_t i = 0; i < S; ++i) actLvl.push_back(w->cells[i].activityLevel);
+	}
+
 	template <typename W> void refreshAABBContainer(W *w) {
 		aabbContainer.clear();
 		const size_t S = w->bodies.size();
@@ -78,20 +91,20 @@ template <typename Body> struct PBDPlugin {
 
 	template <typename W> void reinsertAllCellsInGrid_withSample(W *w) {
 		assert(w->bodies.size() == c.bodies.size());
+		refreshActLvl(w);
 		refreshAABBContainer(w);
 		grid.clear();
 		std::uniform_real_distribution<num_t> d(0.0, 1.0);
 		const size_t S = w->bodies.size();
 		for (size_t i = 0; i < S; ++i) {
 			num_t diceRoll = d(Config::globalRand());
-			if (diceRoll < std::max(minSampleSize, w->cells[i].activityLevel)) {
+			if (diceRoll < std::max(minSampleSize, actLvl[i])) {
 				grid.insert(i, aabbContainer[i]);
 			}
 		}
 	}
 
 	template <typename W> void refreshConstraints(W *w) {
-		std::uniform_real_distribution<num_t> d(0.0, 1.0);
 		size_t prevConstraintsSize = constraints.size();
 		constraints.clear();
 		constraints.reserve(
@@ -100,32 +113,28 @@ template <typename Body> struct PBDPlugin {
 
 		for (auto &gridCellPair : orderedVec) {
 #if USE_SIMPLE_GRID
-			const auto &gridCell = gridCellPair.second.get();
+			const auto &gridCell = grid.grid[gridCellPair];
 #else
 			const auto &gridCell = gridCellPair.second;
 #endif
 			const size_t GRIDSIZE = gridCell.size();
 			for (size_t i = 0; i < GRIDSIZE; ++i) {
 				auto &body_i = w->bodies[gridCell[i]];
-				num_t diceRoll = d(Config::globalRand());
-				if (diceRoll < std::max(minSampleSize, w->cells[gridCell[i]].activityLevel)) {
-					for (size_t j = i + 1; j < GRIDSIZE; ++j) {
-						auto &body_j = w->bodies[gridCell[j]];
-						if (!AABBCollisionEnabled ||
-						    (AABBCollisionEnabled &&
-						     grid.AABBCollision(aabbContainer[gridCell[i]],
-						                        aabbContainer[gridCell[j]]))) {
-							// only one particle could be faster: store directly the particle in the
-							// grid
-							for (auto &p0 : body_i.particles) {
-								for (auto &p1 : body_j.particles) {
-									if (!precisePreCollisionCheck ||
-									    (p0.predicted - p1.predicted).squaredNorm() <
-									        std::pow(p0.radius + p1.radius, 2)) {
-										constraints.push_back(std::make_tuple(
-										    &p0, &p1,
-										    std::min(body_i.distanceStiffness, body_j.distanceStiffness)));
-									}
+				for (size_t j = i + 1; j < GRIDSIZE; ++j) {
+					auto &body_j = w->bodies[gridCell[j]];
+					if (!AABBCollisionEnabled ||
+					    (AABBCollisionEnabled && grid.AABBCollision(aabbContainer[gridCell[i]],
+					                                                aabbContainer[gridCell[j]]))) {
+						// only one particle could be faster: store directly the particle in the
+						// grid
+						for (auto &p0 : body_i.particles) {
+							for (auto &p1 : body_j.particles) {
+								if (!precisePreCollisionCheck ||
+								    (p0.predicted - p1.predicted).squaredNorm() <
+								        std::pow(p0.radius + p1.radius, 2)) {
+									constraints.push_back(std::make_tuple(
+									    &p0, &p1,
+									    std::min(body_i.distanceStiffness, body_j.distanceStiffness)));
 								}
 							}
 						}
@@ -174,53 +183,34 @@ template <typename Body> struct PBDPlugin {
 
 	template <typename W> void updateParticles(W *w) {
 		const auto &dt = w->getDt();
-		for (auto &b : w->bodies) {
+		for (auto &b : w->bodies)
 			PBD::velocitiesAndPositionsUpdate(b.particles, dt, sleepingEpsilon);
-			b.resetForces();
-		}
 	}
 
 	template <typename W> void pbdUpdateRoutine(W *w) {
-		// std::cerr << " --- PBDUPDATE 0" << std::endl;
-		const auto &dt = w->getDt();
+		const auto dt = w->getDt();
 
-		// euler
-		for (auto &b : w->bodies) {
-			PBD::eulerIntegration(b.particles, dt);
-			b.resetForces();
-		}
-		// std::cerr << " --- PBDUPDATE 1" << std::endl;
+		for (auto &b : w->bodies) PBD::eulerIntegration(b.particles, dt);
 
 		// generate collisions
 		if (w->getNbUpdates() % constraintGenerationFreq == 0) {
-			// reinsertAllCellsInGrid_withSample(w);
-			reinsertAllCellsInGrid(w);
+			reinsertAllCellsInGrid_withSample(w);
 			refreshConstraints(w);
 		}
-		// std::cerr << " --- PBDUPDATE 2" << std::endl;
+
 		// project constraints
 		for (unsigned int i = 0; i < iterations; ++i) {
-			// std::cerr << " ---  --- PBD_ITERATE 0" << std::endl;
 			for (auto &b : w->bodies) b.solveInnerConstraints();
-			// std::cerr << " ---  --- PBD_ITERATE 1" << std::endl;
 			for (auto &con : constraintSolveHook) con();
-			// std::cerr << " ---  --- PBD_ITERATE 2" << std::endl;
 			// collision constraints
 			for (auto &c : constraints) {
 				const auto &p0 = std::get<0>(c);
 				const auto &p1 = std::get<1>(c);
 				const auto &distStiff = std::get<2>(c);
-				PBD::CollisionConstraint::solve<Vec>({{&(p0->predicted), &(p1->predicted)}},
-				                                     {{p0->w, p1->w}}, p0->radius + p1->radius,
-				                                     distStiff);
+				PBD::CollisionConstraint::solve(*p0, *p1, p0->radius + p1->radius, distStiff);
 			}
-			// std::cerr << " ---  --- PBD_ITERATE 3" << std::endl;
 		}
-		// std::cerr << " --- PBDUPDATE 3" << std::endl;
-
 		for (auto &con : frictionSolveHook) con();
-
-		// std::cerr << " --- PBDUPDATE 4" << std::endl;
 		if (frictionEnabled) {
 			for (auto &c : constraints) {
 				const auto &p0 = std::get<0>(c);
@@ -228,9 +218,7 @@ template <typename Body> struct PBDPlugin {
 				PBD::FrictionConstraint::solve(*p0, *p1, staticFrictionCoef, kineticFrictionCoef);
 			}
 		}
-		// std::cerr << " --- PBDUPDATE 5" << std::endl;
 		updateParticles(w);
-		// std::cerr << " --- PBDUPDATE 6" << std::endl;
 	}
 
 	template <typename W> void endUpdate(W *w) { pbdUpdateRoutine(w); }

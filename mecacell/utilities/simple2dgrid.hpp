@@ -1,4 +1,5 @@
 #pragma once
+#include <set>
 #include <vector>
 #include "../geometry/geometry.hpp"
 #include "unique_vector.hpp"
@@ -14,7 +15,7 @@ template <typename T> struct Simple2DGrid {
 	using coord_t = std::array<size_t, 2>;
 	using AABB_t = std::pair<coord_t, coord_t>;
 
-	std::vector<std::pair<size_t, std::reference_wrapper<std::vector<T>>>> orderedVec;
+	std::vector<size_t> orderedVec;
 	inline decltype(orderedVec)& getOrderedVec() { return orderedVec; }
 
 	std::vector<std::vector<T>> grid;
@@ -61,17 +62,20 @@ template <typename T> struct Simple2DGrid {
 
 	inline void clear() {
 		// TODO: reserve in grid. (use orderedVec to get an idea)
-		for (const auto& p : orderedVec) grid[p.first].clear();
+		for (const auto& p : orderedVec) grid[p].clear();
 		const size_t prevS = orderedVec.size();
 		orderedVec.clear();
-		orderedVec.reserve(prevS + (prevS/20));
+		// orderedVec.reserve(prevS + (prevS / 20));
 	}
 
 	inline AABB_t getAABB(const std::pair<Vec, Vec>& p) const {
 		return std::make_pair(worldToGridCoord(p.first.x(), p.first.z()),
 		                      worldToGridCoord(p.second.x(), p.second.z()));
 	}
-
+	void insert_sorted(size_t value) {
+		auto it = std::lower_bound(orderedVec.begin(), orderedVec.end(), value);
+		orderedVec.insert(it, value);
+	}
 	void insert(const T& t, const AABB_t& aabb) {
 		for (auto i = aabb.first[0]; i <= aabb.second[0]; ++i) {
 			for (auto j = aabb.first[1]; j <= aabb.second[1]; ++j) {
@@ -79,8 +83,7 @@ template <typename T> struct Simple2DGrid {
 				grid[id].push_back(t);
 				if (grid[id].size() == 1) {
 					// just got interesting, should be added to orderedVec;
-					orderedVec.push_back(
-					    std::make_pair(id, std::reference_wrapper<std::vector<T>>(grid[id])));
+					insert_sorted(id);
 				}
 			}
 		}
