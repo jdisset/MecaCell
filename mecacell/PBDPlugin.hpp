@@ -23,10 +23,10 @@ template <typename Body> struct PBDPlugin {
 	num_t staticFrictionCoef = 0.0;
 
 #if USE_SIMPLE_GRID
-	using grid_t = Simple2DGrid<body_t *>;
+	using grid_t = Simple2DGrid<size_t>;
 	grid_t grid{-500, -500, 500, 500, gridSize};
 #else
-	using grid_t = Grid<body_t *>;
+	using grid_t = Grid<size_t>;
 	grid_t grid{gridSize};
 #endif
 
@@ -34,6 +34,8 @@ template <typename Body> struct PBDPlugin {
 
 	std::vector<std::function<void(void)>> constraintSolveHook;
 	std::vector<std::function<void(void)>> frictionSolveHook;
+
+	std::vector<typename grid_t::AABB_t> aabbContainer;
 
 	void setGridSize(num_t g) {
 		gridSize = g;
@@ -57,51 +59,73 @@ template <typename Body> struct PBDPlugin {
 		return o.str();
 	}
 
+	template <typename W> void refreshAABBContainer(W *w) {
+		aabbContainer.clear();
+		const size_t S = w->bodies.size();
+		aabbContainer.reserve(S);
+		for (size_t i = 0; i < S; ++i) aabbContainer.push_back(AABB(w->bodies[i]));
+	}
+
 	template <typename W> void reinsertAllCellsInGrid(W *w) {
+		assert(w->bodies.size() == c.bodies.size());
+		refreshAABBContainer(w);
 		grid.clear();
-		for (auto &b : w->bodies) grid.insert(&b, AABB(b));
+		const size_t S = w->bodies.size();
+		for (size_t i = 0; i < S; ++i) {
+			grid.insert(i, aabbContainer[i]);
+		}
 	}
 
 	template <typename W> void reinsertAllCellsInGrid_withSample(W *w) {
 		assert(w->bodies.size() == c.bodies.size());
+		refreshAABBContainer(w);
 		grid.clear();
 		std::uniform_real_distribution<num_t> d(0.0, 1.0);
 		const size_t S = w->bodies.size();
 		for (size_t i = 0; i < S; ++i) {
 			num_t diceRoll = d(Config::globalRand());
-			if (diceRoll < std::max(minSampleSize, w->cells[i].activityLevel))
-				grid.insert(&w->bodies[i], AABB(w->bodies[i]));
+			if (diceRoll < std::max(minSampleSize, w->cells[i].activityLevel)) {
+				grid.insert(i, aabbContainer[i]);
+			}
 		}
 	}
 
-	template <typename W> void refreshConstraints(W *) {
+	template <typename W> void refreshConstraints(W *w) {
+		std::uniform_real_distribution<num_t> d(0.0, 1.0);
 		size_t prevConstraintsSize = constraints.size();
 		constraints.clear();
 		constraints.reserve(
 		    static_cast<size_t>(static_cast<num_t>(prevConstraintsSize) * 1.1));
-
 		auto &orderedVec = grid.getOrderedVec();
+
 		for (auto &gridCellPair : orderedVec) {
 #if USE_SIMPLE_GRID
 			const auto &gridCell = gridCellPair.second.get();
-#else 
+#else
 			const auto &gridCell = gridCellPair.second;
 #endif
 			const size_t GRIDSIZE = gridCell.size();
 			for (size_t i = 0; i < GRIDSIZE; ++i) {
-				for (size_t j = i + 1; j < GRIDSIZE; ++j) {
-					if (!AABBCollisionEnabled ||
-					    (AABBCollisionEnabled &&
-					     grid.AABBCollision(AABB(*gridCell[i]), AABB(*gridCell[j])))) {
-						for (auto &p0 : gridCell[i]->particles) {
-							for (auto &p1 : gridCell[j]->particles) {
-								if (!precisePreCollisionCheck ||
-								    (p0.predicted - p1.predicted).squaredNorm() <
-								        std::pow(p0.radius + p1.radius, 2)) {
-									constraints.push_back(
-									    std::make_tuple(&p0, &p1,
-									                    std::min(gridCell[i]->distanceStiffness,
-									                             gridCell[j]->distanceStiffness)));
+				auto &body_i = w->bodies[gridCell[i]];
+				num_t diceRoll = d(Config::globalRand());
+				if (diceRoll < std::max(minSampleSize, w->cells[gridCell[i]].activityLevel)) {
+					for (size_t j = i + 1; j < GRIDSIZE; ++j) {
+						auto &body_j = w->bodies[gridCell[j]];
+						if (!AABBCollisionEnabled ||
+						    (AABBCollisionEnabled &&
+						     grid.AABBCollision(aabbContainer[gridCell[i]],
+						                        aabbContainer[gridCell[j]]))) {
+							// only one particle could be faster: store directly the particle in the
+							// grid
+							for (auto &p0 : body_i.particles) {
+								for (auto &p1 : body_j.particles) {
+									if (!precisePreCollisionCheck ||
+									    (p0.predicted - p1.predicted).squaredNorm() <
+									        std::pow(p0.radius + p1.radius, 2)) {
+										constraints.push_back(std::make_tuple(
+										    &p0, &p1,
+										    std::min(body_i.distanceStiffness, body_j.distanceStiffness)));
+									}
 								}
 							}
 						}
@@ -110,6 +134,43 @@ template <typename Body> struct PBDPlugin {
 			}
 		}
 	}
+
+	// template <typename W> void refreshConstraints(W *) {
+	// size_t prevConstraintsSize = constraints.size();
+	// constraints.clear();
+	// constraints.reserve(
+	// static_cast<size_t>(static_cast<num_t>(prevConstraintsSize) * 1.1));
+
+	// auto &orderedVec = grid.getOrderedVec();
+	// for (auto &gridCellPair : orderedVec) {
+	//#if USE_SIMPLE_GRID
+	// const auto &gridCell = gridCellPair.second.get();
+	//#else
+	// const auto &gridCell = gridCellPair.second;
+	//#endif
+	// const size_t GRIDSIZE = gridCell.size();
+	// for (size_t i = 0; i < GRIDSIZE; ++i) {
+	// for (size_t j = i + 1; j < GRIDSIZE; ++j) {
+	// if (!AABBCollisionEnabled ||
+	//(AABBCollisionEnabled &&
+	// grid.AABBCollision(AABB(*gridCell[i]), AABB(*gridCell[j])))) {
+	// for (auto &p0 : gridCell[i]->particles) {
+	// for (auto &p1 : gridCell[j]->particles) {
+	// if (!precisePreCollisionCheck ||
+	//(p0.predicted - p1.predicted).squaredNorm() <
+	// std::pow(p0.radius + p1.radius, 2)) {
+	// constraints.push_back(
+	// std::make_tuple(&p0, &p1,
+	// std::min(gridCell[i]->distanceStiffness,
+	// gridCell[j]->distanceStiffness)));
+	//}
+	//}
+	//}
+	//}
+	//}
+	//}
+	//}
+	/*}*/
 
 	template <typename W> void updateParticles(W *w) {
 		const auto &dt = w->getDt();
@@ -132,8 +193,8 @@ template <typename Body> struct PBDPlugin {
 
 		// generate collisions
 		if (w->getNbUpdates() % constraintGenerationFreq == 0) {
-			reinsertAllCellsInGrid_withSample(w);
-			//reinsertAllCellsInGrid(w);
+			// reinsertAllCellsInGrid_withSample(w);
+			reinsertAllCellsInGrid(w);
 			refreshConstraints(w);
 		}
 		// std::cerr << " --- PBDUPDATE 2" << std::endl;
