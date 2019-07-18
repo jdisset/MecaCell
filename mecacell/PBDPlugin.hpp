@@ -132,8 +132,8 @@ template <typename Body> struct PBDPlugin {
 
 		// generate collisions
 		if (w->getNbUpdates() % constraintGenerationFreq == 0) {
-			//reinsertAllCellsInGrid_withSample(w);
-			reinsertAllCellsInGrid(w);
+			reinsertAllCellsInGrid_withSample(w);
+			//reinsertAllCellsInGrid(w);
 			refreshConstraints(w);
 		}
 		// std::cerr << " --- PBDUPDATE 2" << std::endl;

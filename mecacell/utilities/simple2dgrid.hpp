@@ -64,7 +64,7 @@ template <typename T> struct Simple2DGrid {
 		for (const auto& p : orderedVec) grid[p.first].clear();
 		const size_t prevS = orderedVec.size();
 		orderedVec.clear();
-		orderedVec.reserve(prevS);
+		orderedVec.reserve(prevS + (prevS/20));
 	}
 
 	inline AABB_t getAABB(const std::pair<Vec, Vec>& p) const {
