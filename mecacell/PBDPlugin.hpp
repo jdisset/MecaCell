@@ -34,7 +34,10 @@ template <typename Body> struct PBDPlugin {
 	grid_t grid{gridSize};
 #endif
 
-	std::vector<std::tuple<PBD::Particle<Vec> *, PBD::Particle<Vec> *, num_t>> constraints;
+	using constraintConainer_t =
+	    std::vector<std::tuple<PBD::Particle<Vec> *, PBD::Particle<Vec> *, num_t>>;
+	constraintConainer_t constraints;
+	std::vector<constraintConainer_t> constraintsPerThreads;
 
 	std::vector<std::function<void(void)>> constraintSolveHook;
 	std::vector<std::function<void(void)>> frictionSolveHook;
@@ -80,7 +83,6 @@ template <typename Body> struct PBDPlugin {
 	}
 
 	template <typename W> void reinsertAllCellsInGrid(W *w) {
-		assert(w->bodies.size() == c.bodies.size());
 		refreshAABBContainer(w);
 		grid.clear();
 		const size_t S = w->bodies.size();
@@ -90,7 +92,6 @@ template <typename Body> struct PBDPlugin {
 	}
 
 	template <typename W> void reinsertAllCellsInGrid_withSample(W *w) {
-		assert(w->bodies.size() == c.bodies.size());
 		refreshActLvl(w);
 		refreshAABBContainer(w);
 		grid.clear();
@@ -102,6 +103,56 @@ template <typename Body> struct PBDPlugin {
 				grid.insert(i, aabbContainer[i]);
 			}
 		}
+	}
+
+	template <typename W> void refreshConstraints_par(W *w) {
+		if (constraintsPerThreads.size() != w->getNbThreads())
+			constraintsPerThreads.resize(w->getNbThreads());
+		for (auto &cons : constraintsPerThreads) {
+			size_t prevConstraintsSize = cons.size();
+			cons.clear();
+			cons.reserve(static_cast<size_t>(static_cast<num_t>(prevConstraintsSize) * 1.1));
+		}
+		auto &orderedVec = grid.getOrderedVec();
+		w->threadpool.autoChunksId_work(0, orderedVec.size(), [&](size_t i, size_t threadId) {
+#if USE_SIMPLE_GRID
+			const auto &gridCell = grid.grid[orderedVec[i]];
+#else
+			const auto &gridCell = gridCellPair.second;
+#endif
+			const size_t GRIDSIZE = gridCell.size();
+			for (size_t i = 0; i < GRIDSIZE; ++i) {
+				auto &body_i = w->bodies[gridCell[i]];
+				for (size_t j = i + 1; j < GRIDSIZE; ++j) {
+					auto &body_j = w->bodies[gridCell[j]];
+					if (!AABBCollisionEnabled ||
+					    (AABBCollisionEnabled &&
+					     grid_t::AABBCollision(aabbContainer[gridCell[i]],
+					                           aabbContainer[gridCell[j]]))) {
+						// only one particle could be faster: store directly the particle in the
+						// grid
+						for (auto &p0 : body_i.particles) {
+							for (auto &p1 : body_j.particles) {
+								if (!precisePreCollisionCheck ||
+								    (p0.predicted - p1.predicted).squaredNorm() <
+								        std::pow(p0.radius + p1.radius, 2)) {
+									constraintsPerThreads[threadId].push_back(std::make_tuple(
+									    &p0, &p1,
+									    std::min(body_i.distanceStiffness, body_j.distanceStiffness)));
+								}
+							}
+						}
+					}
+				}
+			}
+		});
+		w->threadpool.waitAll();
+		/* constraints.clear();*/
+		// for (auto &c : constraintsPerThreads) {
+		// constraints.insert(constraints.end(), std::make_move_iterator(c.begin()),
+		// std::make_move_iterator(c.end()));
+		//// constraints.insert(constraints.end(), c.begin(), c.end());
+		/*}*/
 	}
 
 	template <typename W> void refreshConstraints(W *w) {
@@ -144,65 +195,10 @@ template <typename Body> struct PBDPlugin {
 		}
 	}
 
-	// template <typename W> void refreshConstraints(W *) {
-	// size_t prevConstraintsSize = constraints.size();
-	// constraints.clear();
-	// constraints.reserve(
-	// static_cast<size_t>(static_cast<num_t>(prevConstraintsSize) * 1.1));
-
-	// auto &orderedVec = grid.getOrderedVec();
-	// for (auto &gridCellPair : orderedVec) {
-	//#if USE_SIMPLE_GRID
-	// const auto &gridCell = gridCellPair.second.get();
-	//#else
-	// const auto &gridCell = gridCellPair.second;
-	//#endif
-	// const size_t GRIDSIZE = gridCell.size();
-	// for (size_t i = 0; i < GRIDSIZE; ++i) {
-	// for (size_t j = i + 1; j < GRIDSIZE; ++j) {
-	// if (!AABBCollisionEnabled ||
-	//(AABBCollisionEnabled &&
-	// grid.AABBCollision(AABB(*gridCell[i]), AABB(*gridCell[j])))) {
-	// for (auto &p0 : gridCell[i]->particles) {
-	// for (auto &p1 : gridCell[j]->particles) {
-	// if (!precisePreCollisionCheck ||
-	//(p0.predicted - p1.predicted).squaredNorm() <
-	// std::pow(p0.radius + p1.radius, 2)) {
-	// constraints.push_back(
-	// std::make_tuple(&p0, &p1,
-	// std::min(gridCell[i]->distanceStiffness,
-	// gridCell[j]->distanceStiffness)));
-	//}
-	//}
-	//}
-	//}
-	//}
-	//}
-	//}
-	/*}*/
-
-	template <typename W> void updateParticles(W *w) {
-		const auto &dt = w->getDt();
-		for (auto &b : w->bodies)
-			PBD::velocitiesAndPositionsUpdate(b.particles, dt, sleepingEpsilon);
-	}
-
-	template <typename W> void pbdUpdateRoutine(W *w) {
-		const auto dt = w->getDt();
-
-		for (auto &b : w->bodies) PBD::eulerIntegration(b.particles, dt);
-
-		// generate collisions
-		if (w->getNbUpdates() % constraintGenerationFreq == 0) {
-			reinsertAllCellsInGrid_withSample(w);
-			refreshConstraints(w);
-		}
-
-		// project constraints
+	template <typename W> void projectConstraints(W *w) {
 		for (unsigned int i = 0; i < iterations; ++i) {
 			for (auto &b : w->bodies) b.solveInnerConstraints();
 			for (auto &con : constraintSolveHook) con();
-			// collision constraints
 			for (auto &c : constraints) {
 				const auto &p0 = std::get<0>(c);
 				const auto &p1 = std::get<1>(c);
@@ -210,6 +206,7 @@ template <typename Body> struct PBDPlugin {
 				PBD::CollisionConstraint::solve(*p0, *p1, p0->radius + p1->radius, distStiff);
 			}
 		}
+
 		for (auto &con : frictionSolveHook) con();
 		if (frictionEnabled) {
 			for (auto &c : constraints) {
@@ -218,7 +215,63 @@ template <typename Body> struct PBDPlugin {
 				PBD::FrictionConstraint::solve(*p0, *p1, staticFrictionCoef, kineticFrictionCoef);
 			}
 		}
-		updateParticles(w);
+	}
+
+	template <typename W> void projectConstraints_par(W *w) {
+		// TODO : generate constraintsPerThreads so that they are independant
+		for (unsigned int i = 0; i < iterations; ++i) {
+			for (auto &b : w->bodies) b.solveInnerConstraints();
+			for (auto &con : constraintSolveHook) con();
+			// collision constraints
+			for (auto &cons : constraintsPerThreads) {
+				for (auto &c : cons) {
+					const auto &p0 = std::get<0>(c);
+					const auto &p1 = std::get<1>(c);
+					const auto &distStiff = std::get<2>(c);
+					// TODO: make parallel (requires constraintsPerThreads to be independant)
+					PBD::CollisionConstraint::solve(*p0, *p1, p0->radius + p1->radius, distStiff);
+				}
+			}
+		}
+
+		for (auto &con : frictionSolveHook) con();
+		if (frictionEnabled) {
+			for (auto &cons : constraintsPerThreads) {
+				for (auto &c : cons) {
+					const auto &p0 = std::get<0>(c);
+					const auto &p1 = std::get<1>(c);
+					PBD::FrictionConstraint::solve(*p0, *p1, staticFrictionCoef,
+					                               kineticFrictionCoef);
+				}
+			}
+		}
+	}
+
+	template <typename W> void pbdUpdateRoutine(W *w) {
+		const auto dt = w->getDt();
+
+		w->threadpool.autoChunksId_work(
+		    0, w->bodies.size(),
+		    [&, dt](auto i, size_t) { PBD::eulerIntegration(w->bodies[i].particles, dt); },
+		    1.0);
+		w->threadpool.waitAll();
+
+		// generate collisions
+		if (w->getNbUpdates() % constraintGenerationFreq == 0) {
+			reinsertAllCellsInGrid_withSample(w);
+			refreshConstraints_par(w);
+		}
+
+		// project constraints
+		projectConstraints_par(w);
+
+		w->threadpool.autoChunksId_work(
+		    0, w->bodies.size(),
+		    [&, dt](auto i, size_t) {
+			    PBD::velocitiesAndPositionsUpdate(w->bodies[i].particles, dt, sleepingEpsilon);
+		    },
+		    1.0);
+		w->threadpool.waitAll();
 	}
 
 	template <typename W> void endUpdate(W *w) { pbdUpdateRoutine(w); }

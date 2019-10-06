@@ -1,131 +1,151 @@
-#ifndef THREAD_POOL_H
-#define THREAD_POOL_H
+#pragma once
 
-#include <condition_variable>
+#include <chrono>
 #include <functional>
 #include <future>
-#include <memory>
-#include <mutex>
+#include <iostream>
 #include <queue>
-#include <stdexcept>
 #include <thread>
-#include <type_traits>
+#include <utility>
 #include <vector>
-#ifdef _WIN32
-#include "mingw/mingw.condition_variable.h"
-#include "mingw/mingw.mutex.h"
-#include "mingw/mingw.thread.h"
-#endif
 
-/**
- * @brief Simple threadpool, largely inspired by github.com/progschj/ThreadPool
- */
+// simple thread pool
+// mostly from https://www.youtube.com/watch?v=zULU6Hhp42w
 
-class ThreadPool {
- private:
-	size_t nthreads = 0;
-	std::vector<std::thread> workers;
-	std::queue<std::function<void()>> tasks;
-	std::mutex queue_mutex;
-	std::condition_variable condition, waitingLast;
-	bool stop = false;
-	std::atomic<int> currentTasks;
+namespace TinyPool {
+using lock_t = std::unique_lock<std::mutex>;
+using namespace std::chrono_literals;
+struct notifQueue {
+	std::deque<std::function<void(size_t)>> q;
+	std::mutex mut;
+	std::condition_variable ready;
+	bool doneFlag{false};
 
- public:
-	size_t getNbThreads() { return nthreads; }
-	ThreadPool(size_t nt) : stop(false), currentTasks(0) { setNbThreads(nt); }
+	notifQueue() {}
 
-	void setNbThreads(size_t n) {
-		workers.clear();
-		nthreads = n;
-		for (size_t i = 0; i < nthreads; ++i)
-			workers.emplace_back([this] {
-				for (;;) {
-					std::unique_lock<std::mutex> qlock(this->queue_mutex);
-					this->condition.wait(qlock,
-					                     [this] { return this->stop || !this->tasks.empty(); });
-					if (this->stop && this->tasks.empty()) return;
-					auto task(std::move(this->tasks.front()));
-					this->tasks.pop();
-					qlock.unlock();
-					task();
-					qlock.lock();
-					--currentTasks;
-					if (currentTasks == 0) waitingLast.notify_all();
-				}
-			});
-	}
-
-	void waitUntilLast() {
-		std::unique_lock<std::mutex> wlock(this->queue_mutex);
-		while (currentTasks > 0)
-			this->waitingLast.wait(wlock, [this]() { return currentTasks == 0; });
-	}
-
-	template <class F> auto enqueue(F&& f) {
-		if (nthreads > 0) {
-			std::unique_lock<std::mutex> lock(queue_mutex);
-			tasks.emplace([func = std::forward<F>(f)]() { std::move(func)(); });
-			++currentTasks;
-			condition.notify_one();
-		} else
-			std::forward<F>(f)();
-	}
-
-	template <class F> auto enqueueWithFuture(F&& f) {
-		using R = decltype(f());
-		if (nthreads > 0) {
-			++currentTasks;
-			if (stop) throw std::runtime_error("enqueue on stopped ThreadPool");
-			auto taskPtr = new std::packaged_task<R()>(
-			    [func = std::forward<F>(f)]() -> R { return std::move(func)(); });
-			std::unique_lock<std::mutex> lock(queue_mutex);
-			tasks.emplace([taskPtr]() {
-				(*taskPtr)();
-				delete taskPtr;
-			});
-			condition.notify_one();
-			return taskPtr->get_future();
-		} else {
-			std::packaged_task<R()> task(
-			    [func = std::forward<F>(f)]() -> R { return std::move(func)(); });
-			task();
-			return task.get_future();
-		}
-	}
-	template <typename Container, typename F>
-	void autoChunks(Container& v, size_t minChunkSize, double avgTasksPerThread, F f) {
-		if (nthreads > 0 && v.size() > 2 * minChunkSize) {
-			size_t chunkSize = std::max(
-			    minChunkSize, static_cast<size_t>(static_cast<double>(v.size()) /
-			                                      (static_cast<double>(nthreads) *
-			                                       static_cast<double>(avgTasksPerThread))));
-			auto prevIt = v.begin();
-			auto nextIt = v.begin();
-			size_t prevId = 0;
-			size_t nextId = 0;
-			do {
-				nextId = std::min(prevId + chunkSize, v.size());
-				nextIt = std::next(prevIt, static_cast<long>(nextId) - static_cast<long>(prevId));
-				enqueue([prevIt, nextIt, f]() {
-					for (auto i = prevIt; i != nextIt; ++i) f(*i);
-				});
-				prevId = nextId;
-				prevIt = nextIt;
-			} while (nextId < v.size());
-		} else {
-			for (auto& e : v) f(e);
-		}
-	}
-
-	~ThreadPool() {
+	void done() {
 		{
-			std::unique_lock<std::mutex> lock(queue_mutex);
-			stop = true;
+			lock_t lock{mut};
+			doneFlag = true;
 		}
-		condition.notify_all();
-		for (std::thread& worker : workers) worker.join();
+		ready.notify_all();
+	}
+
+	bool tryPop(std::function<void(size_t)>& x) {
+		lock_t lock{mut, std::try_to_lock};
+		if (!lock || q.empty()) return false;
+		x = std::move(q.front());
+		q.pop_front();
+		return true;
+	}
+
+	bool pop(std::function<void(size_t)>& x) {
+		lock_t lock{mut};
+		while (q.empty() && !doneFlag) ready.wait(lock);
+		if (q.empty()) return false;
+		x = std::move(q.front());
+		q.pop_front();
+		return true;
+	}
+
+	template <typename F> bool tryPush(F&& f) {
+		{
+			lock_t lock{mut, std::try_to_lock};
+			if (!lock) return false;
+			q.emplace_back(std::forward<F>(f));
+		}
+		ready.notify_one();
+		return true;
+	}
+
+	template <typename F> void push(F&& f) {
+		{
+			lock_t lock{mut};
+			q.emplace_back(std::forward<F>(f));
+		}
+		ready.notify_one();
 	}
 };
 
-#endif
+struct ThreadPool {
+	size_t nThreads{1};
+	size_t K = 10;
+	std::vector<std::thread> threads;
+	std::vector<notifQueue> queues;
+	std::atomic<size_t> index{0};
+	std::atomic<size_t> runningTasks{0};
+	std::atomic<bool> shouldJoin{true}, waiterAvailable{false};
+	std::condition_variable zeroTasks;
+	std::mutex mut;
+	std::unique_ptr<std::thread> waiter{nullptr};
+
+	void loop(size_t i) {
+		while (true) {
+			std::function<void(size_t)> f;
+			for (size_t n = 0; n < nThreads; ++n) {
+				if (queues[(i + n) % nThreads].tryPop(f)) break;
+			}
+			if (!f && !queues[i].pop(f)) break;
+			f(i);
+			std::lock_guard<std::mutex> lck(mut);
+			--runningTasks;
+			zeroTasks.notify_all();
+		}
+	}
+
+	void waitAll() {
+		lock_t lock{mut};
+		// while (runningTasks > 0) zeroTasks.wait_for(lock, 10us);
+		while (runningTasks > 0) zeroTasks.wait(lock);
+	}
+
+	ThreadPool(size_t n = 1) { reset(n); }
+
+	void reset(size_t n) {
+		for (auto& q : queues) q.done();
+		for (auto& t : threads) t.join();
+		nThreads = n;
+		queues.clear();
+		threads.clear();
+		queues = std::vector<notifQueue>(n);
+		for (size_t i = 0; i < n; ++i) threads.emplace_back([&, i] { loop(i); });
+	}
+
+	~ThreadPool() {
+		for (auto& q : queues) q.done();
+		for (auto& t : threads) t.join();
+	}
+
+	template <typename F>
+	void autoChunksId_work(size_t l, size_t u, const F& f,
+	                       double targetNbChunksPerThread = 2.0) {
+		const size_t MIN_CHUNK_SIZE = 1;
+		assert(l <= u);
+		size_t vsize = u - l;
+		double inc = static_cast<double>(vsize) /
+		             (static_cast<double>(nThreads) * targetNbChunksPerThread);
+		double acc = 0.0;
+		size_t lbound = 0, ubound;
+		do {
+			ubound = std::min(
+			    vsize, std::max(lbound + MIN_CHUNK_SIZE, static_cast<size_t>(acc + inc)));
+			push_work([lbound, ubound, &f](size_t threadId) {
+				for (size_t i = lbound; i < ubound; ++i) f(i, threadId);
+			});
+			lbound = ubound;
+			acc += inc;
+		} while (ubound < vsize);
+	}
+
+	template <typename F> void push_work(F&& f) {
+		auto i = index++;
+		runningTasks++;
+		for (size_t n = 0; n < nThreads * K; ++n) {
+			if (queues[(i + n) % nThreads].tryPush(std::forward<F>(f))) {
+				return;
+			}
+		}
+		queues[i % nThreads].push(std::forward<F>(f));
+	}
+};
+}  // namespace TinyPool

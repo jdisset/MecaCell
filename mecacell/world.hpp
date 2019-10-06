@@ -6,6 +6,7 @@
 #include <unordered_set>
 #include <utility>
 #include <vector>
+
 #include "integrators.hpp"
 #include "utilities/hooktools.hpp"
 #include "utilities/threadpool.hpp"
@@ -34,8 +35,8 @@ template <typename Cell, typename Body, typename Integrator = Euler> class World
 	using hook_s = void(World *);  /// hook signature, as they should appear in
 	                               /// plugins classes. cf. hooks & plugins section
 
-	ThreadPool threadpool;  // threadpool that can be used by plugins (and is also used to
-	                        // parallelize updateBehavior)
+	TinyPool::ThreadPool threadpool;  // threadpool that can be used by plugins (and is also
+	                                  // used to parallelize updateBehavior)
 
 	/// A body type can define one embedded plugin class type which will be
 	/// instanciated in the world.
@@ -67,8 +68,6 @@ template <typename Cell, typename Body, typename Integrator = Euler> class World
 	    1;  /// period at which the world should call the cells updateBehavior method.
 	bool parallelUpdateBehavior = false;
 
-	std::mutex cellLock;  // for concurrent addCells;
-
 	/**
 	 * @brief removes all cells marked dead
 	 */
@@ -89,8 +88,10 @@ template <typename Cell, typename Body, typename Integrator = Euler> class World
 	bodyPlugin_t bodyPlugin;  // instance of the embedded cell plugin type
 	                          // (bodyPlugin_t default to a dumb char if not specified)
 
-	std::vector<cell_t> newCells;   // cells that are registered to be added
-	std::vector<body_t> newBodies;  // all the bodies are in this container
+	std::vector<std::vector<cell_t>>
+	    newCellsContainers;  // cells that are registered to be added (1 per thread)
+	std::vector<std::vector<body_t>>
+	    newBodiesContainers;  // bodies registered to be added (1 per thread)
 
 	/* CELLS */
 	std::vector<cell_t> cells;   // all the cells are in this container
@@ -104,7 +105,10 @@ template <typename Cell, typename Body, typename Integrator = Euler> class World
 	 * or cells (through their updateBehavior method)
 	 * that can take advantage of parallelism
 	 */
-	World(size_t nThreads = 0) : nbThreads(nThreads), threadpool(nThreads) {
+	World(size_t nThreads = 1) : nbThreads(nThreads), threadpool(nThreads) {
+		assert(nThreads > 0);
+		newCellsContainers.resize(nbThreads);
+		newBodiesContainers.resize(nbThreads);
 		registerPlugins(bodyPlugin);
 	}
 
@@ -124,11 +128,6 @@ template <typename Cell, typename Body, typename Integrator = Euler> class World
 	 * @return the number of threads in the threadpool
 	 */
 	size_t getNbThreads() { return nbThreads; }
-
-	void setNbThreads(size_t n) {
-		nbThreads = n;
-		threadpool.setNbThreads(n);
-	}
 
 	/**********************************************
 	 *               HOOKS & PLUGINS              *
@@ -197,36 +196,41 @@ template <typename Cell, typename Body, typename Integrator = Euler> class World
 	 *
 	 * @param c a cell
 	 * @param b its body
+	 * @param threadId the thread number
 	 *
-	 * returns the cell id
 	 */
-	void addCell(cell_t &&c, Body &&b) {
-		newCells.emplace_back(c);
-		newBodies.emplace_back(b);
-		newCells.back().id = nbAddedCells;
-		newBodies.back().id = nbAddedCells;
-		nbAddedCells++;
+	void addCell(cell_t &&c, body_t &&b, size_t threadId = 0) {
+		newCellsContainers[threadId].emplace_back(c);
+		newBodiesContainers[threadId].emplace_back(b);
 	}
 
 	/**
 	 * @brief effectively adds the new cells that were registered by addCell
-	 * triggers addCell hooks if there is something to add
-	 */
+	 * triggers addCell hooks
+	 * */
 	void addNewCells() {
-		if (newCells.size()) {
-			auto prevSize = newCells.size();
-			for (auto &f : hooks[eToUI(Hooks::onAddCell)]) f(this);
-
-			cells.reserve(newCells.size());
-			for (auto &c : newCells) cells.emplace_back(std::move(c));
-			bodies.reserve(newBodies.size());
-			for (auto &b : newBodies) bodies.emplace_back(std::move(b));
-
-			newCells.clear();
-			newBodies.clear();
-			// reserve for next round step (+10%)
-			newCells.reserve(prevSize + (prevSize / 10));
-			newBodies.reserve(prevSize + (prevSize / 10));
+		for (auto &f : hooks[eToUI(Hooks::onAddCell)]) f(this);
+		for (size_t i = 0; i < nbThreads; ++i) {
+			auto &newCells = newCellsContainers[i];
+			auto &newBodies = newBodiesContainers[i];
+			if (newCells.size()) {
+				auto prevSize = newCells.size();
+				assert(newCells.size() == newBodies.size());
+				cells.reserve(newCells.size());
+				bodies.reserve(newBodies.size());
+				for (size_t j = 0; j < newCells.size(); ++j) {
+					newCells[j].id = nbAddedCells;
+					newBodies[j].id = nbAddedCells;
+					cells.emplace_back(std::move(newCells[j]));
+					bodies.emplace_back(std::move(newBodies[j]));
+					nbAddedCells++;
+				}
+				newCells.clear();
+				newBodies.clear();
+				// reserve for next round step (+10%)
+				newCells.reserve(prevSize + (prevSize / 10));
+				newBodies.reserve(prevSize + (prevSize / 10));
+			}
 		}
 	}
 
@@ -264,15 +268,16 @@ template <typename Cell, typename Body, typename Integrator = Euler> class World
 	 */
 	void callUpdateBehavior() {
 		const size_t S = cells.size();
-		/*     if (parallelUpdateBehavior && nbThreads > 0) {*/
-		// const size_t MIN_CHUNK_SIZE = 500;
-		// const double AVG_TASKS_PER_THREAD = 2000.0;
-		// threadpool.autoChunks(cells, MIN_CHUNK_SIZE, AVG_TASKS_PER_THREAD,
-		//[this](auto *c) { c->updateBehavior(*this); });
-		// threadpool.waitUntilLast();
-		/*} else*/
-
-		for (size_t i = 0; i < S; ++i) cells[i].updateBehavior(*this, bodies[i]);
+		double NCHUNKS_PER_THREAD = 2.0;
+		if (parallelUpdateBehavior && nbThreads > 0) {
+			threadpool.autoChunksId_work(
+			    0, cells.size(),
+			    [this](size_t i, size_t threadId) { cells[i].updateBehavior(*this, bodies[i], threadId); },
+			    NCHUNKS_PER_THREAD);
+			threadpool.waitAll();
+		} else {
+			for (size_t i = 0; i < S; ++i) cells[i].updateBehavior(*this, bodies[i], 0);
+		}
 	}
 
 	/**

@@ -1,6 +1,7 @@
 #pragma once
 #include <set>
 #include <vector>
+
 #include "../geometry/geometry.hpp"
 #include "unique_vector.hpp"
 #include "utils.hpp"
@@ -15,7 +16,8 @@ template <typename T> struct Simple2DGrid {
 	using coord_t = std::array<size_t, 2>;
 	using AABB_t = std::pair<coord_t, coord_t>;
 
-	std::vector<size_t> orderedVec;
+	std::vector<size_t>
+	    orderedVec;  // contains the indices of grid where there's more than one T
 	inline decltype(orderedVec)& getOrderedVec() { return orderedVec; }
 
 	std::vector<std::vector<T>> grid;
@@ -63,7 +65,7 @@ template <typename T> struct Simple2DGrid {
 	inline void clear() {
 		// TODO: reserve in grid. (use orderedVec to get an idea)
 		for (const auto& p : orderedVec) grid[p].clear();
-		const size_t prevS = orderedVec.size();
+		// const size_t prevS = orderedVec.size();
 		orderedVec.clear();
 		// orderedVec.reserve(prevS + (prevS / 20));
 	}

@@ -19,7 +19,9 @@ template <typename V> struct Quaternion {
 		V v3 = v1.normalized();
 		num_t sc = min<num_t>(1.0, max<num_t>(-1.0, v2.dot(v3)));
 		if (sc < -0.9999) {
-			*this = Quaternion(M_PI, v2.ortho());
+			num_t halfangle = M_PI * 0.5;
+			w = cos(halfangle);
+			v = v2.ortho() * sin(halfangle);
 		} else {
 			v = v2.cross(v3);
 			w = 1.0 + sc;
