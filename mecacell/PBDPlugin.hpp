@@ -29,6 +29,7 @@ template <typename Body> struct PBDPlugin {
 	num_t topRight_z = 400;
 	using grid_t = Simple2DGrid<size_t>;
 	grid_t grid{bottomLeft_x, bottomLeft_z, topRight_x, topRight_z, gridSize};
+	std::vector<grid_t> grids;
 #else
 	using grid_t = Grid<size_t>;
 	grid_t grid{gridSize};
@@ -47,7 +48,8 @@ template <typename Body> struct PBDPlugin {
 	void setGridSize(num_t g) {
 		gridSize = g;
 #if USE_SIMPLE_GRID
-		grid = grid_t(-500, -500, 500, 500, gridSize);
+
+		grid = grid_t(bottomLeft_x, bottomLeft_z, topRight_x, topRight_z, gridSize);
 #else
 		grid = grid_t(gridSize);
 #endif
@@ -69,17 +71,19 @@ template <typename Body> struct PBDPlugin {
 	// more cache friendly than having to retrieve cells[i].activityLevel:
 	std::vector<num_t> actLvl;
 	template <typename W> void refreshActLvl(W *w) {
-		actLvl.clear();
 		const size_t S = w->bodies.size();
-		actLvl.reserve(S);
-		for (size_t i = 0; i < S; ++i) actLvl.push_back(w->cells[i].activityLevel);
+		actLvl.resize(S);
+		w->threadpool.autoChunksId_work(
+		    0, S, [&](size_t i, size_t) { actLvl[i] = w->cells[i].activityLevel; }, 1);
+		w->threadpool.waitAll();
 	}
 
 	template <typename W> void refreshAABBContainer(W *w) {
-		aabbContainer.clear();
 		const size_t S = w->bodies.size();
-		aabbContainer.reserve(S);
-		for (size_t i = 0; i < S; ++i) aabbContainer.push_back(AABB(w->bodies[i]));
+		aabbContainer.resize(S);
+		w->threadpool.autoChunksId_work(
+		    0, S, [&](size_t i, size_t) { aabbContainer[i] = AABB(w->bodies[i]); }, 1);
+		w->threadpool.waitAll();
 	}
 
 	template <typename W> void reinsertAllCellsInGrid(W *w) {
@@ -98,8 +102,7 @@ template <typename Body> struct PBDPlugin {
 		std::uniform_real_distribution<num_t> d(0.0, 1.0);
 		const size_t S = w->bodies.size();
 		for (size_t i = 0; i < S; ++i) {
-			num_t diceRoll = d(Config::globalRand());
-			if (diceRoll < std::max(minSampleSize, actLvl[i])) {
+			if (d(Config::globalRand()) < std::max(minSampleSize, actLvl[i])) {
 				grid.insert(i, aabbContainer[i]);
 			}
 		}
@@ -147,52 +150,6 @@ template <typename Body> struct PBDPlugin {
 			}
 		});
 		w->threadpool.waitAll();
-		/* constraints.clear();*/
-		// for (auto &c : constraintsPerThreads) {
-		// constraints.insert(constraints.end(), std::make_move_iterator(c.begin()),
-		// std::make_move_iterator(c.end()));
-		//// constraints.insert(constraints.end(), c.begin(), c.end());
-		/*}*/
-	}
-
-	template <typename W> void refreshConstraints(W *w) {
-		size_t prevConstraintsSize = constraints.size();
-		constraints.clear();
-		constraints.reserve(
-		    static_cast<size_t>(static_cast<num_t>(prevConstraintsSize) * 1.1));
-		auto &orderedVec = grid.getOrderedVec();
-
-		for (auto &gridCellPair : orderedVec) {
-#if USE_SIMPLE_GRID
-			const auto &gridCell = grid.grid[gridCellPair];
-#else
-			const auto &gridCell = gridCellPair.second;
-#endif
-			const size_t GRIDSIZE = gridCell.size();
-			for (size_t i = 0; i < GRIDSIZE; ++i) {
-				auto &body_i = w->bodies[gridCell[i]];
-				for (size_t j = i + 1; j < GRIDSIZE; ++j) {
-					auto &body_j = w->bodies[gridCell[j]];
-					if (!AABBCollisionEnabled ||
-					    (AABBCollisionEnabled && grid.AABBCollision(aabbContainer[gridCell[i]],
-					                                                aabbContainer[gridCell[j]]))) {
-						// only one particle could be faster: store directly the particle in the
-						// grid
-						for (auto &p0 : body_i.particles) {
-							for (auto &p1 : body_j.particles) {
-								if (!precisePreCollisionCheck ||
-								    (p0.predicted - p1.predicted).squaredNorm() <
-								        std::pow(p0.radius + p1.radius, 2)) {
-									constraints.push_back(std::make_tuple(
-									    &p0, &p1,
-									    std::min(body_i.distanceStiffness, body_j.distanceStiffness)));
-								}
-							}
-						}
-					}
-				}
-			}
-		}
 	}
 
 	template <typename W> void projectConstraints(W *w) {

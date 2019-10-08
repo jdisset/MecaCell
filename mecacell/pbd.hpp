@@ -4,6 +4,7 @@
 #include <tuple>
 #include <utility>
 #include <vector>
+
 #include "utilities/exportable.hpp"
 
 namespace PBD {
@@ -131,9 +132,10 @@ template <typename P>
 void velocitiesAndPositionsUpdate(P &particles, num_t dt,
                                   num_t sleepingEpsilon = 0.0001) {
 	for (auto &p : particles) {
-		if ((p.predicted - p.position).squaredNorm() < sleepingEpsilon) {
+		if ((p.predicted - p.position).squaredNorm() < sleepingEpsilon)
 			p.predicted = p.position;
-		}
+	}
+	for (auto &p : particles) {
 		p.velocity = (p.predicted - p.position) / dt;
 		p.position = p.predicted;
 	}

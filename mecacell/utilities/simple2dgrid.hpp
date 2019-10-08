@@ -74,10 +74,12 @@ template <typename T> struct Simple2DGrid {
 		return std::make_pair(worldToGridCoord(p.first.x(), p.first.z()),
 		                      worldToGridCoord(p.second.x(), p.second.z()));
 	}
-	void insert_sorted(size_t value) {
-		auto it = std::lower_bound(orderedVec.begin(), orderedVec.end(), value);
-		orderedVec.insert(it, value);
+
+	static inline void insert_sorted(size_t value, std::vector<size_t>& ov) {
+		auto it = std::lower_bound(ov.begin(), ov.end(), value);
+		ov.insert(it, value);
 	}
+
 	void insert(const T& t, const AABB_t& aabb) {
 		for (auto i = aabb.first[0]; i <= aabb.second[0]; ++i) {
 			for (auto j = aabb.first[1]; j <= aabb.second[1]; ++j) {
@@ -85,7 +87,7 @@ template <typename T> struct Simple2DGrid {
 				grid[id].push_back(t);
 				if (grid[id].size() == 1) {
 					// just got interesting, should be added to orderedVec;
-					insert_sorted(id);
+					insert_sorted(id, orderedVec);
 				}
 			}
 		}

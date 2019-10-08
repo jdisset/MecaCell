@@ -31,7 +31,7 @@ struct Config {
 	 * change* the default seed** @ return reference to the engine.
 	 */
 	static random_engine_t& globalRand() {
-		static random_engine_t engine;
+		static thread_local random_engine_t engine;
 		return engine;
 	}
 };

@@ -5,6 +5,7 @@
 #include <cmath>
 #include <functional>
 #include <iostream>
+
 #include "../utilities/config.hpp"
 #include "../utilities/exportable.hpp"
 #include "../utilities/utils.hpp"
@@ -39,7 +40,7 @@ class Vector3D {
 	 * @return
 	 */
 	Vector3D &operator=(const Vector3D &other) {
-		if (&other == this) return *this;
+		// if (&other == this) return *this;
 		coords = other.coords;
 		return *this;
 	}
@@ -62,7 +63,9 @@ class Vector3D {
 	 * @return the dot product of this vector against v
 	 */
 	inline num_t dot(const Vector3D &v) const {
-		return coords[0] * v.coords[0] + coords[1] * v.coords[1] + coords[2] * v.coords[2];
+		num_t d{0};
+		for (size_t i = 0; i < 3; ++i) d += coords[i] * v.coords[i];
+		return d;
 	}
 
 	/**
@@ -196,9 +199,7 @@ class Vector3D {
 	 * @return
 	 */
 	inline Vector3D &operator*=(num_t d) {
-		coords[0] *= d;
-		coords[1] *= d;
-		coords[2] *= d;
+		for (size_t i = 0; i < 3; ++i) coords[i] *= d;
 		return *this;
 	};
 
@@ -210,9 +211,7 @@ class Vector3D {
 	 * @return
 	 */
 	inline Vector3D &operator/=(num_t d) {
-		coords[0] /= d;
-		coords[1] /= d;
-		coords[2] /= d;
+		for (size_t i = 0; i < 3; ++i) coords[i] /= d;
 		return *this;
 	};
 
@@ -224,9 +223,7 @@ class Vector3D {
 	 * @return
 	 */
 	inline Vector3D &operator+=(const Vector3D &v) {
-		coords[0] += v.coords[0];
-		coords[1] += v.coords[1];
-		coords[2] += v.coords[2];
+		for (size_t i = 0; i < 3; ++i) coords[i] += v.coords[i];
 		return *this;
 	}
 
@@ -238,9 +235,7 @@ class Vector3D {
 	 * @return
 	 */
 	inline Vector3D &operator-=(const Vector3D &v) {
-		coords[0] -= v.coords[0];
-		coords[1] -= v.coords[1];
-		coords[2] -= v.coords[2];
+		for (size_t i = 0; i < 3; ++i) coords[i] -= v.coords[i];
 		return *this;
 	}
 
@@ -264,18 +259,14 @@ class Vector3D {
 	 *
 	 * @return
 	 */
-	num_t length() const {
-		return sqrt(coords[0] * coords[0] + coords[1] * coords[1] + coords[2] * coords[2]);
-	}
+	num_t length() const { return sqrt(sqlength()); }
 	num_t norm() const { return length(); }
 	/**
 	 * @brief compute the square length of the current vector (faster than length)
 	 *
 	 * @return
 	 */
-	num_t sqlength() const {
-		return coords[0] * coords[0] + coords[1] * coords[1] + coords[2] * coords[2];
-	}
+	num_t sqlength() const { return dot(*this); }
 	num_t squaredNorm() const { return sqlength(); }
 
 	/**

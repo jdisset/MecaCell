@@ -200,8 +200,8 @@ template <typename Cell, typename Body, typename Integrator = Euler> class World
 	 *
 	 */
 	void addCell(cell_t &&c, body_t &&b, size_t threadId = 0) {
-		newCellsContainers[threadId].emplace_back(c);
-		newBodiesContainers[threadId].emplace_back(b);
+		newCellsContainers[threadId].emplace_back(std::move(c));
+		newBodiesContainers[threadId].emplace_back(std::move(b));
 	}
 
 	/**
@@ -272,7 +272,9 @@ template <typename Cell, typename Body, typename Integrator = Euler> class World
 		if (parallelUpdateBehavior && nbThreads > 0) {
 			threadpool.autoChunksId_work(
 			    0, cells.size(),
-			    [this](size_t i, size_t threadId) { cells[i].updateBehavior(*this, bodies[i], threadId); },
+			    [this](size_t i, size_t threadId) {
+				    cells[i].updateBehavior(*this, bodies[i], threadId);
+			    },
 			    NCHUNKS_PER_THREAD);
 			threadpool.waitAll();
 		} else {
