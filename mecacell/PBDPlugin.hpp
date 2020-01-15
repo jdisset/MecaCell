@@ -22,11 +22,12 @@ template <typename Body> struct PBDPlugin {
 	num_t kineticFrictionCoef = 0.0;
 	num_t staticFrictionCoef = 0.0;
 
-#if USE_SIMPLE_GRID
 	num_t bottomLeft_x = -400;
 	num_t bottomLeft_z = -400;
 	num_t topRight_x = 400;
 	num_t topRight_z = 400;
+
+#if USE_SIMPLE_GRID
 	using grid_t = Simple2DGrid<size_t>;
 	grid_t grid{bottomLeft_x, bottomLeft_z, topRight_x, topRight_z, gridSize};
 	std::vector<grid_t> grids;
