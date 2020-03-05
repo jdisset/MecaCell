@@ -30,12 +30,15 @@ template <typename O> class Grid {
 	template <typename K, typename V> using umap = std::unordered_map<K, V>;
 	num_t cellSize;  // actually it's 1/cellSize, just so we can multiply instead of divide
 	umap<ivec_t, size_t> um;  // position -> orderedVec index
-	std::vector<std::pair<ivec_t, std::vector<O>>> orderedVec;  // for determinism
+
+	// orderedVec is here for determinism
+	// it contains a list of [integer_coord, listOfCells]
+	std::vector<std::pair<ivec_t, std::vector<O>>> orderedVec;
 
  public:
 	Grid(num_t cs) : cellSize(1.0 / cs) {}
 	size_t size() { return um.size(); };
-	std::vector<std::pair<ivec_t, std::vector<O>>> &getOrderedVec() { return orderedVec; }
+	std::vector<std::pair<ivec_t, std::vector<O>>> &getOrderedVec() { return orderedVec; } 
 	umap<ivec_t, size_t> &getUnorderedMap() { return um; }
 
 	num_t getCellSize() const { return 1.0 / cellSize; }
@@ -93,7 +96,7 @@ template <typename O> class Grid {
 		insert(getIndexFromPosition(ptr(obj)->getPosition()), obj);
 	}
 
-	bool AABBCollision(const AABB_t &a, const AABB_t &b) const {
+	static bool AABBCollision(const AABB_t &a, const AABB_t &b) {
 		return (a.first[0] <= b.second[0] && a.second[0] >= b.first[0]) &&
 		       (a.first[1] <= b.second[1] && a.second[1] >= b.first[1]) &&
 		       (a.first[2] <= b.second[2] && a.second[2] >= b.first[2]);

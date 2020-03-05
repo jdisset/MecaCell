@@ -5,7 +5,7 @@
 #include "utilities/grid.hpp"
 #include "utilities/simple2dgrid.hpp"
 
-#define USE_SIMPLE_GRID 1
+#define USE_SIMPLE_GRID 0
 
 namespace MecaCell {
 template <typename Body> struct PBDPlugin {
@@ -69,15 +69,16 @@ template <typename Body> struct PBDPlugin {
 		return o.str();
 	}
 
-	// more cache friendly than having to retrieve cells[i].activityLevel:
-	std::vector<num_t> actLvl;
-	template <typename W> void refreshActLvl(W *w) {
-		const size_t S = w->bodies.size();
-		actLvl.resize(S);
-		w->threadpool.autoChunksId_work(
-		    0, S, [&](size_t i, size_t) { actLvl[i] = w->cells[i].activityLevel; }, 1);
-		w->threadpool.waitAll();
-	}
+   /* // more cache friendly than having to retrieve cells[i].activityLevel:*/
+	//std::vector<num_t> actLvl;
+	//template <typename W> void refreshActLvl(W *w) {
+		//const size_t S = w->bodies.size();
+		//actLvl.resize(S);
+		//w->threadpool.autoChunksId_work(
+			//0, S, [&](size_t i, size_t) { actLvl[i] = w->cells[i].activityLevel; }, 1);
+
+		//w->threadpool.waitAll();
+	//}
 
 	template <typename W> void refreshAABBContainer(W *w) {
 		const size_t S = w->bodies.size();
@@ -96,18 +97,18 @@ template <typename Body> struct PBDPlugin {
 		}
 	}
 
-	template <typename W> void reinsertAllCellsInGrid_withSample(W *w) {
-		refreshActLvl(w);
-		refreshAABBContainer(w);
-		grid.clear();
-		std::uniform_real_distribution<num_t> d(0.0, 1.0);
-		const size_t S = w->bodies.size();
-		for (size_t i = 0; i < S; ++i) {
-			if (d(Config::globalRand()) < std::max(minSampleSize, actLvl[i])) {
-				grid.insert(i, aabbContainer[i]);
-			}
-		}
-	}
+	//template <typename W> void reinsertAllCellsInGrid_withSample(W *w) {
+		//refreshActLvl(w);
+		//refreshAABBContainer(w);
+		//grid.clear();
+		//std::uniform_real_distribution<num_t> d(0.0, 1.0);
+		//const size_t S = w->bodies.size();
+		//for (size_t i = 0; i < S; ++i) {
+			//if (d(Config::globalRand()) < std::max(minSampleSize, actLvl[i])) {
+				//grid.insert(i, aabbContainer[i]);
+			//}
+		//}
+	/*}*/
 
 	template <typename W> void refreshConstraints_par(W *w) {
 		if (constraintsPerThreads.size() != w->getNbThreads())
@@ -122,7 +123,7 @@ template <typename Body> struct PBDPlugin {
 #if USE_SIMPLE_GRID
 			const auto &gridCell = grid.grid[orderedVec[i]];
 #else
-			const auto &gridCell = gridCellPair.second;
+			const auto &gridCell = orderedVec[i].second;
 #endif
 			const size_t GRIDSIZE = gridCell.size();
 			for (size_t i = 0; i < GRIDSIZE; ++i) {
@@ -216,7 +217,8 @@ template <typename Body> struct PBDPlugin {
 
 		// generate collisions
 		if (w->getNbUpdates() % constraintGenerationFreq == 0) {
-			reinsertAllCellsInGrid_withSample(w);
+			//reinsertAllCellsInGrid_withSample(w);
+			reinsertAllCellsInGrid(w);
 			refreshConstraints_par(w);
 		}
 
